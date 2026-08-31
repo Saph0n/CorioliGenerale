@@ -1,0 +1,123 @@
+{
+  "name": "appdottori-generale",
+  "private": true,
+  "version": "1.3.4",
+  "type": "module",
+  "description": "Gestione pazienti e visite - Corioli Generale",
+  "author": "Corioli",
+  "main": "electron/main.js",
+  "homepage": "./",
+  "scripts": {
+    "dev": "vite --port 5173 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "electron": "electron .",
+    "electron:dev": "concurrently \"npm run dev\" \"cross-env NODE_ENV=development ELECTRON_START_URL=http://localhost:5173 electron .\"",
+    "electron:build": "npm run build && electron-builder",
+    "dist": "npm run build && electron-builder --publish=never",
+    "dist:appx": "npm run build && electron-builder --win appx --publish=never",
+    "icons:appx": "python scripts/gen-appx-icons.py",
+    "icons:appx:check": "python -c \"from pathlib import Path; d=Path('build/appx'); [print(f.name) for f in sorted(d.iterdir())]\"",
+    "dist:all": "npm run build && electron-builder --mac --win appx --publish=never",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.5",
+    "@mui/icons-material": "^5.15.19",
+    "@mui/material": "^5.15.19",
+    "@nextui-org/react": "^2.6.11",
+    "@tabler/icons-webfont": "3.23.0",
+    "axios": "1.13.5",
+    "codice-fiscale-ts": "^1.3.3",
+    "date-fns": "^3.6.0",
+    "dayjs": "^1.11.13",
+    "framer-motion": "^11.18.2",
+    "jspdf": "^4.2.0",
+    "lucide-react": "^0.429.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.23.1",
+    "sql.js": "^1.14.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
+    "@typescript-eslint/eslint-plugin": "^7.2.0",
+    "@typescript-eslint/parser": "^7.2.0",
+    "@vitejs/plugin-react-swc": "^3.5.0",
+    "autoprefixer": "^10.4.19",
+    "concurrently": "^9.2.1",
+    "cross-env": "^7.0.3",
+    "electron": "^38.1.2",
+    "electron-builder": "^26.0.12",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.6",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3",
+    "typescript": "^5.2.2",
+    "vite": "^7.3.1",
+    "vitest": "3.2.4",
+    "wait-on": "^9.0.1"
+  },
+  "build": {
+    "appId": "com.corioligenerale.desktop",
+    "productName": "Corioli Generale",
+    "directories": {
+      "output": "dist-electron",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "!electron/__tests__/**",
+      "package.json",
+      "!node_modules/**/*",
+      "node_modules/sql.js/package.json",
+      "node_modules/sql.js/dist/sql-wasm.js",
+      "node_modules/sql.js/dist/sql-wasm.wasm",
+      "node_modules/win-hello/**/*"
+    ],
+    "asarUnpack": [
+      "**/win-hello/**/*.node"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "appx",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "appx": {
+      "applicationId": "CorioliGenerale",
+      "identityName": "CorioliGenerale.CorioliGenerale",
+      "publisher": "CN=60C71725-B223-4BD2-95C5-CC3C7EE03443",
+      "publisherDisplayName": "Corioli",
+      "displayName": "Corioli Generale",
+      "backgroundColor": "transparent"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "public/dottoressa.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "public/dottoressa.png"
+    }
+  },
+  "optionalDependencies": {
+    "win-hello": "^1.1.1"
+  }
+}
