@@ -27,8 +27,10 @@ import {
 import { PageHeader } from "../../components/PageHeader";
 import { PatientGridSkeleton } from "../../components/AppStartupSkeleton";
 import { CodiceFiscaleValue } from "../../components/CodiceFiscaleValue";
-import { Users, UserPlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, UserPlus, ChevronLeft, ChevronRight, FlaskConical } from "lucide-react";
 import { calculateAge } from "../../utils/dateUtils";
+import { normalizeGruppi } from "../../utils/gruppiRicerca";
+import type { AppartenenzaGruppo } from "../../types/Storage";
 
 // Interfaccia compatibile con il componente esistente
 interface PatientData {
@@ -42,6 +44,7 @@ interface PatientData {
   cf?: string;
   cfGenerated?: boolean;
   birthplace?: string;
+  gruppiRicerca?: AppartenenzaGruppo[];
 }
 
 interface RecentPatientSearchEntry {
@@ -56,6 +59,7 @@ const RECENT_PATIENT_SEARCHES_KEY = "appdottori_recent_patient_searches";
 const MAX_RECENT_PATIENT_SEARCHES = 6;
 
 const ROWS_PER_PAGE = 24;
+
 
 function isNonEmpty(value?: string | null): value is string {
   const v = (value ?? "").trim();
@@ -145,6 +149,8 @@ export default function Dashboard() {
     RecentPatientSearchEntry[]
   >([]);
   const [currentPage, setCurrentPage] = useState(1);
+  /** Serve solo a decidere se mostrare i badge dei gruppi sulle card. */
+  const [gruppiAbilitati, setGruppiAbilitati] = useState(false);
 
   const loadPatients = useCallback(async () => {
     setLoading(true);
@@ -166,6 +172,7 @@ export default function Dashboard() {
         cf: patient.codiceFiscale,
         cfGenerated: Boolean(patient.codiceFiscaleGenerato),
         birthplace: patient.luogoNascita,
+        gruppiRicerca: normalizeGruppi(patient.gruppiRicerca),
       }));
       setPatients(convertedPatients);
     } catch (error) {
@@ -209,6 +216,21 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    const caricaGruppi = async () => {
+      try {
+        const prefs = await PreferenceService.getPreferences();
+        setGruppiAbilitati(Boolean(prefs?.gruppiRicercaEnabled));
+      } catch {
+        setGruppiAbilitati(false);
+      }
+    };
+    void caricaGruppi();
+    const onFocus = () => void caricaGruppi();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
+  useEffect(() => {
     const fetchDoctorData = async () => {
       try {
         await DoctorService.initializeDefaultDoctor();
@@ -224,8 +246,9 @@ export default function Dashboard() {
   // Ricerca: capisce da solo se stai cercando per nome/cognome o per codice fiscale
   const deferredSearch = useDeferredValue(searchTerm);
   const filteredPatients = useMemo(() => {
+    const base = patients;
     const raw = deferredSearch.trim();
-    if (!raw) return patients;
+    if (!raw) return base;
     const search = raw.toLowerCase();
     const cfOnly = raw.replace(/\s/g, "").toUpperCase();
     // Considera CF solo se plausibile:
@@ -236,14 +259,14 @@ export default function Dashboard() {
       /^[A-Za-z0-9]{6,16}$/.test(cfOnly) &&
       (/\d/.test(cfOnly) || cfOnly.length === 16);
     if (looksLikeCf) {
-      return patients.filter((p) => {
+      return base.filter((p) => {
         const cf = (p.cf || "").toUpperCase();
         return cf.includes(cfOnly) || cf.startsWith(cfOnly);
       });
     }
     // Altrimenti ricerca per nome e/o cognome: ogni parola deve matchare nome o cognome
     const tokens = search.split(/\s+/).filter(Boolean);
-    return patients.filter((patient) => {
+    return base.filter((patient) => {
       const nome = (patient.name || "").toLowerCase();
       const cognome = (patient.surname || "").toLowerCase();
       return tokens.every(
@@ -530,6 +553,24 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </CardHeader>
+                {gruppiAbilitati && (patient.gruppiRicerca ?? []).length > 0 && (
+                  <div className="px-3 pb-2 -mt-1 flex flex-wrap items-center gap-1">
+                    {(patient.gruppiRicerca ?? []).map((g) => (
+                      <Chip
+                        key={g.nome}
+                        size="sm"
+                        variant="flat"
+                        color="secondary"
+                        classNames={{ content: "text-[11px] px-1" }}
+                        startContent={
+                          <FlaskConical size={11} className="ml-1 shrink-0" />
+                        }
+                      >
+                        {g.nome}
+                      </Chip>
+                    ))}
+                  </div>
+                )}
                 {showDetails && (
                 <CardBody className="pt-0">
                   <div className="space-y-2">

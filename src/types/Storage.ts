@@ -1,4 +1,13 @@
 // Tipi per i dati dell'applicazione offline
+
+/** Appartenenza di un paziente a un gruppo di ricerca. */
+export interface AppartenenzaGruppo {
+  /** Nome del gruppo (e' anche la sua identita': non esistono id). */
+  nome: string;
+  /** Data di arruolamento nel progetto (ISO `aaaa-mm-gg`). */
+  dal?: string;
+}
+
 export interface Patient {
   /** Identificativo univoco del paziente (UUID). Non usare il codice fiscale come id. */
   id: string;
@@ -21,6 +30,13 @@ export interface Patient {
   peso?: number; // in kg (utile per BMI iniziale)
   /** Note rapide del medico (visibili in scheda paziente, modificabili al volo) */
   notaBene?: string;
+  /**
+   * Gruppi di ricerca a cui il paziente appartiene, con la data di arruolamento.
+   * Vedi `utils/gruppiRicerca.ts` per il motivo della scelta dei nomi al posto
+   * dei riferimenti a un archivio separato. In lettura viene accettato anche il
+   * vecchio formato a sole stringhe.
+   */
+  gruppiRicerca?: AppartenenzaGruppo[];
   createdAt: string;
   updatedAt: string;
 }
@@ -130,6 +146,185 @@ export interface VisitRevision {
   changes: VisitFieldChange[];
 }
 
+/**
+ * Elettrocardiogramma. I tempi sono in millisecondi; il QTc non viene salvato
+ * calcolato ma ricalcolato alla lettura, così resta coerente con QT e FC.
+ */
+export interface EcgData {
+  /** Ritmo di base (sinusale, fibrillazione atriale, da pacemaker...). */
+  ritmo?: string;
+  /** Intervallo PR (ms). */
+  pr?: number;
+  /** Durata del QRS (ms). */
+  qrs?: number;
+  /** Intervallo QT misurato (ms). */
+  qt?: number;
+  /** Asse elettrico del QRS (gradi). */
+  asse?: number;
+  /** Refertazione testuale del tracciato. */
+  referto?: string;
+}
+
+/** Ecocardiogramma transtoracico: misure standard + referto testuale. */
+export interface EcocardiogrammaData {
+  /** Diametro telediastolico del ventricolo sinistro (mm). */
+  ddvs?: number;
+  /** Diametro telesistolico del ventricolo sinistro (mm). */
+  dsvs?: number;
+  /** Spessore del setto interventricolare (mm). */
+  siv?: number;
+  /** Spessore della parete posteriore (mm). */
+  pp?: number;
+  /** Frazione di eiezione (%). */
+  fe?: number;
+  /** Diametro dell'atrio sinistro (mm). */
+  atrioSinistro?: number;
+  /** Radice aortica (mm). */
+  radiceAortica?: number;
+  /** Aorta ascendente (mm). */
+  aortaAscendente?: number;
+  /** TAPSE (mm). */
+  tapse?: number;
+  /** Pressione arteriosa polmonare sistolica stimata (mmHg). */
+  paps?: number;
+  /** Rapporto E/A. */
+  rapportoEA?: number;
+  /** Rapporto E/e'. */
+  rapportoEe?: number;
+  /** Refertazione testuale. */
+  referto?: string;
+}
+
+/** TC coronarica: calcium score e grado di stenosi, storicizzati per il confronto. */
+export interface TcCoronaricaData {
+  /** Data di esecuzione dell'esame (ISO), spesso diversa da quella della visita. */
+  dataEsame?: string;
+  /** Struttura che ha eseguito e refertato l'esame. */
+  struttura?: string;
+  /** Calcium score secondo Agatston. */
+  cacScore?: number;
+  /** Categoria CAD-RADS del grado di stenosi (chiave di CAD_RADS_OPTIONS). */
+  cadRads?: string;
+  /** Sintesi del referto radiologico. */
+  referto?: string;
+}
+
+/**
+ * Test ergometrico (cicloergometro o treadmill). I carichi si esprimono in watt
+ * o in METs a seconda del protocollo: si salvano entrambi, valorizzando quello
+ * che l'apparecchio riporta.
+ */
+export interface TestErgometricoData {
+  /** Data di esecuzione (ISO), spesso diversa da quella della visita. */
+  dataEsame?: string;
+  /** Protocollo usato (Bruce, Bruce modificato, rampa...). */
+  protocollo?: string;
+  /** Durata dell'esercizio (minuti). */
+  durataMin?: number;
+  /** Carico massimo raggiunto (watt). */
+  caricoWatt?: number;
+  /** Carico massimo in equivalenti metabolici. */
+  mets?: number;
+  /** Frequenza cardiaca massima raggiunta (bpm). */
+  fcMax?: number;
+  /** Percentuale della frequenza massima teorica raggiunta. */
+  fcMaxTeoricaPct?: number;
+  /** Pressione arteriosa al picco dello sforzo ("180/90"). */
+  paMax?: string;
+  /** Motivo dell'interruzione (esaurimento muscolare, sintomi, aritmia...). */
+  motivoInterruzione?: string;
+  /** Esito complessivo del test. */
+  esito?: string;
+  /** Refertazione testuale. */
+  referto?: string;
+}
+
+/** ECG dinamico secondo Holter (24 ore o piu'). */
+export interface HolterEcgData {
+  /** Data di inizio della registrazione (ISO). */
+  dataEsame?: string;
+  /** Durata della registrazione (ore). */
+  durataOre?: number;
+  /** Frequenza cardiaca media (bpm). */
+  fcMedia?: number;
+  /** Frequenza cardiaca minima (bpm). */
+  fcMin?: number;
+  /** Frequenza cardiaca massima (bpm). */
+  fcMax?: number;
+  /** Numero di battiti ectopici sopraventricolari nelle 24 ore. */
+  besv?: number;
+  /** Numero di battiti ectopici ventricolari nelle 24 ore. */
+  bev?: number;
+  /** Pausa piu' lunga registrata (secondi). */
+  pausaMaxSec?: number;
+  /** Ritmo prevalente nel tracciato. */
+  ritmoPrevalente?: string;
+  /** Refertazione testuale. */
+  referto?: string;
+}
+
+/** Monitoraggio pressorio delle 24 ore (ABPM). */
+export interface HolterPressorioData {
+  /** Data di inizio della registrazione (ISO). */
+  dataEsame?: string;
+  /** Media delle 24 ore, sistolica (mmHg). */
+  media24Sist?: number;
+  /** Media delle 24 ore, diastolica (mmHg). */
+  media24Diast?: number;
+  /** Media diurna, sistolica (mmHg). */
+  mediaDiurnaSist?: number;
+  /** Media diurna, diastolica (mmHg). */
+  mediaDiurnaDiast?: number;
+  /** Media notturna, sistolica (mmHg). */
+  mediaNotturnaSist?: number;
+  /** Media notturna, diastolica (mmHg). */
+  mediaNotturnaDiast?: number;
+  /** Calo pressorio notturno (%): sotto il 10% il profilo e' non-dipper. */
+  caloNotturnoPct?: number;
+  /** Percentuale di misurazioni oltre la soglia. */
+  caricoPressorioPct?: number;
+  /** Refertazione testuale. */
+  referto?: string;
+}
+
+/** Esami ematochimici usati dai calcolatori del rischio cardiovascolare (mg/dL salvo diversa indicazione). */
+export interface LaboratorioData {
+  /** Data del prelievo (ISO). */
+  dataPrelievo?: string;
+  colesteroloTotale?: number;
+  hdl?: number;
+  trigliceridi?: number;
+  /** LDL dosato direttamente; se assente viene stimato con Friedewald. */
+  ldlMisurato?: number;
+  /** Apolipoproteina B (mg/dL): ha un obiettivo proprio per classe di rischio. */
+  apoB?: number;
+  /**
+   * Lipoproteina(a) in mg/dL. Il dosaggio viene refertato anche in nmol/L e i
+   * due valori non si convertono con un fattore fisso: si salva quello in
+   * mg/dL, che e' l'unita' delle soglie usate qui.
+   */
+  lpa?: number;
+  /** Glicemia a digiuno. */
+  glicemia?: number;
+  /** Insulinemia a digiuno (µU/mL). */
+  insulina?: number;
+  /** Emoglobina glicata (%). */
+  hba1c?: number;
+  creatinina?: number;
+  /** Rapporto albumina/creatinina urinaria (mg/g). */
+  albuminuria?: number;
+  /** Emoglobina (g/dL). */
+  emoglobina?: number;
+  /** Aspartato aminotransferasi (U/L). */
+  ast?: number;
+  /** Alanina aminotransferasi (U/L). */
+  alt?: number;
+  /** Acido urico (mg/dL). */
+  uricemia?: number;
+  /** Ormone tireostimolante (mU/L). */
+  tsh?: number;
+}
+
 export interface Visit {
   id: string;
   patientId: string;
@@ -151,7 +346,7 @@ export interface Visit {
    * singola (`visita.prestazione`) nella stampa del referto.
    */
   anamnesiStrutturata?: AnamnesiStrutturata;
-  /** Contenuto clinico della visita (referto specialistico generale). */
+  /** Contenuto clinico della visita cardiologica. */
   visita?: {
     /** Descrizione del problema / dati clinici riferiti dal paziente. */
     problemaClinico: string;
@@ -169,8 +364,36 @@ export interface Visit {
     pressioneArteriosa?: string;
     /** Frequenza cardiaca (bpm). */
     frequenzaCardiaca?: string;
+    /** Fumatore attuale: input del rischio cardiovascolare. */
+    fumatore?: "si" | "no";
+    /**
+     * Classe di rischio cardiovascolare **attribuita dal medico** in base
+     * all'anamnesi dei fattori di rischio. Non viene calcolata dall'app: serve
+     * a cercare nelle linee guida gli obiettivi di LDL e ApoB corrispondenti.
+     * Vedi `utils/rischioCv.ts`.
+     */
+    categoriaRischioCv?:
+      | "basso"
+      | "moderato"
+      | "alto"
+      | "molto-alto"
+      | "molto-alto-ricorrente";
     /** Data URL (base64) delle immagini allegate al referto. */
     immagini?: string[];
+    /** Elettrocardiogramma a 12 derivazioni eseguito durante la visita. */
+    ecg?: EcgData;
+    /** Ecocardiogramma color-Doppler transtoracico. */
+    ecocardiogramma?: EcocardiogrammaData;
+    /** TC coronarica (esame di secondo livello, spesso refertato altrove). */
+    tcCoronarica?: TcCoronaricaData;
+    /** Esami ematochimici rilevanti per il rischio cardiovascolare. */
+    laboratorio?: LaboratorioData;
+    /** Test ergometrico (esame dinamico di primo livello). */
+    testErgometrico?: TestErgometricoData;
+    /** ECG dinamico secondo Holter. */
+    holterEcg?: HolterEcgData;
+    /** Monitoraggio pressorio delle 24 ore. */
+    holterPressorio?: HolterPressorioData;
   };
   createdAt: string;
   updatedAt: string;
@@ -231,6 +454,13 @@ export interface MedicalTemplate {
     | 'generale'
     | 'nome'
     | 'note'
+    // Moduli strumentali della visita cardiologica
+    | 'ecg'
+    | 'ecocardiogramma'
+    | 'tcCoronarica'
+    | 'testErgometrico'
+    | 'holterEcg'
+    | 'holterPressorio'
     // Sotto-sezioni dell'anamnesi strutturata
     | 'anamnesiFamiliare'
     | 'anamnesiFisiologica'

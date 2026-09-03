@@ -23,7 +23,7 @@ export default function Blocked() {
       if (!id) return;
 
       if (doctor) {
-        const { blocked, reason } = await sendHeartbeat(doctor, "corioli-generale");
+        const { blocked, reason } = await sendHeartbeat(doctor, "corioli-cardiologia");
         if (blocked === false) {
           const payload = {
             blocked: false,
@@ -87,7 +87,7 @@ export default function Blocked() {
             Account temporaneamente sospeso
           </h1>
           <p className="text-center text-slate-300 text-sm">
-            L&apos;accesso a Corioli Generale è stato disattivato. <br />
+            L&apos;accesso a Corioli Cardiologia è stato disattivato. <br />
             {reason && (
               <p className="text-slate-300 text-sm">Motivo: {reason}</p>
             )}

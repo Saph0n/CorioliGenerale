@@ -87,7 +87,7 @@ export default function PinUnlockScreen({ onUnlocked }: Props) {
               <div className="h-14 w-14 rounded-2xl bg-primary-100 flex items-center justify-center">
                 <Lock className="text-primary h-7 w-7" />
               </div>
-              <h1 className="text-xl font-bold text-foreground">Accesso a Corioli Generale</h1>
+              <h1 className="text-xl font-bold text-foreground">Accesso a Corioli Cardiologia</h1>
               <p className="text-sm text-default-500">
                 {biometricEnabled
                   ? "Autenticazione biometrica disponibile. Inserire il PIN in alternativa."

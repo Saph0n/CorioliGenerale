@@ -50,7 +50,7 @@ export class ExportService {
           patientCount: patients.length,
           visitCount: visits.length,
           note:
-            "Export generato dall'app desktop Corioli Generale. I dati sanitari restano sotto responsabilità del medico titolare.",
+            "Export generato dall'app desktop Corioli Cardiologia. I dati sanitari restano sotto responsabilità del medico titolare.",
         },
       };
 

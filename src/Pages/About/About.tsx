@@ -44,24 +44,24 @@ export default function About() {
               <div className="mx-auto max-w-2xl gap-x-14 lg:mx-0 lg:flex lg:max-w-none lg:items-center">
                 <div className="w-full max-w-xl lg:shrink-0 xl:max-w-2xl">
                   <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-                    Corioli Generale
+                    Corioli Cardiologia
                   </h1>
                   <p className="relative mt-6 text-lg leading-8 text-gray-700 sm:max-w-md lg:max-w-none">
-                    <strong>Corioli Generale</strong> è un'applicazione medica
+                    <strong>Corioli Cardiologia</strong> è un'applicazione medica
                     rivoluzionaria, creata per rendere la gestione sanitaria
                     semplice e intuitiva. Con una combinazione di tecnologia
-                    avanzata e interfacce intuitive, Corioli Generale fornisce un
+                    avanzata e interfacce intuitive, Corioli Cardiologia fornisce un
                     supporto completo sia per i medici che per i pazienti.
                   </p>
                   <p className="mt-4 text-lg leading-8 text-gray-700 sm:max-w-md lg:max-w-none">
-                    Corioli Generale consente ai medici di organizzare cartelle cliniche,
+                    Corioli Cardiologia consente ai medici di organizzare cartelle cliniche,
                     pianificare appuntamenti e monitorare trattamenti in modo
                     efficiente. I pazienti, invece, possono facilmente accedere
                     alle proprie informazioni mediche e comunicare direttamente
                     con i professionisti sanitari.
                   </p>
                   <p className="mt-4 text-lg leading-8 text-gray-700 sm:max-w-md lg:max-w-none">
-                    Con un impegno costante verso la sicurezza dei dati, Corioli Generale
+                    Con un impegno costante verso la sicurezza dei dati, Corioli Cardiologia
                     utilizza le più recenti tecnologie di crittografia per
                     proteggere tutte le informazioni sensibili, partecipando
                     attivamente a competizioni di cybersecurity per dimostrare

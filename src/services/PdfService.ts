@@ -19,6 +19,18 @@ import {
   parseAnamnesiConfig,
 } from "../utils/anamnesiStrutturata";
 import { getRicettaTesto } from "../utils/ricettaTemplate";
+import {
+  CAD_RADS_OPTIONS,
+  calcolaCaloNotturno,
+  calcolaEgfrCkdEpi,
+  calcolaPercentualeFcMax,
+  calcolaLdlFriedewald,
+  calcolaQtcBazett,
+  calcolaRapportoCtHdl,
+  calcolaRapportoTgHdl,
+  fasciaCacScore,
+  stadioKdigo,
+} from "../utils/cardioCalcs";
 
 // ─── Layout ──────────────────────────────────────────────────────────────────
 const ML = 15;
@@ -34,6 +46,7 @@ const K30: [number, number, number] = [30, 30, 30];
 const K80: [number, number, number] = [80, 80, 80];
 const K140: [number, number, number] = [140, 140, 140];
 const K200: [number, number, number] = [200, 200, 200];
+const K235: [number, number, number] = [235, 235, 235];
 const K240: [number, number, number] = [240, 240, 240];
 
 
@@ -510,6 +523,404 @@ export class PdfService {
     return visit.visita ? visit : { ...visit, visita: this.mkVisita(visit) };
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // MODULI STRUMENTALI CARDIOLOGICI
+  //
+  // Ogni modulo stampa prima la riga di misure (solo quelle valorizzate) e poi
+  // il referto testuale. Se non c'e' nessuna misura ne' referto la sezione
+  // viene saltata del tutto, così un referto senza ECG non lascia intestazioni
+  // vuote nel foglio.
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Tabella di misure a griglia: ogni cella ha l'etichetta piccola in alto e il
+   * valore in grassetto sotto. Sostituisce la vecchia riga continua separata da
+   * punti, che con dieci o piu' valori diventava una massa di testo illeggibile.
+   *
+   * Disegna solo le misure valorizzate e sceglie da sola quante righe servono;
+   * le celle vuote dell'ultima riga restano bianche senza bordo.
+   */
+  private static drawMisureTable(
+    doc: jsPDF, y: number,
+    items: { label: string; value: string }[],
+    colonne = 3,
+  ): number {
+    const presenti = items.filter((i) => i.value && i.value !== "-");
+    if (presenti.length === 0) return y;
+
+    const righe = Math.ceil(presenti.length / colonne);
+    const colW = PW / colonne;
+    const rowH = 9;
+
+    y = this.pb(doc, y, righe * rowH + 4);
+
+    for (let r = 0; r < righe; r++) {
+      const top = y + r * rowH;
+
+      // Fondo alternato: aiuta a seguire la riga con l'occhio su tabelle lunghe.
+      if (r % 2 === 0) {
+        this.fc(doc, K240);
+        doc.rect(ML, top, PW, rowH, "F");
+      }
+
+      for (let c = 0; c < colonne; c++) {
+        const item = presenti[r * colonne + c];
+        if (!item) continue;
+        const cx = ML + c * colW + 2;
+        const maxW = colW - 4;
+
+        doc.setFont("helvetica", "normal"); doc.setFontSize(6.8); this.tc(doc, K80);
+        doc.text(san(item.label).toUpperCase(), cx, top + 3.4, { maxWidth: maxW });
+
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9); this.tc(doc, K0);
+        const linee: string[] = doc.splitTextToSize(san(item.value), maxW);
+        doc.text(linee[0] ?? "", cx, top + 7.6);
+      }
+
+      this.dc(doc, K200); doc.setLineWidth(0.1);
+      doc.line(ML, top + rowH, MR, top + rowH);
+    }
+
+    return y + righe * rowH + 3;
+  }
+
+  /**
+   * Tabella a due colonne "etichetta | valore" per i dati che hanno testi
+   * lunghi (struttura, categoria CAD-RADS): qui il valore va mandato a capo,
+   * non troncato.
+   */
+  private static drawDettagliTable(
+    doc: jsPDF, y: number, items: { label: string; value: string }[],
+  ): number {
+    const presenti = items.filter((i) => i.value && i.value !== "-");
+    if (presenti.length === 0) return y;
+
+    const labelW = 34;
+    for (const item of presenti) {
+      doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
+      const linee: string[] = doc.splitTextToSize(
+        san(item.value), PW - labelW - 4,
+      );
+      const h = Math.max(LH, linee.length * LH);
+      y = this.pb(doc, y, h + 2);
+
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); this.tc(doc, K80);
+      doc.text(san(item.label).toUpperCase(), ML + 1, y + 3.2);
+
+      doc.setFont("helvetica", "bold"); doc.setFontSize(8.5); this.tc(doc, K0);
+      linee.forEach((linea, i) => {
+        doc.text(linea, ML + labelW, y + 3.2 + i * LH);
+      });
+
+      y += h + 1.4;
+      this.dc(doc, K200); doc.setLineWidth(0.1);
+      doc.line(ML, y - 0.6, MR, y - 0.6);
+    }
+    return y + 2;
+  }
+
+  /**
+   * Intestazione di sezione su barra grigia: con otto sezioni per referto,
+   * il titolo in grassetto su fondo bianco non bastava a far trovare i blocchi.
+   */
+  private static sezione(doc: jsPDF, y: number, titolo: string): number {
+    y = this.pb(doc, y, 16);
+    this.fc(doc, K235);
+    doc.rect(ML, y - 3.6, PW, 6, "F");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9); this.tc(doc, K0);
+    doc.text(san(titolo).toUpperCase(), ML + 2, y + 0.6);
+    return y + 6.5;
+  }
+
+  /** Referto testuale di un modulo strumentale. */
+  private static drawRefertoModulo(
+    doc: jsPDF, y: number, testo: string | undefined,
+  ): number {
+    if (!testo?.trim()) return y;
+    return this.block(doc, testo, ML + 1, y, PW - 2, LH, {
+      font: "helvetica", style: "normal", fontSize: 9.5, color: K30,
+    });
+  }
+
+  private static drawEcg(
+    doc: jsPDF, y: number,
+    ecg: NonNullable<Visit["visita"]>["ecg"],
+    frequenzaCardiaca: string | undefined,
+  ): number {
+    if (!ecg) return y;
+    const qtc = calcolaQtcBazett(
+      ecg.qt,
+      frequenzaCardiaca ? Number(frequenzaCardiaca) : undefined,
+    );
+    const misure = [
+      { label: "Ritmo", value: v(ecg.ritmo, "") },
+      { label: "PR", value: ecg.pr ? `${ecg.pr} ms` : "" },
+      { label: "QRS", value: ecg.qrs ? `${ecg.qrs} ms` : "" },
+      { label: "QT", value: ecg.qt ? `${ecg.qt} ms` : "" },
+      { label: "QTc", value: qtc.ok ? `${qtc.result.display} ms` : "" },
+      { label: "Asse", value: ecg.asse != null ? `${ecg.asse}°` : "" },
+    ];
+    const haMisure = misure.some((m) => m.value);
+    if (!haMisure && !ecg.referto?.trim()) return y;
+
+    y = this.sezione(doc, y, "Elettrocardiogramma");
+    y = this.drawMisureTable(doc, y, misure, 3);
+    y = this.drawRefertoModulo(doc, y, ecg.referto);
+    return y + 4;
+  }
+
+  private static drawEcocardiogramma(
+    doc: jsPDF, y: number,
+    eco: NonNullable<Visit["visita"]>["ecocardiogramma"],
+  ): number {
+    if (!eco) return y;
+    const mm = (n: number | undefined) => (n != null ? `${n} mm` : "");
+    const misure = [
+      { label: "DTD VS", value: mm(eco.ddvs) },
+      { label: "DTS VS", value: mm(eco.dsvs) },
+      { label: "SIV", value: mm(eco.siv) },
+      { label: "PP", value: mm(eco.pp) },
+      { label: "FE", value: eco.fe != null ? `${eco.fe}%` : "" },
+      { label: "Atrio sx", value: mm(eco.atrioSinistro) },
+      { label: "Radice ao.", value: mm(eco.radiceAortica) },
+      { label: "Ao. asc.", value: mm(eco.aortaAscendente) },
+      { label: "TAPSE", value: mm(eco.tapse) },
+      { label: "PAPs", value: eco.paps != null ? `${eco.paps} mmHg` : "" },
+      { label: "E/A", value: eco.rapportoEA != null ? String(eco.rapportoEA) : "" },
+      { label: "E/e'", value: eco.rapportoEe != null ? String(eco.rapportoEe) : "" },
+    ];
+    if (!misure.some((m) => m.value) && !eco.referto?.trim()) return y;
+
+    y = this.sezione(doc, y, "Ecocardiogramma color-Doppler transtoracico");
+    y = this.drawMisureTable(doc, y, misure, 4);
+    y = this.drawRefertoModulo(doc, y, eco.referto);
+    return y + 4;
+  }
+
+  private static drawTcCoronarica(
+    doc: jsPDF, y: number,
+    tc: NonNullable<Visit["visita"]>["tcCoronarica"],
+  ): number {
+    if (!tc) return y;
+    const fascia = fasciaCacScore(tc.cacScore);
+    const cadRads = tc.cadRads
+      ? (CAD_RADS_OPTIONS.find((o) => o.key === tc.cadRads)?.label ?? tc.cadRads)
+      : "";
+    const misure = [
+      { label: "Data esame", value: tc.dataEsame ? fd(tc.dataEsame) : "" },
+      { label: "Struttura", value: v(tc.struttura, "") },
+      {
+        label: "Calcium score",
+        value: tc.cacScore != null ? `${tc.cacScore}${fascia ? ` (${fascia})` : ""}` : "",
+      },
+      { label: "CAD-RADS", value: cadRads },
+    ];
+    if (!misure.some((m) => m.value) && !tc.referto?.trim()) return y;
+
+    y = this.sezione(doc, y, "TC coronarica");
+    y = this.drawDettagliTable(doc, y, misure);
+    y = this.drawRefertoModulo(doc, y, tc.referto);
+    return y + 4;
+  }
+
+  /**
+   * Test ergometrico. La percentuale della frequenza massima teorica viene
+   * ricalcolata qui invece di essere ripresa dal campo: se il medico corregge
+   * la FC raggiunta senza ritoccare la percentuale, il referto resterebbe
+   * altrimenti con due numeri che non si parlano.
+   */
+  private static drawTestErgometrico(
+    doc: jsPDF, y: number,
+    erg: NonNullable<Visit["visita"]>["testErgometrico"],
+    patient: Patient,
+  ): number {
+    if (!erg) return y;
+    const eta = Number(calcAge(patient.dataNascita));
+    const pct = calcolaPercentualeFcMax(
+      erg.fcMax,
+      Number.isFinite(eta) && eta > 0 ? eta : undefined,
+    );
+    const misure = [
+      { label: "Data esame", value: erg.dataEsame ? fd(erg.dataEsame) : "" },
+      { label: "Protocollo", value: v(erg.protocollo, "") },
+      { label: "Durata", value: erg.durataMin != null ? `${erg.durataMin} min` : "" },
+      { label: "Carico max", value: erg.caricoWatt != null ? `${erg.caricoWatt} W` : "" },
+      { label: "METs", value: erg.mets != null ? String(erg.mets) : "" },
+      { label: "FC max", value: erg.fcMax != null ? `${erg.fcMax} bpm` : "" },
+      {
+        label: "% FC teorica",
+        value: pct.ok ? `${pct.result.display}%` : "",
+      },
+      { label: "P.A. al picco", value: v(erg.paMax, "") },
+      { label: "Interruzione", value: v(erg.motivoInterruzione, "") },
+      { label: "Esito", value: v(erg.esito, "") },
+    ];
+    if (!misure.some((m) => m.value) && !erg.referto?.trim()) return y;
+
+    y = this.sezione(doc, y, "Test ergometrico");
+    y = this.drawMisureTable(doc, y, misure, 3);
+    y = this.drawRefertoModulo(doc, y, erg.referto);
+    return y + 4;
+  }
+
+  private static drawHolterEcg(
+    doc: jsPDF, y: number,
+    h: NonNullable<Visit["visita"]>["holterEcg"],
+  ): number {
+    if (!h) return y;
+    const bpm = (n: number | undefined) => (n != null ? `${n} bpm` : "");
+    const misure = [
+      { label: "Data inizio", value: h.dataEsame ? fd(h.dataEsame) : "" },
+      { label: "Durata", value: h.durataOre != null ? `${h.durataOre} ore` : "" },
+      { label: "Ritmo prevalente", value: v(h.ritmoPrevalente, "") },
+      { label: "FC media", value: bpm(h.fcMedia) },
+      { label: "FC minima", value: bpm(h.fcMin) },
+      { label: "FC massima", value: bpm(h.fcMax) },
+      { label: "BESV / 24h", value: h.besv != null ? String(h.besv) : "" },
+      { label: "BEV / 24h", value: h.bev != null ? String(h.bev) : "" },
+      {
+        label: "Pausa max",
+        value: h.pausaMaxSec != null ? `${h.pausaMaxSec} s` : "",
+      },
+    ];
+    if (!misure.some((m) => m.value) && !h.referto?.trim()) return y;
+
+    y = this.sezione(doc, y, "ECG dinamico secondo Holter");
+    y = this.drawMisureTable(doc, y, misure, 3);
+    y = this.drawRefertoModulo(doc, y, h.referto);
+    return y + 4;
+  }
+
+  /**
+   * Monitoraggio pressorio delle 24 ore. Le medie sono stampate accoppiate
+   * ("128/78") invece che in due caselle: una pressione si legge come coppia, e
+   * separarla raddoppierebbe le celle senza aggiungere informazione.
+   */
+  private static drawHolterPressorio(
+    doc: jsPDF, y: number,
+    h: NonNullable<Visit["visita"]>["holterPressorio"],
+  ): number {
+    if (!h) return y;
+    const coppia = (s?: number, d?: number) =>
+      s != null || d != null ? `${s ?? "-"}/${d ?? "-"} mmHg` : "";
+    // Se il referto riporta gia' il calo notturno vince quello; altrimenti si
+    // ricava dalle medie diurna e notturna.
+    const caloRicavato = calcolaCaloNotturno(h.mediaDiurnaSist, h.mediaNotturnaSist);
+    const calo =
+      h.caloNotturnoPct != null
+        ? `${h.caloNotturnoPct}%`
+        : caloRicavato.ok
+          ? `${caloRicavato.result.display}%`
+          : "";
+
+    const misure = [
+      { label: "Data inizio", value: h.dataEsame ? fd(h.dataEsame) : "" },
+      { label: "Media 24 ore", value: coppia(h.media24Sist, h.media24Diast) },
+      {
+        label: "Media diurna",
+        value: coppia(h.mediaDiurnaSist, h.mediaDiurnaDiast),
+      },
+      {
+        label: "Media notturna",
+        value: coppia(h.mediaNotturnaSist, h.mediaNotturnaDiast),
+      },
+      { label: "Calo notturno", value: calo },
+      {
+        label: "Carico pressorio",
+        value: h.caricoPressorioPct != null ? `${h.caricoPressorioPct}%` : "",
+      },
+    ];
+    if (!misure.some((m) => m.value) && !h.referto?.trim()) return y;
+
+    y = this.sezione(doc, y, "Monitoraggio pressorio delle 24 ore");
+    y = this.drawMisureTable(doc, y, misure, 3);
+    y = this.drawRefertoModulo(doc, y, h.referto);
+    return y + 4;
+  }
+
+  /**
+   * Esami ematochimici. Oltre ai valori dosati stampa i due indici derivati che
+   * il medico userebbe altrimenti a mano — LDL secondo Friedewald quando manca
+   * il dosaggio diretto, ed eGFR — etichettati come calcolati per non
+   * confonderli mai con un valore di laboratorio.
+   */
+  private static drawLaboratorio(
+    doc: jsPDF, y: number,
+    lab: NonNullable<Visit["visita"]>["laboratorio"],
+    patient: Patient,
+  ): number {
+    if (!lab) return y;
+    const mg = (n: number | undefined) => (n != null ? `${n} mg/dL` : "");
+
+    const ldlCalc = lab.ldlMisurato == null
+      ? calcolaLdlFriedewald(lab.colesteroloTotale, lab.hdl, lab.trigliceridi)
+      : null;
+    const ctHdl = calcolaRapportoCtHdl(lab.colesteroloTotale, lab.hdl);
+    const tgHdl = calcolaRapportoTgHdl(lab.trigliceridi, lab.hdl);
+    const eta = Number(calcAge(patient.dataNascita));
+    const egfr = calcolaEgfrCkdEpi(
+      lab.creatinina,
+      Number.isFinite(eta) && eta > 0 ? eta : undefined,
+      patient.sesso === "M" || patient.sesso === "F" ? patient.sesso : undefined,
+    );
+
+    const misure = [
+      { label: "Col. totale", value: mg(lab.colesteroloTotale) },
+      { label: "HDL", value: mg(lab.hdl) },
+      {
+        label: lab.ldlMisurato != null ? "LDL (dosato)" : "LDL (Friedewald)",
+        value: lab.ldlMisurato != null
+          ? mg(lab.ldlMisurato)
+          : ldlCalc?.ok ? `${ldlCalc.result.display} mg/dL` : "",
+      },
+      { label: "Trigliceridi", value: mg(lab.trigliceridi) },
+      { label: "ApoB", value: mg(lab.apoB) },
+      { label: "Lp(a)", value: mg(lab.lpa) },
+      {
+        label: "CT / HDL (calc.)",
+        value: ctHdl.ok ? ctHdl.result.display : "",
+      },
+      {
+        label: "TG / HDL (calc.)",
+        value: tgHdl.ok ? tgHdl.result.display : "",
+      },
+      { label: "Glicemia", value: mg(lab.glicemia) },
+      { label: "Insulinemia", value: lab.insulina != null ? `${lab.insulina} uU/mL` : "" },
+      { label: "HbA1c", value: lab.hba1c != null ? `${lab.hba1c}%` : "" },
+      { label: "Creatinina", value: mg(lab.creatinina) },
+      {
+        label: "eGFR (CKD-EPI)",
+        value: egfr.ok
+          ? `${egfr.result.display} (${stadioKdigo(egfr.result.value)})`
+          : "",
+      },
+      { label: "Albuminuria", value: lab.albuminuria != null ? `${lab.albuminuria} mg/g` : "" },
+      { label: "Emoglobina", value: lab.emoglobina != null ? `${lab.emoglobina} g/dL` : "" },
+      { label: "AST", value: lab.ast != null ? `${lab.ast} U/L` : "" },
+      { label: "ALT", value: lab.alt != null ? `${lab.alt} U/L` : "" },
+      { label: "Uricemia", value: mg(lab.uricemia) },
+      { label: "TSH", value: lab.tsh != null ? `${lab.tsh} mU/L` : "" },
+    ];
+    if (!misure.some((m) => m.value)) return y;
+
+    const titolo = lab.dataPrelievo
+      ? `Esami ematochimici (prelievo del ${fd(lab.dataPrelievo)})`
+      : "Esami ematochimici";
+    y = this.sezione(doc, y, titolo);
+    y = this.drawMisureTable(doc, y, misure, 3);
+
+    if (ldlCalc?.ok || egfr.ok || ctHdl.ok || tgHdl.ok) {
+      doc.setFont("helvetica", "italic"); doc.setFontSize(7); this.tc(doc, K140);
+      y = this.block(
+        doc,
+        "I valori indicati come calcolati sono stime derivate dai dosaggi riportati, non risultati di laboratorio.",
+        ML + 1, y, PW - 2, 3.8,
+        { font: "helvetica", style: "italic", fontSize: 7, color: K140 },
+      );
+    }
+    return y + 4;
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   //  PUBLIC API
   // ═══════════════════════════════════════════════════════════════════════════
@@ -535,7 +946,7 @@ export class PdfService {
     this.fCtx = { doctor, opts: fo };
     const doc = new jsPDF();
 
-    let y = this.drawHeader(doc, "VISITA SPECIALISTICA", "Referto Specialistico", doctor);
+    let y = this.drawHeader(doc, "VISITA CARDIOLOGICA", "Referto Specialistico", doctor);
 
     // Peso e BMI accanto ai dati del paziente (come nel referto specialistico).
     const altezzaCm = patient?.altezza ?? 0;
@@ -557,6 +968,7 @@ export class PdfService {
         items: [
           { label: "P.A.", value: v(vis.pressioneArteriosa ? `${vis.pressioneArteriosa} mmHg` : "") },
           { label: "F.C.", value: v(vis.frequenzaCardiaca ? `${vis.frequenzaCardiaca} bpm` : "") },
+          { label: "Fumo", value: vis.fumatore === "si" ? "Si'" : vis.fumatore === "no" ? "No" : "-" },
         ],
       },
       {
@@ -581,6 +993,13 @@ export class PdfService {
     }
 
     y = this.drawTextSection(doc, y, "Esame Obiettivo", vis.esameObiettivo);
+    y = this.drawEcg(doc, y, vis.ecg, vis.frequenzaCardiaca);
+    y = this.drawEcocardiogramma(doc, y, vis.ecocardiogramma);
+    y = this.drawTcCoronarica(doc, y, vis.tcCoronarica);
+    y = this.drawTestErgometrico(doc, y, vis.testErgometrico, patient);
+    y = this.drawHolterEcg(doc, y, vis.holterEcg);
+    y = this.drawHolterPressorio(doc, y, vis.holterPressorio);
+    y = this.drawLaboratorio(doc, y, vis.laboratorio, patient);
     y = this.drawTextSection(doc, y, "Accertamenti", vis.accertamenti);
     if (options?.includeImages) y = await this.drawImages(doc, vis.immagini, y);
     this.drawTextSection(doc, y, "Conclusioni e Terapia", vis.terapiaSpecifica);

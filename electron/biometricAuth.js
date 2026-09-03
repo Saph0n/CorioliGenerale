@@ -2,7 +2,7 @@ import { systemPreferences } from "electron";
 import { createRequire } from "module";
 
 const _require = createRequire(import.meta.url);
-const PROMPT_REASON = "Sblocca Corioli Generale";
+const PROMPT_REASON = "Sblocca Corioli Cardiologia";
 
 let winHelloFactory = undefined;
 

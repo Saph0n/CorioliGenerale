@@ -156,7 +156,7 @@ export default function PinSetupScreen({ mode, onComplete }: Props) {
         specializzazione: profileValues.specializzazione.trim(),
       });
       if (navigator.onLine) {
-        void sendHeartbeat(doctor, "corioli-generale").catch(() => {});
+        void sendHeartbeat(doctor, "corioli-cardiologia").catch(() => {});
       }
       setStep("pin");
     } catch {

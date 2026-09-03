@@ -29,7 +29,7 @@ export function resolvePageSkeletonVariant(pathname: string): PageSkeletonVarian
 
   if (path === "/") return "home";
   if (path.startsWith("/pazienti")) return "grid";
-  if (path.startsWith("/visite")) return "table";
+  if (path.startsWith("/visite") || path.startsWith("/gruppi-ricerca")) return "table";
   if (path.startsWith("/settings")) return "settings";
   if (
     path.startsWith("/add-patient") ||

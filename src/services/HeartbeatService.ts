@@ -33,11 +33,11 @@ const getAppVersion = async (): Promise<string> => {
  * normalizzato a "corioli" (e `tipo` a "ginecologia"), quindi la chiamata
  * risponde comunque 200 e blocco/licenza continuano a funzionare — ma questa
  * edizione risulta indistinguibile da Corioli in dashboard finche' il backend
- * non aggiunge "corioli-generale" a VALID_APPS e a mapAppToTipo.
+ * non aggiunge "corioli-cardiologia" a VALID_APPS e a mapAppToTipo.
  */
 export const sendHeartbeat = async (
   doctor: Doctor,
-  app: "corioli-generale",
+  app: "corioli-cardiologia",
 ): Promise<HeartbeatResult> => {
   try {
     const [patients, visits, version] = await Promise.all([

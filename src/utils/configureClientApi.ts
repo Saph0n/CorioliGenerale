@@ -10,7 +10,7 @@ export function configureClientApiAuth(): void {
   if (!secret || !apiUrl) {
     if (import.meta.env.DEV) {
       console.warn(
-        "[Corioli Generale] VITE_CLIENT_API_SECRET o VITE_API_URL non configurati: le API cloud potrebbero rispondere 401.",
+        "[Corioli Cardiologia] VITE_CLIENT_API_SECRET o VITE_API_URL non configurati: le API cloud potrebbero rispondere 401.",
       );
     }
     return;

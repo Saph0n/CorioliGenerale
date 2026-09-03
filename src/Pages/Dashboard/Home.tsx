@@ -17,6 +17,7 @@ import {
   LayoutDashboard,
   TrendingUp,
   Cake,
+  FlaskConical,
   Stethoscope,
   Clock,
   ArrowRight,
@@ -36,6 +37,13 @@ import { PageLoadingSkeleton } from "../../components/AppStartupSkeleton";
 import { CodiceFiscaleValue } from "../../components/CodiceFiscaleValue";
 import { useCheckPatientModal } from "../../contexts/CheckPatientModalContext";
 import { toLocalIsoDate } from "../../utils/dateUtils";
+import { PreferenceService } from "../../services/OfflineServices";
+import {
+  formattaDurata,
+  normalizeRegistro,
+  statoGruppi,
+  type StatoGruppo,
+} from "../../utils/gruppiRicerca";
 
 interface GroupedRecentVisit {
   patientId: string;
@@ -210,6 +218,8 @@ export default function Home() {
   });
   const [loading, setLoading] = useState(true);
 
+  const [gruppiAbilitati, setGruppiAbilitati] = useState(false);
+  const [statiGruppi, setStatiGruppi] = useState<StatoGruppo[]>([]);
   const [toast, setToast] = useState<{ open: boolean; message: string }>({
     open: false,
     message: "",
@@ -301,6 +311,20 @@ export default function Home() {
         }, 0);
         const averageAge =
           validAgesCount > 0 ? Math.round(totalAge / validAgesCount) : 0;
+
+        // Gruppi di ricerca: il pannello compare solo se la funzione e' attiva.
+        try {
+          const prefs = await PreferenceService.getPreferences();
+          const attivi = Boolean(prefs?.gruppiRicercaEnabled);
+          setGruppiAbilitati(attivi);
+          setStatiGruppi(
+            attivi
+              ? statoGruppi(normalizeRegistro(prefs?.gruppiRicerca), patients)
+              : [],
+          );
+        } catch {
+          setGruppiAbilitati(false);
+        }
 
         setStats({
           totalPatients: patients.length,
@@ -467,7 +491,7 @@ export default function Home() {
       </div>
 
       {/* ─── Lists Row ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className={`grid grid-cols-1 gap-6 ${gruppiAbilitati ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
         {/* Pazienti Recenti */}
         <Card className="corioli-card">
           <CardHeader className="corioli-card-header flex justify-between items-center">
@@ -651,6 +675,84 @@ export default function Home() {
           </CardBody>
         </Card>
 
+
+        {/* Gruppi di ricerca */}
+        {gruppiAbilitati && (
+          <Card className="corioli-card">
+            <CardHeader className="corioli-card-header flex justify-between items-center gap-2">
+              <div className="dashboard-column-header-title min-w-0 flex items-center gap-2">
+                <FlaskConical size={17} className="text-brand-700 shrink-0" />
+                <h3 className="text-base font-semibold text-gray-900 truncate">
+                  Gruppi di ricerca
+                </h3>
+              </div>
+              <Button
+                size="sm"
+                variant="light"
+                color="primary"
+                endContent={<ChevronRight size={16} />}
+                onPress={() => navigate("/gruppi-ricerca")}
+              >
+                Vedi tutti
+              </Button>
+            </CardHeader>
+            <CardBody className="p-0">
+              {statiGruppi.length > 0 ? (
+                <div className="divide-y divide-gray-100">
+                  {statiGruppi.slice(0, 6).map((g) => (
+                    <div
+                      key={g.nome}
+                      className="flex items-center justify-between gap-3 p-4 hover:bg-gray-50 transition-colors cursor-pointer group"
+                      onClick={() =>
+                        navigate(`/gruppi-ricerca?gruppo=${encodeURIComponent(g.nome)}`)
+                      }
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 group-hover:text-brand-600 transition-colors truncate text-sm">
+                          {g.nome}
+                        </p>
+                        <div className="text-xs text-gray-500 truncate flex items-center gap-1 flex-wrap mt-0.5">
+                          <span>
+                            {g.partecipanti === 1
+                              ? "1 paziente"
+                              : `${g.partecipanti} pazienti`}
+                          </span>
+                          {g.giorniAttivo != null && (
+                            <>
+                              <span className="text-gray-400">·</span>
+                              <span>attivo da {formattaDurata(g.giorniAttivo)}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <ArrowRight
+                        size={14}
+                        className="text-gray-300 group-hover:text-brand-600 transition-colors flex-shrink-0"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center px-6 py-10 text-center gap-2">
+                  <FlaskConical size={32} className="text-gray-200" />
+                  <p
+                    className="text-sm font-medium"
+                    style={{ color: "var(--color-text-secondary)" }}
+                  >
+                    Nessun gruppo di ricerca
+                  </p>
+                  <p
+                    className="text-xs max-w-[240px]"
+                    style={{ color: "var(--color-text-tertiary)" }}
+                  >
+                    Creane uno da Impostazioni o direttamente dalla scheda di un
+                    paziente
+                  </p>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        )}
       </div>
 
       <Snackbar

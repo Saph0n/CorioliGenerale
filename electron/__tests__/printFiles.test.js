@@ -46,7 +46,7 @@ describe("PDF di stampa", () => {
 
   it("il nome file non contiene caratteri vietati da Windows", () => {
     expect(printFileName(new Date(2026, 7, 19, 9, 5, 3, 7))).toMatch(
-      /^CorioliGenerale_stampa_20260819_090503_007\.pdf$/,
+      /^CorioliCardiologia_stampa_20260819_090503_007\.pdf$/,
     );
     expect(printFileName()).not.toMatch(/[:/?*"<>|]/);
   });
@@ -73,9 +73,9 @@ describe("pulizia della cartella di stampa", () => {
   });
 
   it("riconosce solo i propri nomi file", () => {
-    expect(isPrintFileName("CorioliGenerale_stampa_20260819_090503_007.pdf")).toBe(true);
+    expect(isPrintFileName("CorioliCardiologia_stampa_20260819_090503_007.pdf")).toBe(true);
     expect(isPrintFileName("referto.pdf")).toBe(false);
-    expect(isPrintFileName("CorioliGenerale_stampa_x.txt")).toBe(false);
+    expect(isPrintFileName("CorioliCardiologia_stampa_x.txt")).toBe(false);
     expect(isPrintFileName(null)).toBe(false);
   });
 });

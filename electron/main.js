@@ -21,14 +21,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const isDev = process.env.NODE_ENV === "development";
 
-app.setName("CorioliGenerale");
+app.setName("CorioliCardiologia");
 
 let kvReady = null;
 let mainWindowRef = null;
 let sessionUnlocked = false;
 
 function getDbPath() {
-  return path.join(app.getPath("userData"), "corioli-generale.db");
+  return path.join(app.getPath("userData"), "corioli-cardiologia.db");
 }
 
 function getBackupsDir() {
@@ -39,8 +39,8 @@ function getBackupsDir() {
  * PDF di stampa: sottocartella dedicata dentro la temp dell'utente.
  *
  * NON deve stare in `userData`: nel pacchetto MSIX del Microsoft Store le
- * scritture in `%APPDATA%\CorioliGenerale` vengono dirottate dentro il container
- * (`%LOCALAPPDATA%\Packages\CorioliGenerale.CorioliGenerale_*\LocalCache\Roaming\CorioliGenerale`).
+ * scritture in `%APPDATA%\CorioliCardiologia` vengono dirottate dentro il container
+ * (`%LOCALAPPDATA%\Packages\CorioliCardiologia.CorioliCardiologia_*\LocalCache\Roaming\CorioliCardiologia`).
  * L'app vede il percorso virtuale, il visualizzatore PDF esterno aperto da
  * `shell.openPath` vede quello reale — che non esiste: ERR_FILE_NOT_FOUND.
  * In sviluppo il problema non si vede perché l'app non è pacchettizzata.
@@ -49,7 +49,7 @@ function getBackupsDir() {
  * I file vengono ripuliti all'avvio e alla chiusura (vedi cleanupPrintDir).
  */
 function getPrintDir() {
-  return path.join(app.getPath("temp"), "CorioliGenerale", "stampe");
+  return path.join(app.getPath("temp"), "CorioliCardiologia", "stampe");
 }
 
 /** Vecchia cartella di stampa (versioni <= 1.3.2): va solo ripulita. */
@@ -82,7 +82,7 @@ async function getKv() {
         console.error("Impossibile mettere da parte il DB corrotto:", e);
       }
       if (fs.existsSync(bakPath)) {
-        console.warn("corioli-generale.db illeggibile: ripristino da corioli-generale.db.bak");
+        console.warn("corioli-cardiologia.db illeggibile: ripristino da corioli-cardiologia.db.bak");
         db = openDatabaseFromFile(SQL, bakPath);
         if (db) {
           try {
@@ -194,7 +194,7 @@ function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    title: "Corioli Generale",
+    title: "Corioli Cardiologia",
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

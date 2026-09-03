@@ -68,6 +68,7 @@ import {
   PreferenceService,
 } from "../../services/OfflineServices";
 import { MedicalTemplate } from "../../types/Storage";
+import { normalizeRegistro } from "../../utils/gruppiRicerca";
 import { getMissingDoctorProfileFields } from "../../utils/doctorProfile";
 import {
   AnamnesiConfig,
@@ -96,7 +97,7 @@ type SettingsNotice = {
 
 // TODO(store): ID della scheda Microsoft Store. Questo e' ancora quello di
 // Corioli (edizione ginecologica): va sostituito con l'ID della scheda di
-// "Corioli Generale" appena la app viene pubblicata, altrimenti il pulsante
+// "Corioli Cardiologia" appena la app viene pubblicata, altrimenti il pulsante
 // "Cerca aggiornamenti" porta alla scheda sbagliata.
 const CORIOLI_MS_STORE_ID = "9P24WMFJW58N";
 const CORIOLI_MS_STORE_WEB = `https://apps.microsoft.com/detail/${CORIOLI_MS_STORE_ID}?hl=it-it&gl=IT`;
@@ -220,6 +221,7 @@ const SettingsScreen = () => {
     section: "prestazione",
   });
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+
   const [templateToDelete, setTemplateToDelete] = useState<{
     id: string;
     label: string;
@@ -284,6 +286,8 @@ const SettingsScreen = () => {
     modalitaCompatta: false,
     animazioniRidotte: false,
     anamnesiConfig: createDefaultAnamnesiConfig() as AnamnesiConfig,
+    gruppiRicercaEnabled: false,
+    gruppiRicerca: [] as string[],
     showDoctorPhoneInPdf: true,
     showDoctorEmailInPdf: true,
   });
@@ -483,6 +487,7 @@ const SettingsScreen = () => {
           ...prefs,
           // Normalizza/migra sempre la struttura anamnesi (vecchio booleano incluso)
           anamnesiConfig: parseAnamnesiConfig(prefs),
+          gruppiRicerca: normalizeRegistro(prefs.gruppiRicerca),
         }));
         setNotificationsEnabled((prefs.notificationsEnabled as boolean) ?? true);
         setPdfTheme((prefs.pdfTheme as string) ?? "light");
@@ -514,7 +519,7 @@ const SettingsScreen = () => {
 
   const handlePreferenceChange = (
     field: string,
-    value: boolean | string | AnamnesiConfig,
+    value: boolean | string | string[] | AnamnesiConfig,
   ) => {
     setPreferences(prev => ({ ...prev, [field]: value }));
   };
@@ -1438,7 +1443,7 @@ const SettingsScreen = () => {
                         Microsoft Store
                       </span>
                       <span style={{ color: "var(--color-text-tertiary)" }}>
-                        {" "}→ Libreria → Corioli Generale
+                        {" "}→ Libreria → Corioli Cardiologia
                       </span>
                     </p>
                   </div>
@@ -1974,6 +1979,28 @@ const SettingsScreen = () => {
                 </div>
               </div>
 
+              <div className="rounded-lg border border-default-200 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800">
+                      Gruppi di ricerca
+                    </p>
+                    <p className="text-xs text-default-500 mt-1">
+                      Arruola i pazienti nei tuoi progetti e ritrovali insieme
+                      dalla pagina Gruppi di ricerca.
+                    </p>
+                  </div>
+                  <Switch
+                    aria-label="Attiva i gruppi di ricerca"
+                    className="shrink-0"
+                    isSelected={Boolean(preferences.gruppiRicercaEnabled)}
+                    onValueChange={(value) =>
+                      handlePreferenceChange("gruppiRicercaEnabled", value)
+                    }
+                  />
+                </div>
+              </div>
+
               <div className="rounded-lg border border-default-200 p-4 space-y-3">
                 <p className="text-sm font-medium text-gray-800">
                   Dati dottore nel PDF
@@ -2002,6 +2029,7 @@ const SettingsScreen = () => {
               </div>
             </CardBody>
           </Card>
+
         </div>
       </div>
 
@@ -2382,7 +2410,7 @@ const SettingsScreen = () => {
       <Card className="shadow-lg">
         <CardBody>
           <div className="text-center space-y-2">
-            <h3 className="font-semibold text-gray-900">Corioli Generale Desktop</h3>
+            <h3 className="font-semibold text-gray-900">Corioli Cardiologia Desktop</h3>
             <div className="flex justify-center gap-4 text-sm text-gray-600 flex-wrap">
               <span>Versione {appVersion || "—"}</span>
               <span>•</span>

@@ -5,7 +5,7 @@ import path from "path";
  * File PDF generati per la stampa.
  *
  * Vivono in una sottocartella dedicata dentro la temp dell'utente
- * (`%TEMP%\CorioliGenerale\stampe`), ripulita all'avvio e alla chiusura: sono referti,
+ * (`%TEMP%\CorioliCardiologia\stampe`), ripulita all'avvio e alla chiusura: sono referti,
  * ricette e certificati con dati sanitari e non devono restare in giro.
  *
  * Non possono stare in `userData`: nel pacchetto MSIX del Microsoft Store quelle
@@ -16,7 +16,7 @@ import path from "path";
  * sparire il file mentre il medico stava ancora scegliendo la stampante.
  */
 
-const PRINT_FILE_PREFIX = "CorioliGenerale_stampa_";
+const PRINT_FILE_PREFIX = "CorioliCardiologia_stampa_";
 
 /** Nome file per la stampa corrente. Il timestamp evita collisioni tra stampe ravvicinate. */
 export function printFileName(now = new Date()) {

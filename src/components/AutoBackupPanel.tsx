@@ -112,7 +112,7 @@ export default function AutoBackupPanel() {
       </div>
 
       <p className="text-xs text-default-500">
-        Corioli Generale salva una copia del database al primo avvio di ogni giorno e prima
+        Corioli Cardiologia salva una copia del database al primo avvio di ogni giorno e prima
         di ogni import o ripristino. Le copie restano sul tuo computer.
       </p>
 

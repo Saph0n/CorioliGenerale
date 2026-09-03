@@ -524,6 +524,9 @@ class LocalStorageFallbackService implements StorageService {
       MedicalTemplates.visita.prestazione.forEach(t => defaultTemplates.push({ id: generateId(), category: 'visita', section: 'prestazione', label: t.label, text: t.text, isDefault: true }));
       MedicalTemplates.visita.esameObiettivo.forEach(t => defaultTemplates.push({ id: generateId(), category: 'visita', section: 'esameObiettivo', label: t.label, text: t.text, isDefault: true }));
       MedicalTemplates.visita.conclusioni.forEach(t => defaultTemplates.push({ id: generateId(), category: 'visita', section: 'conclusioni', label: t.label, text: t.text, isDefault: true }));
+      MedicalTemplates.visita.ecg.forEach(t => defaultTemplates.push({ id: generateId(), category: 'visita', section: 'ecg', label: t.label, text: t.text, isDefault: true }));
+      MedicalTemplates.visita.ecocardiogramma.forEach(t => defaultTemplates.push({ id: generateId(), category: 'visita', section: 'ecocardiogramma', label: t.label, text: t.text, isDefault: true }));
+      MedicalTemplates.visita.tcCoronarica.forEach(t => defaultTemplates.push({ id: generateId(), category: 'visita', section: 'tcCoronarica', label: t.label, text: t.text, isDefault: true }));
 
       // Terapie (discorsive — sezione Conclusioni e Terapie della visita)
       MedicalTemplates.terapie.forEach(t => defaultTemplates.push({ id: generateId(), category: 'terapie', section: 'generale', label: t.label, text: t.text, isDefault: true }));

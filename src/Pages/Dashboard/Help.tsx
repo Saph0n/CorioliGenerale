@@ -492,7 +492,7 @@ export default function HelpAndFeedback() {
         {
           title: "I miei dati sono al sicuro? Dove vengono salvati?",
           content:
-            "Corioli Generale è progettato Local First: cartella clinica, visite e documenti restano sul tuo computer in un database locale (proteggi il dispositivo con password di sistema e backup sicuri). Per licenze, assistenza e aggiornamenti l'app comunica in modo limitato con i server Corioli (dati del medico e statistiche aggregate, mai l'intera cartella clinica). La decodifica del codice fiscale avviene interamente in locale sul tuo dispositivo. Per richieste privacy scrivi a privacy@corioli.it o consulta l'informativa sul sito corioli.it.",
+            "Corioli Cardiologia è progettato Local First: cartella clinica, visite e documenti restano sul tuo computer in un database locale (proteggi il dispositivo con password di sistema e backup sicuri). Per licenze, assistenza e aggiornamenti l'app comunica in modo limitato con i server Corioli (dati del medico e statistiche aggregate, mai l'intera cartella clinica). La decodifica del codice fiscale avviene interamente in locale sul tuo dispositivo. Per richieste privacy scrivi a privacy@corioli.it o consulta l'informativa sul sito corioli.it.",
         },
         {
           title: "Come faccio il backup dei dati?",
@@ -512,12 +512,12 @@ export default function HelpAndFeedback() {
         {
           title: "Come installare l'aggiornamento?",
           content:
-            "Su Windows, gli aggiornamenti arrivano dal Microsoft Store (Libreria → aggiornamenti per Corioli Generale, oppure in automatico). Prima di reinstallare o aggiornare, esegui sempre un backup da Impostazioni → Backup e dati.",
+            "Su Windows, gli aggiornamenti arrivano dal Microsoft Store (Libreria → aggiornamenti per Corioli Cardiologia, oppure in automatico). Prima di reinstallare o aggiornare, esegui sempre un backup da Impostazioni → Backup e dati.",
         },
         {
           title: "PIN, profilo, biometria e recupero",
           content:
-            "Alla prima configurazione (o dopo un aggiornamento) Corioli Generale chiede i dati del profilo medico (nome, cognome, email, telefono, specializzazione) e un PIN. L'uso quotidiano funziona senza internet. Se dimentichi il PIN puoi usare il codice CORI-… salvato alla configurazione oppure, con connessione, il recupero via email all'indirizzo del profilo. Il riconoscimento biometrico (impronta o volto) è opzionale in Impostazioni → Sicurezza.",
+            "Alla prima configurazione (o dopo un aggiornamento) Corioli Cardiologia chiede i dati del profilo medico (nome, cognome, email, telefono, specializzazione) e un PIN. L'uso quotidiano funziona senza internet. Se dimentichi il PIN puoi usare il codice CORI-… salvato alla configurazione oppure, con connessione, il recupero via email all'indirizzo del profilo. Il riconoscimento biometrico (impronta o volto) è opzionale in Impostazioni → Sicurezza.",
         },
       ],
     },

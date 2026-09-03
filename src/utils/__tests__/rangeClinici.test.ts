@@ -1,0 +1,250 @@
+import { describe, expect, it } from "vitest";
+import {
+  ordinaSegnalati,
+  scomponiPressione,
+  valutaMisura,
+  valutaPressione,
+} from "../rangeClinici";
+
+describe("soglie senza valore", () => {
+  it("non segnala nulla quando la misura manca", () => {
+    expect(valutaMisura("eco.fe", undefined).livello).toBe("nella-norma");
+    expect(valutaMisura("eco.fe", Number.NaN).livello).toBe("nella-norma");
+  });
+});
+
+describe("frazione di eiezione", () => {
+  it("separa conservata, lievemente ridotta e ridotta", () => {
+    expect(valutaMisura("eco.fe", 60).livello).toBe("nella-norma");
+    expect(valutaMisura("eco.fe", 45).livello).toBe("attenzione");
+    expect(valutaMisura("eco.fe", 35).livello).toBe("alterato");
+  });
+
+  it("segnala anche i valori ipercinetici", () => {
+    expect(valutaMisura("eco.fe", 75).livello).toBe("attenzione");
+  });
+
+  it("porta con se' la soglia che ha superato", () => {
+    expect(valutaMisura("eco.fe", 35).nota).toContain("40");
+  });
+});
+
+describe("QTc", () => {
+  it("usa una soglia piu' alta per le donne", () => {
+    expect(valutaMisura("ecg.qtc", 455, "M").livello).toBe("attenzione");
+    expect(valutaMisura("ecg.qtc", 455, "F").livello).toBe("nella-norma");
+  });
+
+  it("segnala come alterato il prolungamento marcato", () => {
+    expect(valutaMisura("ecg.qtc", 510, "F").livello).toBe("alterato");
+  });
+
+  it("segnala anche il QT corto", () => {
+    expect(valutaMisura("ecg.qtc", 330, "M").livello).toBe("attenzione");
+  });
+});
+
+describe("conduzione all'ECG", () => {
+  it("riconosce il BAV di primo grado", () => {
+    expect(valutaMisura("ecg.pr", 220).nota).toContain("BAV");
+    expect(valutaMisura("ecg.pr", 160).livello).toBe("nella-norma");
+  });
+
+  it("riconosce il ritardo di conduzione intraventricolare", () => {
+    expect(valutaMisura("ecg.qrs", 130).livello).toBe("attenzione");
+    expect(valutaMisura("ecg.qrs", 100).livello).toBe("nella-norma");
+  });
+});
+
+describe("spessori parietali", () => {
+  it("applica il limite femminile piu' basso", () => {
+    expect(valutaMisura("eco.siv", 10, "F").livello).toBe("attenzione");
+    expect(valutaMisura("eco.siv", 10, "M").livello).toBe("nella-norma");
+  });
+
+  it("distingue l'ipertrofia severa", () => {
+    expect(valutaMisura("eco.pp", 18, "M").livello).toBe("alterato");
+  });
+});
+
+describe("laboratorio", () => {
+  it("usa le soglie diagnostiche di glicemia e HbA1c", () => {
+    expect(valutaMisura("lab.glicemia", 95).livello).toBe("nella-norma");
+    expect(valutaMisura("lab.glicemia", 110).livello).toBe("attenzione");
+    expect(valutaMisura("lab.glicemia", 130).livello).toBe("alterato");
+    expect(valutaMisura("lab.hba1c", 6.8).livello).toBe("alterato");
+  });
+
+  it("stadia la funzione renale", () => {
+    expect(valutaMisura("lab.egfr", 80).livello).toBe("nella-norma");
+    expect(valutaMisura("lab.egfr", 50).livello).toBe("attenzione");
+    expect(valutaMisura("lab.egfr", 25).livello).toBe("alterato");
+  });
+
+  it("stadia l'albuminuria", () => {
+    expect(valutaMisura("lab.albuminuria", 15).livello).toBe("nella-norma");
+    expect(valutaMisura("lab.albuminuria", 60).nota).toContain("A2");
+    expect(valutaMisura("lab.albuminuria", 400).nota).toContain("A3");
+  });
+
+  it("usa il limite di emoglobina per sesso", () => {
+    expect(valutaMisura("lab.emoglobina", 12.5, "F").livello).toBe("nella-norma");
+    expect(valutaMisura("lab.emoglobina", 12.5, "M").livello).toBe("attenzione");
+  });
+
+  it("non trasforma la soglia LDL in un obiettivo terapeutico", () => {
+    // Il target dipende dalla categoria di rischio e non viene deciso qui: la
+    // nota deve restare descrittiva.
+    const nota = valutaMisura("lab.ldl", 130).nota;
+    expect(nota).toContain("riferimento");
+    expect(nota).not.toMatch(/statin|terapia|target/i);
+  });
+});
+
+describe("pressione arteriosa", () => {
+  it("classifica per gradi secondo la coppia di valori", () => {
+    expect(valutaPressione(120, 75).livello).toBe("nella-norma");
+    expect(valutaPressione(135, 85).livello).toBe("attenzione");
+    expect(valutaPressione(145, 85).nota).toContain("grado 1");
+    expect(valutaPressione(165, 95).nota).toContain("grado 2");
+    expect(valutaPressione(185, 100).nota).toContain("grado 3");
+  });
+
+  it("basta che uno dei due valori superi la soglia", () => {
+    expect(valutaPressione(130, 95).nota).toContain("grado 1");
+  });
+
+  it("segnala l'ipotensione", () => {
+    expect(valutaPressione(85, 55).nota).toContain("Ipotensione".toLowerCase());
+  });
+
+  it("non segnala nulla senza valori", () => {
+    expect(valutaPressione(undefined, undefined).livello).toBe("nella-norma");
+  });
+});
+
+describe("lettura della pressione scritta a mano", () => {
+  it("scompone il formato sistolica/diastolica", () => {
+    expect(scomponiPressione("140/85")).toEqual({
+      sistolica: 140,
+      diastolica: 85,
+    });
+    expect(scomponiPressione(" 140 / 85 ")).toEqual({
+      sistolica: 140,
+      diastolica: 85,
+    });
+  });
+
+  it("restituisce vuoto su testo non interpretabile", () => {
+    expect(scomponiPressione("centoquaranta")).toEqual({});
+    expect(scomponiPressione(undefined)).toEqual({});
+    expect(scomponiPressione("140")).toEqual({});
+  });
+});
+
+describe("riepilogo dei valori segnalati", () => {
+  it("tiene solo i fuori range, con gli alterati per primi", () => {
+    const voci = [
+      {
+        etichetta: "FE",
+        valore: "60%",
+        segnale: valutaMisura("eco.fe", 60),
+      },
+      {
+        etichetta: "Glicemia",
+        valore: "110",
+        segnale: valutaMisura("lab.glicemia", 110),
+      },
+      {
+        etichetta: "eGFR",
+        valore: "25",
+        segnale: valutaMisura("lab.egfr", 25),
+      },
+    ];
+    const ordinati = ordinaSegnalati(voci);
+    expect(ordinati.map((v) => v.etichetta)).toEqual(["eGFR", "Glicemia"]);
+  });
+});
+
+describe("pannello lipidico esteso", () => {
+  it("segnala la Lp(a) oltre la soglia di rischio molto elevato", () => {
+    expect(valutaMisura("lab.lpa", 30).livello).toBe("nella-norma");
+    expect(valutaMisura("lab.lpa", 90).livello).toBe("attenzione");
+    const alta = valutaMisura("lab.lpa", 200);
+    expect(alta.livello).toBe("alterato");
+    expect(alta.nota).toContain("180");
+  });
+
+  it("segnala l'ApoB elevata senza fissarle un obiettivo", () => {
+    expect(valutaMisura("lab.apoB", 90).livello).toBe("nella-norma");
+    const nota = valutaMisura("lab.apoB", 140).nota;
+    expect(nota).toContain("130");
+    // L'obiettivo dipende dalla classe di rischio e non viene deciso qui.
+    expect(nota).not.toMatch(/obiettivo|target/i);
+  });
+});
+
+describe("pannello metabolico contestuale", () => {
+  it("usa il range indicativo delle transaminasi", () => {
+    expect(valutaMisura("lab.ast", 25).livello).toBe("nella-norma");
+    expect(valutaMisura("lab.alt", 60).livello).toBe("attenzione");
+    expect(valutaMisura("lab.alt", 200).livello).toBe("alterato");
+  });
+
+  it("dichiara che il riferimento delle transaminasi e' indicativo", () => {
+    expect(valutaMisura("lab.ast", 60).nota).toContain("indicativo");
+  });
+
+  it("applica i limiti di uricemia distinti per sesso", () => {
+    expect(valutaMisura("lab.uricemia", 6.5, "M").livello).toBe("nella-norma");
+    expect(valutaMisura("lab.uricemia", 6.5, "F").livello).toBe("attenzione");
+    expect(valutaMisura("lab.uricemia", 2.0, "F").livello).toBe("attenzione");
+  });
+
+  it("segnala il TSH fuori dal riferimento in entrambe le direzioni", () => {
+    expect(valutaMisura("lab.tsh", 2).livello).toBe("nella-norma");
+    expect(valutaMisura("lab.tsh", 6).livello).toBe("attenzione");
+    expect(valutaMisura("lab.tsh", 0.2).livello).toBe("attenzione");
+    expect(valutaMisura("lab.tsh", 15).livello).toBe("alterato");
+  });
+
+  it("segnala anche la glicemia sotto il limite inferiore", () => {
+    expect(valutaMisura("lab.glicemia", 85).livello).toBe("nella-norma");
+    expect(valutaMisura("lab.glicemia", 60).livello).toBe("attenzione");
+  });
+});
+
+describe("rapporti lipidici", () => {
+  // Tabella indicata dal cardiologo:
+  //   CT/HDL   < 4    ottimale | 4-5    borderline | > 5    a rischio
+  //   TG/HDL   < 2    ottimale | 2-3,5  borderline | > 3,5  a rischio
+  it("CT/HDL: separa ottimale, borderline e a rischio", () => {
+    expect(valutaMisura("lab.ctHdl", 3.9).livello).toBe("nella-norma");
+    expect(valutaMisura("lab.ctHdl", 4.5).livello).toBe("attenzione");
+    expect(valutaMisura("lab.ctHdl", 6.3).livello).toBe("alterato");
+  });
+
+  it("CT/HDL: i bordi 4 e 5 cadono nella fascia borderline", () => {
+    expect(valutaMisura("lab.ctHdl", 4).livello).toBe("attenzione");
+    expect(valutaMisura("lab.ctHdl", 5).livello).toBe("attenzione");
+    expect(valutaMisura("lab.ctHdl", 5.01).livello).toBe("alterato");
+  });
+
+  it("TG/HDL: separa ottimale, borderline e a rischio", () => {
+    expect(valutaMisura("lab.tgHdl", 1.9).livello).toBe("nella-norma");
+    expect(valutaMisura("lab.tgHdl", 2.8).livello).toBe("attenzione");
+    expect(valutaMisura("lab.tgHdl", 4.2).livello).toBe("alterato");
+  });
+
+  it("TG/HDL: i bordi 2 e 3,5 cadono nella fascia borderline", () => {
+    expect(valutaMisura("lab.tgHdl", 2).livello).toBe("attenzione");
+    expect(valutaMisura("lab.tgHdl", 3.5).livello).toBe("attenzione");
+    expect(valutaMisura("lab.tgHdl", 3.51).livello).toBe("alterato");
+  });
+
+  it("il rapporto TG/HDL dichiara che le fasce valgono in mg/dL", () => {
+    // In mmol/L le soglie sono diverse: se il medico legge un referto in altre
+    // unita' deve accorgersene dalla nota.
+    expect(valutaMisura("lab.tgHdl", 4.2).nota).toContain("insulino-resistenza");
+  });
+});

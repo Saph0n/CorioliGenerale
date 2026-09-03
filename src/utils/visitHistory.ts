@@ -42,7 +42,110 @@ const VISITA_LABELS: Record<string, string> = {
   pesoCorporeo: "Peso corporeo",
   pressioneArteriosa: "Pressione arteriosa",
   frequenzaCardiaca: "Frequenza cardiaca",
+  fumatore: "Fumatore",
+  categoriaRischioCv: "Classe di rischio CV",
   immagini: "Immagini allegate",
+  // Sotto-blocchi: confrontati a parte, qui solo per completezza dell'etichetta.
+  ecg: "ECG",
+  ecocardiogramma: "Ecocardiogramma",
+  tcCoronarica: "TC coronarica",
+  laboratorio: "Laboratorio",
+  testErgometrico: "Test ergometrico",
+  holterEcg: "Holter ECG",
+  holterPressorio: "Holter pressorio",
+};
+
+const ECG_LABELS: Record<string, string> = {
+  ritmo: "Ritmo",
+  pr: "PR (ms)",
+  qrs: "QRS (ms)",
+  qt: "QT (ms)",
+  asse: "Asse QRS",
+  referto: "Referto",
+};
+
+const ECO_LABELS: Record<string, string> = {
+  ddvs: "DTD ventricolo sx (mm)",
+  dsvs: "DTS ventricolo sx (mm)",
+  siv: "Setto interventricolare (mm)",
+  pp: "Parete posteriore (mm)",
+  fe: "Frazione di eiezione (%)",
+  atrioSinistro: "Atrio sinistro (mm)",
+  radiceAortica: "Radice aortica (mm)",
+  aortaAscendente: "Aorta ascendente (mm)",
+  tapse: "TAPSE (mm)",
+  paps: "PAPs (mmHg)",
+  rapportoEA: "Rapporto E/A",
+  rapportoEe: "Rapporto E/e'",
+  referto: "Referto",
+};
+
+const TC_LABELS: Record<string, string> = {
+  dataEsame: "Data esame",
+  struttura: "Struttura",
+  cacScore: "Calcium score",
+  cadRads: "CAD-RADS",
+  referto: "Referto",
+};
+
+const ERG_LABELS: Record<string, string> = {
+  dataEsame: "Data esame",
+  protocollo: "Protocollo",
+  durataMin: "Durata (min)",
+  caricoWatt: "Carico max (watt)",
+  mets: "METs",
+  fcMax: "FC max raggiunta (bpm)",
+  fcMaxTeoricaPct: "% FC max teorica",
+  paMax: "P.A. al picco",
+  motivoInterruzione: "Motivo interruzione",
+  esito: "Esito",
+  referto: "Referto",
+};
+
+const HOLTER_ECG_LABELS: Record<string, string> = {
+  dataEsame: "Data inizio",
+  durataOre: "Durata (ore)",
+  fcMedia: "FC media (bpm)",
+  fcMin: "FC minima (bpm)",
+  fcMax: "FC massima (bpm)",
+  besv: "BESV / 24h",
+  bev: "BEV / 24h",
+  pausaMaxSec: "Pausa max (s)",
+  ritmoPrevalente: "Ritmo prevalente",
+  referto: "Referto",
+};
+
+const HOLTER_PA_LABELS: Record<string, string> = {
+  dataEsame: "Data inizio",
+  media24Sist: "Media 24h sistolica",
+  media24Diast: "Media 24h diastolica",
+  mediaDiurnaSist: "Media diurna sistolica",
+  mediaDiurnaDiast: "Media diurna diastolica",
+  mediaNotturnaSist: "Media notturna sistolica",
+  mediaNotturnaDiast: "Media notturna diastolica",
+  caloNotturnoPct: "Calo notturno (%)",
+  caricoPressorioPct: "Carico pressorio (%)",
+  referto: "Referto",
+};
+
+const LAB_LABELS: Record<string, string> = {
+  dataPrelievo: "Data prelievo",
+  colesteroloTotale: "Colesterolo totale",
+  hdl: "HDL",
+  trigliceridi: "Trigliceridi",
+  ldlMisurato: "LDL dosato",
+  apoB: "ApoB",
+  lpa: "Lp(a)",
+  glicemia: "Glicemia",
+  insulina: "Insulinemia",
+  hba1c: "Emoglobina glicata",
+  creatinina: "Creatinina",
+  albuminuria: "Albuminuria",
+  emoglobina: "Emoglobina",
+  ast: "AST",
+  alt: "ALT",
+  uricemia: "Uricemia",
+  tsh: "TSH",
 };
 
 /** Converte una chiave camelCase in un'etichetta leggibile (fallback). */
@@ -159,13 +262,100 @@ export function computeVisitChanges(
     ANAMNESI_LABELS,
   );
 
+  // I sotto-blocchi sono confrontati a parte: `diffNested` compara solo scalari,
+  // altrimenti un oggetto annidato finirebbe in cronologia come "[object Object]".
+  const visitaScalari = (v: Visit): Record<string, unknown> | undefined => {
+    if (!v.visita) return undefined;
+    const {
+      ecg,
+      ecocardiogramma,
+      tcCoronarica,
+      laboratorio,
+      testErgometrico,
+      holterEcg,
+      holterPressorio,
+      ...resto
+    } = v.visita;
+    void ecg;
+    void ecocardiogramma;
+    void tcCoronarica;
+    void laboratorio;
+    void testErgometrico;
+    void holterEcg;
+    void holterPressorio;
+    return resto as Record<string, unknown>;
+  };
+
   diffNested(
     changes,
     "visita",
     "Visita",
-    oldVisit.visita as Record<string, unknown> | undefined,
-    newVisit.visita as Record<string, unknown> | undefined,
+    visitaScalari(oldVisit),
+    visitaScalari(newVisit),
     VISITA_LABELS,
+  );
+
+  diffNested(
+    changes,
+    "visita.ecg",
+    "ECG",
+    oldVisit.visita?.ecg as Record<string, unknown> | undefined,
+    newVisit.visita?.ecg as Record<string, unknown> | undefined,
+    ECG_LABELS,
+  );
+
+  diffNested(
+    changes,
+    "visita.ecocardiogramma",
+    "Ecocardiogramma",
+    oldVisit.visita?.ecocardiogramma as Record<string, unknown> | undefined,
+    newVisit.visita?.ecocardiogramma as Record<string, unknown> | undefined,
+    ECO_LABELS,
+  );
+
+  diffNested(
+    changes,
+    "visita.tcCoronarica",
+    "TC coronarica",
+    oldVisit.visita?.tcCoronarica as Record<string, unknown> | undefined,
+    newVisit.visita?.tcCoronarica as Record<string, unknown> | undefined,
+    TC_LABELS,
+  );
+
+  diffNested(
+    changes,
+    "visita.laboratorio",
+    "Laboratorio",
+    oldVisit.visita?.laboratorio as Record<string, unknown> | undefined,
+    newVisit.visita?.laboratorio as Record<string, unknown> | undefined,
+    LAB_LABELS,
+  );
+
+  diffNested(
+    changes,
+    "visita.testErgometrico",
+    "Test ergometrico",
+    oldVisit.visita?.testErgometrico as Record<string, unknown> | undefined,
+    newVisit.visita?.testErgometrico as Record<string, unknown> | undefined,
+    ERG_LABELS,
+  );
+
+  diffNested(
+    changes,
+    "visita.holterEcg",
+    "Holter ECG",
+    oldVisit.visita?.holterEcg as Record<string, unknown> | undefined,
+    newVisit.visita?.holterEcg as Record<string, unknown> | undefined,
+    HOLTER_ECG_LABELS,
+  );
+
+  diffNested(
+    changes,
+    "visita.holterPressorio",
+    "Holter pressorio",
+    oldVisit.visita?.holterPressorio as Record<string, unknown> | undefined,
+    newVisit.visita?.holterPressorio as Record<string, unknown> | undefined,
+    HOLTER_PA_LABELS,
   );
 
   return changes;

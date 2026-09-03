@@ -19,7 +19,7 @@ let backupsDir;
 
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "corioli-test-"));
-  dbPath = path.join(root, "corioli-generale.db");
+  dbPath = path.join(root, "corioli-cardiologia.db");
   backupsDir = path.join(root, "backups");
 });
 
@@ -52,7 +52,7 @@ describe("nomi dei file di backup", () => {
 
   it.each([
     "../../evil.db",
-    "corioli-generale.db",
+    "corioli-cardiologia.db",
     "corioli-auto-2026-08-19.db",
     "corioli-auto-2026-08-19_23-05-01.db.exe",
     "",
@@ -120,7 +120,7 @@ describe("ripristino", () => {
 
   it("blocca i percorsi arbitrari e lascia il database intatto", () => {
     fs.writeFileSync(dbPath, "dati-correnti");
-    const r = restoreBackupFile({ dbPath, backupsDir, fileName: "../../../corioli-generale.db" });
+    const r = restoreBackupFile({ dbPath, backupsDir, fileName: "../../../corioli-cardiologia.db" });
     expect(r.ok).toBe(false);
     expect(r.error).toBe("Nome backup non valido.");
     expect(fs.readFileSync(dbPath, "utf8")).toBe("dati-correnti");

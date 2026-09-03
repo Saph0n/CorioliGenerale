@@ -156,7 +156,7 @@ export function UnsavedChangesProvider({ children }: { children: ReactNode }) {
               <AlertTriangle size={20} />
             </span>
             <div>
-              <p className="text-base font-semibold text-gray-900">Corioli Generale</p>
+              <p className="text-base font-semibold text-gray-900">Corioli Cardiologia</p>
               <p className="text-sm font-normal text-gray-500">
                 Modifiche non salvate
               </p>

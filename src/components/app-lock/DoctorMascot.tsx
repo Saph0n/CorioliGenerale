@@ -280,7 +280,7 @@ export default function DoctorMascot({
         height={size}
         viewBox="0 0 200 200"
         role="img"
-        aria-label="Mascotte gufo Corioli Generale"
+        aria-label="Mascotte gufo Corioli Cardiologia"
         style={{ overflow: "visible" }}
       >
         {/* anello luminoso di celebrazione */}

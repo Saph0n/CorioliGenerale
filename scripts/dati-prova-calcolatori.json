@@ -1,0 +1,302 @@
+{
+  "schemaVersion": 1,
+  "appVersion": "dati-di-prova",
+  "exportedAt": "2026-09-01T23:39:15.699Z",
+  "patients": [
+    {
+      "id": "collaudo-1",
+      "codiceFiscale": "CLLMRC68A15G702A",
+      "nome": "Marco",
+      "cognome": "Collaudo Standard",
+      "dataNascita": "1968-01-15",
+      "luogoNascita": "Pisa",
+      "sesso": "M",
+      "email": "collaudo-1@collaudo.test",
+      "altezza": 175,
+      "peso": 82,
+      "notaBene": "DATI DI PROVA — Tutti i calcolatori con valori nella norma: è il caso di riferimento.",
+      "createdAt": "2026-09-01T23:39:15.699Z",
+      "updatedAt": "2026-09-01T23:39:15.699Z"
+    },
+    {
+      "id": "collaudo-2",
+      "codiceFiscale": "CLLLNE82A15G702B",
+      "nome": "Elena",
+      "cognome": "Collaudo Trigliceridi",
+      "dataNascita": "1982-01-15",
+      "luogoNascita": "Pisa",
+      "sesso": "F",
+      "email": "collaudo-2@collaudo.test",
+      "altezza": 162,
+      "peso": 58,
+      "notaBene": "DATI DI PROVA — Trigliceridi ≥ 400: Friedewald deve rifiutarsi di calcolare, il non-HDL no. Percorso femminile dell'eGFR.",
+      "createdAt": "2026-09-01T23:39:15.699Z",
+      "updatedAt": "2026-09-01T23:39:15.699Z"
+    },
+    {
+      "id": "collaudo-3",
+      "codiceFiscale": "CLLGNN52A15G702C",
+      "nome": "Giovanni",
+      "cognome": "Collaudo Rene",
+      "dataNascita": "1952-01-15",
+      "luogoNascita": "Pisa",
+      "sesso": "M",
+      "email": "collaudo-3@collaudo.test",
+      "altezza": 170,
+      "peso": 88,
+      "notaBene": "DATI DI PROVA — Fuori dalla finestra SCORE2 (40-69), insufficienza renale (KDIGO G3b), bradicardia: il QTc deve segnalare che Bazett è poco affidabile.",
+      "createdAt": "2026-09-01T23:39:15.699Z",
+      "updatedAt": "2026-09-01T23:39:15.699Z"
+    },
+    {
+      "id": "collaudo-4",
+      "codiceFiscale": "CLLSFO90A15G702D",
+      "nome": "Sofia",
+      "cognome": "Collaudo Incoerente",
+      "dataNascita": "1990-01-15",
+      "luogoNascita": "Pisa",
+      "sesso": "F",
+      "email": "collaudo-4@collaudo.test",
+      "altezza": 168,
+      "peso": 52,
+      "notaBene": "DATI DI PROVA — Sotto i 40 anni (SCORE2 non applicabile), lipidi incoerenti fra loro (LDL negativo) e tachicardia: tre messaggi di rifiuto diversi.",
+      "createdAt": "2026-09-01T23:39:15.699Z",
+      "updatedAt": "2026-09-01T23:39:15.699Z"
+    },
+    {
+      "id": "collaudo-5",
+      "codiceFiscale": "CLLNNA65A15G702E",
+      "nome": "Anna",
+      "cognome": "Collaudo Incompleto",
+      "dataNascita": "1965-01-15",
+      "luogoNascita": "Pisa",
+      "sesso": "F",
+      "email": "collaudo-5@collaudo.test",
+      "altezza": 160,
+      "peso": 67,
+      "notaBene": "DATI DI PROVA — Visita con i soli dati di base: ogni calcolatore deve dire cosa manca invece di restare vuoto o mostrare zero.",
+      "createdAt": "2026-09-01T23:39:15.699Z",
+      "updatedAt": "2026-09-01T23:39:15.699Z"
+    }
+  ],
+  "visits": [
+    {
+      "id": "collaudo-1-visita",
+      "patientId": "collaudo-1",
+      "dataVisita": "2026-09-01",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di collaudo. Tutti i calcolatori con valori nella norma: è il caso di riferimento.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 82,
+        "pressioneArteriosa": "138/86",
+        "frequenzaCardiaca": "72",
+        "fumatore": "si",
+        "ecg": {
+          "ritmo": "Sinusale",
+          "pr": 160,
+          "qrs": 92,
+          "qt": 400,
+          "asse": 30
+        },
+        "laboratorio": {
+          "dataPrelievo": "2026-09-01",
+          "colesteroloTotale": 215,
+          "hdl": 45,
+          "trigliceridi": 150,
+          "glicemia": 98,
+          "insulina": 12,
+          "creatinina": 1,
+          "hba1c": 5.6,
+          "emoglobina": 14.8
+        },
+        "tcCoronarica": {
+          "dataEsame": "2026-09-01",
+          "struttura": "Struttura di collaudo",
+          "cacScore": 85,
+          "cadRads": "2"
+        }
+      },
+      "createdAt": "2026-09-01T23:39:15.699Z",
+      "updatedAt": "2026-09-01T23:39:15.699Z"
+    },
+    {
+      "id": "collaudo-2-visita",
+      "patientId": "collaudo-2",
+      "dataVisita": "2026-09-01",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di collaudo. Trigliceridi ≥ 400: Friedewald deve rifiutarsi di calcolare, il non-HDL no. Percorso femminile dell'eGFR.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 58,
+        "pressioneArteriosa": "118/74",
+        "frequenzaCardiaca": "64",
+        "fumatore": "no",
+        "ecg": {
+          "ritmo": "Sinusale",
+          "pr": 148,
+          "qrs": 84,
+          "qt": 380,
+          "asse": 45
+        },
+        "laboratorio": {
+          "dataPrelievo": "2026-09-01",
+          "colesteroloTotale": 190,
+          "hdl": 70,
+          "trigliceridi": 420,
+          "ldlMisurato": 96,
+          "glicemia": 88,
+          "insulina": 6,
+          "creatinina": 0.68,
+          "hba1c": 5.1
+        },
+        "tcCoronarica": {
+          "dataEsame": "2026-09-01",
+          "struttura": "Struttura di collaudo",
+          "cacScore": 0,
+          "cadRads": "0"
+        }
+      },
+      "createdAt": "2026-09-01T23:39:15.699Z",
+      "updatedAt": "2026-09-01T23:39:15.699Z"
+    },
+    {
+      "id": "collaudo-3-visita",
+      "patientId": "collaudo-3",
+      "dataVisita": "2026-09-01",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di collaudo. Fuori dalla finestra SCORE2 (40-69), insufficienza renale (KDIGO G3b), bradicardia: il QTc deve segnalare che Bazett è poco affidabile.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 88,
+        "pressioneArteriosa": "150/88",
+        "frequenzaCardiaca": "46",
+        "fumatore": "no",
+        "ecg": {
+          "ritmo": "Bradicardia sinusale",
+          "pr": 190,
+          "qrs": 104,
+          "qt": 460,
+          "asse": -15
+        },
+        "laboratorio": {
+          "dataPrelievo": "2026-09-01",
+          "colesteroloTotale": 240,
+          "hdl": 38,
+          "trigliceridi": 260,
+          "glicemia": 145,
+          "insulina": 22,
+          "creatinina": 2.1,
+          "hba1c": 7.2,
+          "albuminuria": 180
+        },
+        "tcCoronarica": {
+          "dataEsame": "2026-09-01",
+          "struttura": "Struttura di collaudo",
+          "cacScore": 780,
+          "cadRads": "4A"
+        }
+      },
+      "createdAt": "2026-09-01T23:39:15.699Z",
+      "updatedAt": "2026-09-01T23:39:15.699Z"
+    },
+    {
+      "id": "collaudo-4-visita",
+      "patientId": "collaudo-4",
+      "dataVisita": "2026-09-01",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di collaudo. Sotto i 40 anni (SCORE2 non applicabile), lipidi incoerenti fra loro (LDL negativo) e tachicardia: tre messaggi di rifiuto diversi.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 52,
+        "pressioneArteriosa": "104/62",
+        "frequenzaCardiaca": "110",
+        "fumatore": "si",
+        "ecg": {
+          "ritmo": "Tachicardia sinusale",
+          "pr": 130,
+          "qrs": 78,
+          "qt": 320,
+          "asse": 60
+        },
+        "laboratorio": {
+          "dataPrelievo": "2026-09-01",
+          "colesteroloTotale": 150,
+          "hdl": 95,
+          "trigliceridi": 300,
+          "glicemia": 78,
+          "insulina": 4,
+          "creatinina": 0.55
+        },
+        "tcCoronarica": {
+          "dataEsame": "2026-09-01",
+          "struttura": "Struttura di collaudo",
+          "cacScore": 250,
+          "cadRads": "3"
+        }
+      },
+      "createdAt": "2026-09-01T23:39:15.699Z",
+      "updatedAt": "2026-09-01T23:39:15.699Z"
+    },
+    {
+      "id": "collaudo-5-visita",
+      "patientId": "collaudo-5",
+      "dataVisita": "2026-09-01",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di collaudo. Visita con i soli dati di base: ogni calcolatore deve dire cosa manca invece di restare vuoto o mostrare zero.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 67,
+        "pressioneArteriosa": "132/80",
+        "frequenzaCardiaca": "78"
+      },
+      "createdAt": "2026-09-01T23:39:15.699Z",
+      "updatedAt": "2026-09-01T23:39:15.699Z"
+    }
+  ],
+  "visitRevisions": [],
+  "richiesteEsami": [],
+  "certificatiPaziente": [],
+  "ricettePaziente": [],
+  "documents": []
+}

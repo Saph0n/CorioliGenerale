@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Card,
   CardBody,
@@ -17,6 +17,7 @@ import {
   DropdownMenu,
   DropdownItem,
   Chip,
+  Tooltip,
 } from "@nextui-org/react";
 import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 
@@ -82,6 +83,62 @@ import {
   isDoctorProfileComplete,
 } from "../../utils/doctorProfile";
 import { AppModal } from "../../components/AppModal";
+import {
+  CalcSuggestion,
+  GruppoCampi,
+  MisuraInput,
+  RigaCalcolata,
+  StrisciaCalcolati,
+  ModuloCollassabile,
+  ModuloHeader,
+  NoteCampo,
+  PrecedenteTesto,
+  RiquadroTarget,
+} from "../../components/cardio/CardioFields";
+import {
+  CAD_RADS_OPTIONS,
+  calcolaEgfrCkdEpi,
+  calcolaHomaIr,
+  calcolaLdlFriedewald,
+  calcolaNonHdl,
+  calcolaCaloNotturno,
+  calcolaPercentualeFcMax,
+  calcolaRapportoCtHdl,
+  calcolaRapportoTgHdl,
+  calcolaQtcBazett,
+  calcolaScore2,
+  fasciaCacScore,
+  stadioKdigo,
+} from "../../utils/cardioCalcs";
+import {
+  SCORE2_CATEGORIA_LABELS,
+  categoriaRischioScore2,
+  sogliaCategoriaScore2,
+} from "../../utils/cardioCalcs";
+import {
+  SCORE2_DEFAULT_REGION,
+  SCORE2_REGION_LABELS,
+  type Score2Region,
+} from "../../utils/score2Coefficients";
+import {
+  costruisciPrecedenti,
+  costruisciSerie,
+} from "../../utils/confrontoMisure";
+import {
+  CATEGORIA_RISCHIO_LABELS,
+  CATEGORIE_RISCHIO_CV,
+  TARGET_APOB,
+  TARGET_LDL,
+  confrontaConTarget,
+  descriviTargetLdl,
+  type CategoriaRischioCv,
+} from "../../utils/rischioCv";
+import {
+  scomponiPressione,
+  valutaMisura,
+  valutaPressione,
+  type ChiaveMisura,
+} from "../../utils/rangeClinici";
 
 function getAltezzaCmForBmi(patient: Patient | null): number | null {
   if (patient?.altezza == null || patient.altezza <= 0) return null;
@@ -165,8 +222,173 @@ const createDefaultVisitaData = () => ({
   pesoCorporeo: 0,
   pressioneArteriosa: "",
   frequenzaCardiaca: "",
+  fumatore: "" as "" | "si" | "no",
+  categoriaRischioCv: "" as "" | CategoriaRischioCv,
   immagini: [] as string[],
+  ecg: {} as NonNullable<NonNullable<Visit["visita"]>["ecg"]>,
+  ecocardiogramma: {} as NonNullable<
+    NonNullable<Visit["visita"]>["ecocardiogramma"]
+  >,
+  tcCoronarica: {} as NonNullable<NonNullable<Visit["visita"]>["tcCoronarica"]>,
+  laboratorio: {} as NonNullable<NonNullable<Visit["visita"]>["laboratorio"]>,
+  testErgometrico: {} as NonNullable<
+    NonNullable<Visit["visita"]>["testErgometrico"]
+  >,
+  holterEcg: {} as NonNullable<NonNullable<Visit["visita"]>["holterEcg"]>,
+  holterPressorio: {} as NonNullable<
+    NonNullable<Visit["visita"]>["holterPressorio"]
+  >,
 });
+
+/** Blocchi annidati della visita, aggiornati con lo stesso handler. */
+type BloccoVisita =
+  | "ecg"
+  | "ecocardiogramma"
+  | "tcCoronarica"
+  | "laboratorio"
+  | "testErgometrico"
+  | "holterEcg"
+  | "holterPressorio";
+
+/** Estrae la sistolica da "130/85" per alimentare SCORE2. */
+function parseSistolica(pa: string | undefined): number | undefined {
+  const m = /^(\d{2,3})\s*\/\s*\d{2,3}$/.exec((pa ?? "").trim());
+  if (!m) return undefined;
+  const n = parseInt(m[1], 10);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/**
+ * Converte lo stato del form nella forma salvata su disco: i blocchi vuoti
+ * diventano `undefined` invece di oggetti `{}`, così una visita senza ECG non
+ * porta con sé strutture vuote e la cronologia non registra falsi cambiamenti.
+ */
+function visitaPerSalvataggio(
+  v: ReturnType<typeof createDefaultVisitaData>,
+): NonNullable<Visit["visita"]> {
+  const vuoto = (o: object) =>
+    Object.values(o).every((x) => x === undefined || x === "" || x === null);
+  return {
+    problemaClinico: v.problemaClinico,
+    prestazione: v.prestazione,
+    esameObiettivo: v.esameObiettivo,
+    accertamenti: v.accertamenti,
+    terapiaSpecifica: v.terapiaSpecifica,
+    pesoCorporeo: v.pesoCorporeo,
+    pressioneArteriosa: v.pressioneArteriosa,
+    frequenzaCardiaca: v.frequenzaCardiaca,
+    ...(v.fumatore === "si" || v.fumatore === "no"
+      ? { fumatore: v.fumatore }
+      : {}),
+    ...(v.categoriaRischioCv
+      ? { categoriaRischioCv: v.categoriaRischioCv }
+      : {}),
+    immagini: v.immagini,
+    ...(vuoto(v.ecg) ? {} : { ecg: v.ecg }),
+    ...(vuoto(v.ecocardiogramma) ? {} : { ecocardiogramma: v.ecocardiogramma }),
+    ...(vuoto(v.tcCoronarica) ? {} : { tcCoronarica: v.tcCoronarica }),
+    ...(vuoto(v.laboratorio) ? {} : { laboratorio: v.laboratorio }),
+    ...(vuoto(v.testErgometrico) ? {} : { testErgometrico: v.testErgometrico }),
+    ...(vuoto(v.holterEcg) ? {} : { holterEcg: v.holterEcg }),
+    ...(vuoto(v.holterPressorio)
+      ? {}
+      : { holterPressorio: v.holterPressorio }),
+  };
+}
+
+/**
+ * Ogni misura numerica del referto, indicizzata con la stessa chiave che il
+ * campo usa per la sua bozza di digitazione.
+ *
+ * `path` e' il percorso del valore dentro `visita` e serve sia a ritrovare il
+ * valore della visita precedente sia a leggere quello corrente; `range` e' la
+ * soglia clinica da applicare, assente per le misure che da sole non hanno un
+ * limite di riferimento (i diametri ventricolari vanno indicizzati per
+ * superficie corporea, l'insulinemia si legge solo dentro l'HOMA).
+ *
+ * Tenerla in un punto unico evita di ripetere percorso e soglia su una
+ * trentina di campi, dove un refuso passerebbe inosservato.
+ */
+const MISURE: Record<string, { path: string; range?: ChiaveMisura }> = {
+  // Laboratorio
+  "lab.tot": { path: "laboratorio.colesteroloTotale" },
+  "lab.hdl": { path: "laboratorio.hdl" },
+  "lab.tg": { path: "laboratorio.trigliceridi", range: "lab.trigliceridi" },
+  "lab.ldl": { path: "laboratorio.ldlMisurato", range: "lab.ldl" },
+  "lab.gli": { path: "laboratorio.glicemia", range: "lab.glicemia" },
+  "lab.ins": { path: "laboratorio.insulina" },
+  "lab.hba1c": { path: "laboratorio.hba1c", range: "lab.hba1c" },
+  "lab.crea": { path: "laboratorio.creatinina" },
+  "lab.alb": { path: "laboratorio.albuminuria", range: "lab.albuminuria" },
+  "lab.hb": { path: "laboratorio.emoglobina", range: "lab.emoglobina" },
+  "lab.apob": { path: "laboratorio.apoB", range: "lab.apoB" },
+  "lab.lpa": { path: "laboratorio.lpa", range: "lab.lpa" },
+  "lab.ast": { path: "laboratorio.ast", range: "lab.ast" },
+  "lab.alt": { path: "laboratorio.alt", range: "lab.alt" },
+  "lab.uric": { path: "laboratorio.uricemia", range: "lab.uricemia" },
+  "lab.tsh": { path: "laboratorio.tsh", range: "lab.tsh" },
+  // Elettrocardiogramma
+  "ecg.pr": { path: "ecg.pr", range: "ecg.pr" },
+  "ecg.qrs": { path: "ecg.qrs", range: "ecg.qrs" },
+  "ecg.qt": { path: "ecg.qt" },
+  "ecg.asse": { path: "ecg.asse" },
+  // Ecocardiogramma
+  "eco.ddvs": { path: "ecocardiogramma.ddvs" },
+  "eco.dsvs": { path: "ecocardiogramma.dsvs" },
+  "eco.siv": { path: "ecocardiogramma.siv", range: "eco.siv" },
+  "eco.pp": { path: "ecocardiogramma.pp", range: "eco.pp" },
+  "eco.fe": { path: "ecocardiogramma.fe", range: "eco.fe" },
+  "eco.as": { path: "ecocardiogramma.atrioSinistro", range: "eco.atrioSinistro" },
+  "eco.rad": { path: "ecocardiogramma.radiceAortica" },
+  "eco.aoasc": {
+    path: "ecocardiogramma.aortaAscendente",
+    range: "eco.aortaAscendente",
+  },
+  "eco.tapse": { path: "ecocardiogramma.tapse", range: "eco.tapse" },
+  "eco.paps": { path: "ecocardiogramma.paps", range: "eco.paps" },
+  "eco.ea": { path: "ecocardiogramma.rapportoEA" },
+  "eco.ee": { path: "ecocardiogramma.rapportoEe", range: "eco.rapportoEe" },
+  // TC coronarica
+  "tc.cac": { path: "tcCoronarica.cacScore" },
+  // Test ergometrico
+  "erg.durata": { path: "testErgometrico.durataMin" },
+  "erg.watt": { path: "testErgometrico.caricoWatt" },
+  "erg.mets": { path: "testErgometrico.mets" },
+  "erg.fcmax": { path: "testErgometrico.fcMax" },
+  "erg.fcpct": { path: "testErgometrico.fcMaxTeoricaPct" },
+  // Holter ECG
+  "hecg.durata": { path: "holterEcg.durataOre" },
+  "hecg.fcmedia": { path: "holterEcg.fcMedia" },
+  "hecg.fcmin": { path: "holterEcg.fcMin" },
+  "hecg.fcmax": { path: "holterEcg.fcMax" },
+  "hecg.besv": { path: "holterEcg.besv" },
+  "hecg.bev": { path: "holterEcg.bev" },
+  "hecg.pausa": { path: "holterEcg.pausaMaxSec" },
+  // Holter pressorio
+  "hp.m24s": { path: "holterPressorio.media24Sist" },
+  "hp.m24d": { path: "holterPressorio.media24Diast" },
+  "hp.mds": { path: "holterPressorio.mediaDiurnaSist" },
+  "hp.mdd": { path: "holterPressorio.mediaDiurnaDiast" },
+  "hp.mns": { path: "holterPressorio.mediaNotturnaSist" },
+  "hp.mnd": { path: "holterPressorio.mediaNotturnaDiast" },
+  "hp.calo": { path: "holterPressorio.caloNotturnoPct" },
+  "hp.carico": { path: "holterPressorio.caricoPressorioPct" },
+};
+
+/**
+ * Composizione dei pannelli di laboratorio, nell'ordine in cui li stampa un
+ * referto: prima l'assetto lipidico, poi il glucidico, poi la funzione renale.
+ *
+ * Le chiavi sono quelle di `MISURE`, così il contatore dei campi compilati in
+ * testa a ogni pannello legge gli stessi valori dei campi senza duplicare i
+ * percorsi.
+ */
+const GRUPPI_LABORATORIO = {
+  lipidico: ["lab.tot", "lab.hdl", "lab.tg", "lab.ldl", "lab.apob", "lab.lpa"],
+  glucidico: ["lab.gli", "lab.ins", "lab.hba1c"],
+  renale: ["lab.crea", "lab.alb"],
+  altri: ["lab.ast", "lab.alt", "lab.uric", "lab.tsh", "lab.hb"],
+} as const;
 
 const MAX_IMAGES = 20;
 const MAX_IMAGE_BYTES = 7 * 1024 * 1024; // 7MB per immagine
@@ -248,6 +470,15 @@ export default function AddVisit() {
   const [pesoCorporeoDraft, setPesoCorporeoDraft] = useState<string | null>(
     null,
   );
+  /** Bozze dei campi numerici dei moduli strumentali, indicizzate per chiave. */
+  const [numDrafts, setNumDrafts] = useState<Record<string, string | null>>({});
+  const draftOf = (key: string) => numDrafts[key] ?? null;
+  const setDraft = (key: string, value: string | null) =>
+    setNumDrafts((prev) => ({ ...prev, [key]: value }));
+  /** Regione di rischio SCORE2 (predefinita: Italia). */
+  const [score2Region, setScore2Region] = useState<Score2Region>(
+    SCORE2_DEFAULT_REGION,
+  );
 
   useEffect(() => {
     const loadData = async () => {
@@ -313,7 +544,16 @@ export default function AddVisit() {
                 pesoCorporeo: visit.visita?.pesoCorporeo ?? 0,
                 pressioneArteriosa: visit.visita?.pressioneArteriosa ?? "",
                 frequenzaCardiaca: visit.visita?.frequenzaCardiaca ?? "",
+                fumatore: visit.visita?.fumatore ?? "",
+                categoriaRischioCv: visit.visita?.categoriaRischioCv ?? "",
                 immagini: visit.visita?.immagini ?? [],
+                ecg: visit.visita?.ecg ?? {},
+                ecocardiogramma: visit.visita?.ecocardiogramma ?? {},
+                tcCoronarica: visit.visita?.tcCoronarica ?? {},
+                laboratorio: visit.visita?.laboratorio ?? {},
+                testErgometrico: visit.visita?.testErgometrico ?? {},
+                holterEcg: visit.visita?.holterEcg ?? {},
+                holterPressorio: visit.visita?.holterPressorio ?? {},
               }));
             } else {
               // Visita salvata prima del blocco `visita` (o importata): i campi
@@ -490,7 +730,7 @@ export default function AddVisit() {
         terapie: visitData.terapie,
         tipo: "generale" as const,
         anamnesiStrutturata: anamnesiStrutturataForSave,
-        visita: visitaForSave,
+        visita: visitaPerSalvataggio(visitaForSave),
       };
 
       if (isEditMode && existingVisit) {
@@ -758,7 +998,7 @@ export default function AddVisit() {
             pickCampiAttivi(anamnesiStrutturata, anamnesiConfig, "generale"),
           )
         : undefined,
-      visita: visitaData,
+      visita: visitaPerSalvataggio(visitaData),
       createdAt: existingVisit?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -832,6 +1072,32 @@ export default function AddVisit() {
     setVisitaData((prev) => ({ ...prev, [field]: value }));
   };
 
+  /** Aggiorna un campo dentro ECG / ecocardiogramma / TC coronarica / laboratorio. */
+  const handleBloccoChange = (
+    blocco: BloccoVisita,
+    field: string,
+    value: string | number | undefined,
+  ) => {
+    if (initialLoadDone.current) setHasUnsavedChanges(true);
+    setVisitaData((prev) => {
+      const corrente = { ...(prev[blocco] as Record<string, unknown>) };
+      if (value === undefined || value === "") delete corrente[field];
+      else corrente[field] = value;
+      return { ...prev, [blocco]: corrente };
+    });
+  };
+
+  /** Applica un modello al referto testuale di un modulo strumentale. */
+  const applyBloccoTemplate = (blocco: BloccoVisita, text: string) => {
+    if (initialLoadDone.current) setHasUnsavedChanges(true);
+    setVisitaData((prev) => {
+      const corrente = { ...(prev[blocco] as Record<string, unknown>) };
+      const attuale = (corrente.referto as string) ?? "";
+      corrente.referto = attuale ? `${attuale}\n${text}` : text;
+      return { ...prev, [blocco]: corrente };
+    });
+  };
+
   const liveBodyWeight = (raw: string) => {
     if (initialLoadDone.current) setHasUnsavedChanges(true);
     const live = parseWeightFieldLive(raw);
@@ -896,6 +1162,246 @@ export default function AddVisit() {
       setSavingAltezza(false);
     }
   };
+
+  // ── Calcolatori: risultati derivati, mai scritti nei campi del referto ──
+  const etaPaziente = useMemo(() => {
+    const raw = calculateAge(patient?.dataNascita ?? "");
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  }, [patient?.dataNascita]);
+
+  const lab = visitaData.laboratorio;
+
+  const ldlCalc = useMemo(
+    () => calcolaLdlFriedewald(lab.colesteroloTotale, lab.hdl, lab.trigliceridi),
+    [lab.colesteroloTotale, lab.hdl, lab.trigliceridi],
+  );
+  const nonHdlCalc = useMemo(
+    () => calcolaNonHdl(lab.colesteroloTotale, lab.hdl),
+    [lab.colesteroloTotale, lab.hdl],
+  );
+  const ctHdlCalc = useMemo(
+    () => calcolaRapportoCtHdl(lab.colesteroloTotale, lab.hdl),
+    [lab.colesteroloTotale, lab.hdl],
+  );
+  const tgHdlCalc = useMemo(
+    () => calcolaRapportoTgHdl(lab.trigliceridi, lab.hdl),
+    [lab.trigliceridi, lab.hdl],
+  );
+  const homaCalc = useMemo(
+    () => calcolaHomaIr(lab.glicemia, lab.insulina),
+    [lab.glicemia, lab.insulina],
+  );
+  const egfrCalc = useMemo(
+    () =>
+      calcolaEgfrCkdEpi(
+        lab.creatinina,
+        etaPaziente,
+        patient?.sesso === "M" || patient?.sesso === "F" ? patient.sesso : undefined,
+      ),
+    [lab.creatinina, etaPaziente, patient?.sesso],
+  );
+  const qtcCalc = useMemo(
+    () =>
+      calcolaQtcBazett(
+        visitaData.ecg.qt,
+        visitaData.frequenzaCardiaca
+          ? Number(visitaData.frequenzaCardiaca)
+          : undefined,
+      ),
+    [visitaData.ecg.qt, visitaData.frequenzaCardiaca],
+  );
+  const score2Calc = useMemo(
+    () =>
+      calcolaScore2({
+        eta: etaPaziente,
+        sesso:
+          patient?.sesso === "M" || patient?.sesso === "F" ? patient.sesso : undefined,
+        fumatore:
+          visitaData.fumatore === "si"
+            ? true
+            : visitaData.fumatore === "no"
+              ? false
+              : undefined,
+        pas: parseSistolica(visitaData.pressioneArteriosa),
+        colesteroloTotale: lab.colesteroloTotale,
+        hdl: lab.hdl,
+        region: score2Region,
+      }),
+    [
+      etaPaziente,
+      patient?.sesso,
+      visitaData.fumatore,
+      visitaData.pressioneArteriosa,
+      lab.colesteroloTotale,
+      lab.hdl,
+      score2Region,
+    ],
+  );
+
+  /** Sesso del paziente nella forma richiesta dalle soglie cliniche. */
+  const sessoPaziente =
+    patient?.sesso === "M" || patient?.sesso === "F" ? patient.sesso : undefined;
+
+  /**
+   * Ultimo valore noto di ogni misura, preso dalle visite precedenti dello
+   * stesso paziente: e' quello che il medico dovrebbe altrimenti andare a
+   * cercare aprendo la visita vecchia.
+   */
+  const precedenti = useMemo(
+    () => costruisciPrecedenti(patientVisits, existingVisit?.id),
+    [patientVisits, existingVisit?.id],
+  );
+
+  /**
+   * Tutte le rilevazioni precedenti di ogni misura, per il grafico
+   * dell'andamento. Costruite in un passaggio solo insieme ai precedenti:
+   * l'elenco delle visite e' lo stesso.
+   */
+  const serieStoriche = useMemo(
+    () => costruisciSerie(patientVisits, existingVisit?.id),
+    [patientVisits, existingVisit?.id],
+  );
+
+  /** Valore corrente di una misura, dal percorso `blocco.campo`. */
+  const valoreMisura = (path: string): number | undefined => {
+    const [blocco, campo] = path.split(".");
+    const b = (visitaData as unknown as Record<string, unknown>)[blocco] as
+      | Record<string, unknown>
+      | undefined;
+    const v = b?.[campo];
+    return typeof v === "number" ? v : undefined;
+  };
+
+  /**
+   * Valore precedente e semaforo di soglia da agganciare a un `MisuraInput`,
+   * usando la stessa chiave con cui il campo tiene la sua bozza.
+   */
+  const misura = (chiave: string) => {
+    const def = MISURE[chiave];
+    if (!def) return {};
+    return {
+      precedente: precedenti[def.path],
+      serie: serieStoriche[def.path],
+      dataCorrente: visitData.dataVisita,
+      segnale: def.range
+        ? valutaMisura(def.range, valoreMisura(def.path), sessoPaziente)
+        : undefined,
+    };
+  };
+
+  /** True se il modulo contiene almeno un dato: decide se parte gia' aperto. */
+  const bloccoCompilato = (blocco: BloccoVisita) =>
+    Object.values(visitaData[blocco] as Record<string, unknown>).some(
+      (v) => v !== undefined && v !== null && v !== "",
+    );
+
+  /**
+   * Classe di rischio dichiarata dal medico. Guida gli obiettivi di LDL e ApoB:
+   * finche' non e' indicata, i riquadri degli obiettivi restano spenti invece
+   * di mostrare una soglia scelta da noi.
+   */
+  const categoriaRischio =
+    visitaData.categoriaRischioCv === ""
+      ? undefined
+      : visitaData.categoriaRischioCv;
+
+  /** LDL da confrontare con l'obiettivo: il dosato se c'e', altrimenti Friedewald. */
+  const ldlEffettivo = useMemo(() => {
+    if (lab.ldlMisurato != null) {
+      return { valore: lab.ldlMisurato, fonte: "dosato" as const };
+    }
+    if (ldlCalc.ok) return { valore: ldlCalc.result.value, fonte: "stimato" as const };
+    return null;
+  }, [lab.ldlMisurato, ldlCalc]);
+
+  const ldlTarget = useMemo(
+    () => confrontaConTarget(ldlEffettivo?.valore, categoriaRischio, TARGET_LDL),
+    [ldlEffettivo, categoriaRischio],
+  );
+  const apoBTarget = useMemo(
+    () => confrontaConTarget(lab.apoB, categoriaRischio, TARGET_APOB),
+    [lab.apoB, categoriaRischio],
+  );
+
+  /** Quanti campi di un pannello hanno gia' un valore, per il contatore. */
+  const compilatiTra = (chiavi: readonly string[]) =>
+    chiavi.filter((k) => {
+      const def = MISURE[k];
+      return def ? valoreMisura(def.path) != null : false;
+    }).length;
+
+  // ── Semafori sui valori derivati e sui parametri vitali ───────────────────
+  const qtcSegnale = useMemo(
+    () =>
+      valutaMisura(
+        "ecg.qtc",
+        qtcCalc.ok ? qtcCalc.result.value : undefined,
+        sessoPaziente,
+      ),
+    [qtcCalc, sessoPaziente],
+  );
+  const egfrSegnale = useMemo(
+    () => valutaMisura("lab.egfr", egfrCalc.ok ? egfrCalc.result.value : undefined),
+    [egfrCalc],
+  );
+  const ldlSegnale = useMemo(
+    () => valutaMisura("lab.ldl", ldlCalc.ok ? ldlCalc.result.value : undefined),
+    [ldlCalc],
+  );
+  const ctHdlSegnale = useMemo(
+    () => valutaMisura("lab.ctHdl", ctHdlCalc.ok ? ctHdlCalc.result.value : undefined),
+    [ctHdlCalc],
+  );
+  const tgHdlSegnale = useMemo(
+    () => valutaMisura("lab.tgHdl", tgHdlCalc.ok ? tgHdlCalc.result.value : undefined),
+    [tgHdlCalc],
+  );
+  const pressioneSegnale = useMemo(() => {
+    const { sistolica, diastolica } = scomponiPressione(
+      visitaData.pressioneArteriosa,
+    );
+    return valutaPressione(sistolica, diastolica);
+  }, [visitaData.pressioneArteriosa]);
+  const frequenzaSegnale = useMemo(() => {
+    const n = Number(visitaData.frequenzaCardiaca);
+    return valutaMisura(
+      "vitali.frequenzaCardiaca",
+      Number.isFinite(n) && n > 0 ? n : undefined,
+    );
+  }, [visitaData.frequenzaCardiaca]);
+
+  const fcMaxPctCalc = useMemo(
+    () =>
+      calcolaPercentualeFcMax(visitaData.testErgometrico.fcMax, etaPaziente),
+    [visitaData.testErgometrico.fcMax, etaPaziente],
+  );
+  const caloNotturnoCalc = useMemo(
+    () =>
+      calcolaCaloNotturno(
+        visitaData.holterPressorio.mediaDiurnaSist,
+        visitaData.holterPressorio.mediaNotturnaSist,
+      ),
+    [
+      visitaData.holterPressorio.mediaDiurnaSist,
+      visitaData.holterPressorio.mediaNotturnaSist,
+    ],
+  );
+
+  /**
+   * Categoria di rischio della percentuale SCORE2. La soglia dipende dalla
+   * fascia d'eta', quindi va mostrata insieme al numero: un 7% a 45 anni e un
+   * 7% a 65 anni non stanno nella stessa banda.
+   */
+  const score2Categoria = useMemo(() => {
+    if (!score2Calc.ok || etaPaziente == null) return null;
+    const chiave = categoriaRischioScore2(score2Calc.result.value, etaPaziente);
+    return {
+      chiave,
+      label: SCORE2_CATEGORIA_LABELS[chiave],
+      soglie: sogliaCategoriaScore2(etaPaziente),
+    };
+  }, [score2Calc, etaPaziente]);
 
   const handleNavigateCronologia = () => {
     guardAction(() => navigate(`/patient-history/${patient?.id}`));
@@ -1105,7 +1611,7 @@ export default function AddVisit() {
               <CardHeader className="pb-0 pt-4 px-4 font-semibold text-gray-700 uppercase text-xs tracking-wider">
                 <span>Parametri</span>
               </CardHeader>
-              <CardBody className="px-4 py-6 space-y-6">
+              <CardBody className="px-4 py-6 gap-6">
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     label="P.A. (mmHg)"
@@ -1119,6 +1625,14 @@ export default function AddVisit() {
                     onValueChange={(v) =>
                       handleVisitaChange("pressioneArteriosa", v)
                     }
+                    description={
+                      <NoteCampo
+                        segnale={pressioneSegnale}
+                        precedente={precedenti["visita.pressioneArteriosa"]}
+                        corrente={visitaData.pressioneArteriosa}
+                      />
+                    }
+                    classNames={{ description: "m-0" }}
                   />
                   <Input
                     label="F.C. (bpm)"
@@ -1133,8 +1647,37 @@ export default function AddVisit() {
                       if (v !== "" && !/^\d{0,3}$/.test(v)) return;
                       handleVisitaChange("frequenzaCardiaca", v);
                     }}
+                    description={
+                      <NoteCampo
+                        segnale={frequenzaSegnale}
+                        precedente={precedenti["visita.frequenzaCardiaca"]}
+                        corrente={
+                          Number(visitaData.frequenzaCardiaca) || undefined
+                        }
+                      />
+                    }
+                    classNames={{ description: "m-0" }}
                   />
                 </div>
+
+                <Select
+                  label="Fumatore"
+                  size="sm"
+                  variant="bordered"
+                  labelPlacement="outside"
+                  placeholder="Non rilevato"
+                  selectedKeys={visitaData.fumatore ? [visitaData.fumatore] : []}
+                  onSelectionChange={(keys) =>
+                    handleVisitaChange(
+                      "fumatore",
+                      (Array.from(keys)[0] as string) ?? "",
+                    )
+                  }
+                  description="Entra nel calcolo del rischio cardiovascolare"
+                >
+                  <SelectItem key="si">Si'</SelectItem>
+                  <SelectItem key="no">No</SelectItem>
+                </Select>
 
                 <Divider className="my-2" />
 
@@ -1232,6 +1775,427 @@ export default function AddVisit() {
                       </div>
                     )}
                 </div>
+              </CardBody>
+            </Card>
+
+            <Card className="shadow-sm border border-default-200 bg-white">
+              <CardHeader className="pb-0 pt-4 px-4 font-semibold text-gray-700 uppercase text-xs tracking-wider">
+                Laboratorio
+              </CardHeader>
+              <CardBody className="px-4 py-6 gap-4">
+                <Input
+                  type="date"
+                  label="Data prelievo"
+                  size="sm"
+                  variant="bordered"
+                  labelPlacement="outside"
+                  max={todayIsoDate()}
+                  value={visitaData.laboratorio.dataPrelievo ?? ""}
+                  onValueChange={(v) =>
+                    handleBloccoChange("laboratorio", "dataPrelievo", v)
+                  }
+                />
+                <GruppoCampi
+                  titolo="Assetto lipidico"
+                  compilati={compilatiTra(GRUPPI_LABORATORIO.lipidico)}
+                  totale={GRUPPI_LABORATORIO.lipidico.length}
+                >
+                  <div className="grid grid-cols-2 gap-3">
+                    <MisuraInput
+                      label="Col. totale"
+                      unit="mg/dL"
+                      decimals={false}
+                      value={visitaData.laboratorio.colesteroloTotale}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "colesteroloTotale", v)
+                      }
+                      draft={draftOf("lab.tot")}
+                      onDraftChange={(d) => setDraft("lab.tot", d)}
+                      {...misura("lab.tot")}
+                    />
+                    <MisuraInput
+                      label="HDL"
+                      unit="mg/dL"
+                      decimals={false}
+                      value={visitaData.laboratorio.hdl}
+                      onValueChange={(v) => handleBloccoChange("laboratorio", "hdl", v)}
+                      draft={draftOf("lab.hdl")}
+                      onDraftChange={(d) => setDraft("lab.hdl", d)}
+                      {...misura("lab.hdl")}
+                    />
+                    <MisuraInput
+                      label="Trigliceridi"
+                      unit="mg/dL"
+                      decimals={false}
+                      value={visitaData.laboratorio.trigliceridi}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "trigliceridi", v)
+                      }
+                      draft={draftOf("lab.tg")}
+                      onDraftChange={(d) => setDraft("lab.tg", d)}
+                      {...misura("lab.tg")}
+                    />
+                    <MisuraInput
+                      label="LDL dosato"
+                      unit="mg/dL"
+                      decimals={false}
+                      value={visitaData.laboratorio.ldlMisurato}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "ldlMisurato", v)
+                      }
+                      draft={draftOf("lab.ldl")}
+                      onDraftChange={(d) => setDraft("lab.ldl", d)}
+                      {...misura("lab.ldl")}
+                    />
+                    <MisuraInput
+                      label="ApoB"
+                      unit="mg/dL"
+                      decimals={false}
+                      value={visitaData.laboratorio.apoB}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "apoB", v)
+                      }
+                      draft={draftOf("lab.apob")}
+                      onDraftChange={(d) => setDraft("lab.apob", d)}
+                      {...misura("lab.apob")}
+                    />
+                    <MisuraInput
+                      label="Lp(a)"
+                      unit="mg/dL"
+                      decimals={false}
+                      value={visitaData.laboratorio.lpa}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "lpa", v)
+                      }
+                      draft={draftOf("lab.lpa")}
+                      onDraftChange={(d) => setDraft("lab.lpa", d)}
+                      {...misura("lab.lpa")}
+                    />
+                  </div>
+                  {(ldlCalc.ok ||
+                    nonHdlCalc.ok ||
+                    ctHdlCalc.ok ||
+                    tgHdlCalc.ok) && (
+                    <StrisciaCalcolati>
+                      <RigaCalcolata
+                        label="LDL (Friedewald)"
+                        outcome={ldlCalc}
+                        segnale={ldlSegnale}
+                      />
+                      <RigaCalcolata label="Non-HDL" outcome={nonHdlCalc} />
+                      <RigaCalcolata
+                        label="CT / HDL"
+                        outcome={ctHdlCalc}
+                        segnale={ctHdlSegnale}
+                      />
+                      <RigaCalcolata
+                        label="TG / HDL"
+                        outcome={tgHdlCalc}
+                        segnale={tgHdlSegnale}
+                      />
+                    </StrisciaCalcolati>
+                  )}
+                </GruppoCampi>
+
+                <GruppoCampi
+                  titolo="Metabolismo glucidico"
+                  compilati={compilatiTra(GRUPPI_LABORATORIO.glucidico)}
+                  totale={GRUPPI_LABORATORIO.glucidico.length}
+                >
+                  <div className="grid grid-cols-2 gap-3">
+                    <MisuraInput
+                      label="Glicemia"
+                      unit="mg/dL"
+                      decimals={false}
+                      value={visitaData.laboratorio.glicemia}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "glicemia", v)
+                      }
+                      draft={draftOf("lab.gli")}
+                      onDraftChange={(d) => setDraft("lab.gli", d)}
+                      {...misura("lab.gli")}
+                    />
+                    <MisuraInput
+                      label="Insulinemia"
+                      unit="µU/mL"
+                      value={visitaData.laboratorio.insulina}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "insulina", v)
+                      }
+                      draft={draftOf("lab.ins")}
+                      onDraftChange={(d) => setDraft("lab.ins", d)}
+                      {...misura("lab.ins")}
+                    />
+                    <MisuraInput
+                      label="HbA1c"
+                      unit="%"
+                      value={visitaData.laboratorio.hba1c}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "hba1c", v)
+                      }
+                      draft={draftOf("lab.hba1c")}
+                      onDraftChange={(d) => setDraft("lab.hba1c", d)}
+                      {...misura("lab.hba1c")}
+                    />
+                  </div>
+                  {homaCalc.ok && (
+                    <StrisciaCalcolati>
+                      <RigaCalcolata label="HOMA-IR" outcome={homaCalc} />
+                    </StrisciaCalcolati>
+                  )}
+                </GruppoCampi>
+
+                <GruppoCampi
+                  titolo="Funzione renale"
+                  compilati={compilatiTra(GRUPPI_LABORATORIO.renale)}
+                  totale={GRUPPI_LABORATORIO.renale.length}
+                >
+                  <div className="grid grid-cols-2 gap-3">
+                    <MisuraInput
+                      label="Creatinina"
+                      unit="mg/dL"
+                      value={visitaData.laboratorio.creatinina}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "creatinina", v)
+                      }
+                      draft={draftOf("lab.crea")}
+                      onDraftChange={(d) => setDraft("lab.crea", d)}
+                      {...misura("lab.crea")}
+                    />
+                    <MisuraInput
+                      label="Albuminuria"
+                      unit="mg/g"
+                      value={visitaData.laboratorio.albuminuria}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "albuminuria", v)
+                      }
+                      draft={draftOf("lab.alb")}
+                      onDraftChange={(d) => setDraft("lab.alb", d)}
+                      {...misura("lab.alb")}
+                    />
+                  </div>
+                  {egfrCalc.ok && (
+                    <StrisciaCalcolati>
+                      <RigaCalcolata
+                        label={
+                          egfrCalc.ok
+                            ? `eGFR · ${stadioKdigo(egfrCalc.result.value)}`
+                            : "eGFR"
+                        }
+                        outcome={egfrCalc}
+                        segnale={egfrSegnale}
+                      />
+                    </StrisciaCalcolati>
+                  )}
+                </GruppoCampi>
+
+                <GruppoCampi
+                  titolo="Altri parametri"
+                  compilati={compilatiTra(GRUPPI_LABORATORIO.altri)}
+                  totale={GRUPPI_LABORATORIO.altri.length}
+                >
+                  <div className="grid grid-cols-2 gap-3">
+                    <MisuraInput
+                      label="AST"
+                      unit="U/L"
+                      decimals={false}
+                      value={visitaData.laboratorio.ast}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "ast", v)
+                      }
+                      draft={draftOf("lab.ast")}
+                      onDraftChange={(d) => setDraft("lab.ast", d)}
+                      {...misura("lab.ast")}
+                    />
+                    <MisuraInput
+                      label="ALT"
+                      unit="U/L"
+                      decimals={false}
+                      value={visitaData.laboratorio.alt}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "alt", v)
+                      }
+                      draft={draftOf("lab.alt")}
+                      onDraftChange={(d) => setDraft("lab.alt", d)}
+                      {...misura("lab.alt")}
+                    />
+                    <MisuraInput
+                      label="Uricemia"
+                      unit="mg/dL"
+                      value={visitaData.laboratorio.uricemia}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "uricemia", v)
+                      }
+                      draft={draftOf("lab.uric")}
+                      onDraftChange={(d) => setDraft("lab.uric", d)}
+                      {...misura("lab.uric")}
+                    />
+                    <MisuraInput
+                      label="TSH"
+                      unit="mU/L"
+                      value={visitaData.laboratorio.tsh}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "tsh", v)
+                      }
+                      draft={draftOf("lab.tsh")}
+                      onDraftChange={(d) => setDraft("lab.tsh", d)}
+                      {...misura("lab.tsh")}
+                    />
+                    <MisuraInput
+                      label="Emoglobina"
+                      unit="g/dL"
+                      value={visitaData.laboratorio.emoglobina}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "emoglobina", v)
+                      }
+                      draft={draftOf("lab.hb")}
+                      onDraftChange={(d) => setDraft("lab.hb", d)}
+                      {...misura("lab.hb")}
+                    />
+                  </div>
+                </GruppoCampi>
+              </CardBody>
+            </Card>
+
+            <Card className="shadow-sm border border-default-200 bg-white">
+              <CardHeader className="pb-0 pt-4 px-4 font-semibold text-gray-700 uppercase text-xs tracking-wider">
+                Rischio cardiovascolare
+              </CardHeader>
+              {/* `gap` e non `space-y`: le etichette `labelPlacement="outside"`
+                  sono posizionate in modo assoluto e NextUI riserva loro spazio
+                  con un margine sul campo, che `space-y-*` sovrascriverebbe
+                  facendole finire sopra al testo precedente. */}
+              <CardBody className="px-4 py-6 gap-3">
+                <p className="text-[11px] leading-snug text-default-400">
+                  La classe di rischio la attribuisce il medico. Gli obiettivi e
+                  il punteggio che ne derivano restano di supporto e non vengono
+                  scritti nel referto.
+                </p>
+
+                {/* La classe di rischio la attribuisce il medico: e' quella che
+                    sblocca gli obiettivi lipidici, non un calcolo dell'app. */}
+                <Select
+                  label="Classe di rischio CV"
+                  size="sm"
+                  variant="bordered"
+                  labelPlacement="outside"
+                  placeholder="Non attribuita"
+                  selectedKeys={
+                    visitaData.categoriaRischioCv
+                      ? [visitaData.categoriaRischioCv]
+                      : []
+                  }
+                  onSelectionChange={(keys) =>
+                    handleVisitaChange(
+                      "categoriaRischioCv",
+                      (Array.from(keys)[0] as string) ?? "",
+                    )
+                  }
+                  description="La attribuisce il medico dai fattori di rischio; determina gli obiettivi di LDL e ApoB"
+                  classNames={{ description: "text-[10px] leading-tight" }}
+                >
+                  {CATEGORIE_RISCHIO_CV.map((c) => (
+                    <SelectItem key={c} textValue={CATEGORIA_RISCHIO_LABELS[c]}>
+                      {CATEGORIA_RISCHIO_LABELS[c]}
+                      <span className="block text-[10px] text-default-400">
+                        LDL {descriviTargetLdl(c)}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </Select>
+
+                <RiquadroTarget
+                  label="Obiettivo LDL"
+                  esito={ldlTarget}
+                  valore={
+                    ldlEffettivo
+                      ? String(Math.round(ldlEffettivo.valore))
+                      : undefined
+                  }
+                  categoria={
+                    categoriaRischio
+                      ? CATEGORIA_RISCHIO_LABELS[categoriaRischio]
+                      : undefined
+                  }
+                  nota={
+                    ldlEffettivo?.fonte === "stimato"
+                      ? "Confronto sull'LDL stimato con Friedewald"
+                      : undefined
+                  }
+                />
+                <RiquadroTarget
+                  label="Obiettivo ApoB"
+                  esito={apoBTarget}
+                  valore={
+                    lab.apoB != null ? String(Math.round(lab.apoB)) : undefined
+                  }
+                  categoria={
+                    categoriaRischio
+                      ? CATEGORIA_RISCHIO_LABELS[categoriaRischio]
+                      : undefined
+                  }
+                />
+
+                <Divider className="my-1" />
+
+                <Select
+                  label="Regione di rischio SCORE2"
+                  size="sm"
+                  variant="bordered"
+                  labelPlacement="outside"
+                  selectedKeys={[score2Region]}
+                  onSelectionChange={(keys) =>
+                    setScore2Region(Array.from(keys)[0] as Score2Region)
+                  }
+                >
+                  {(
+                    Object.keys(SCORE2_REGION_LABELS) as Score2Region[]
+                  ).map((r) => (
+                    <SelectItem key={r}>{SCORE2_REGION_LABELS[r]}</SelectItem>
+                  ))}
+                </Select>
+                <CalcSuggestion
+                  label="SCORE2 — rischio a 10 anni"
+                  outcome={score2Calc}
+                  emphasis
+                  banda={
+                    score2Categoria && (
+                      <Tooltip
+                        content={score2Categoria.soglie}
+                        placement="top"
+                        delay={200}
+                      >
+                        <Chip
+                          size="sm"
+                          variant="flat"
+                          classNames={{
+                            base: `h-5 cursor-help border ${
+                              score2Categoria.chiave === "molto-alto"
+                                ? "border-danger-300 bg-danger-50"
+                                : score2Categoria.chiave === "alto"
+                                  ? "border-warning-300 bg-warning-50"
+                                  : "border-success-300 bg-success-50"
+                            }`,
+                            content: `px-1.5 text-[10px] font-semibold ${
+                              score2Categoria.chiave === "molto-alto"
+                                ? "text-danger-700"
+                                : score2Categoria.chiave === "alto"
+                                  ? "text-warning-700"
+                                  : "text-success-700"
+                            }`,
+                          }}
+                        >
+                          {score2Categoria.label}
+                        </Chip>
+                      </Tooltip>
+                    )
+                  }
+                />
+                <p className="text-[10px] leading-snug text-default-400">
+                  La categoria segue le fasce d&apos;eta&apos; ESC 2021. Non
+                  tiene conto di diabete, malattia renale o familiarita&apos;,
+                  che spostano il rischio e restano da valutare a parte.
+                </p>
               </CardBody>
             </Card>
 
@@ -1346,10 +2310,879 @@ export default function AddVisit() {
                   />
                 </div>
 
-                {/* Sezione 4: Accertamenti */}
+                {/* Sezione 4: ECG */}
+                <div className="space-y-2 relative group">
+                  <ModuloHeader
+                    numero="4"
+                    titolo="Elettrocardiogramma"
+                    azione={
+                      <TemplateSelector
+                        templates={allTemplates.filter(
+                          (t) => t.category === "visita" && t.section === "ecg",
+                        )}
+                        onSelect={(t) => applyBloccoTemplate("ecg", t)}
+                      />
+                    }
+                  />
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <Select
+                      label="Ritmo"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="—"
+                      className="col-span-2 md:col-span-1"
+                      description={
+                        <PrecedenteTesto precedente={precedenti["ecg.ritmo"]} />
+                      }
+                      classNames={{ description: "m-0" }}
+                      selectedKeys={
+                        visitaData.ecg.ritmo ? [visitaData.ecg.ritmo] : []
+                      }
+                      onSelectionChange={(keys) =>
+                        handleBloccoChange(
+                          "ecg",
+                          "ritmo",
+                          (Array.from(keys)[0] as string) ?? "",
+                        )
+                      }
+                    >
+                      <SelectItem key="sinusale">Sinusale</SelectItem>
+                      <SelectItem key="fibrillazione atriale">
+                        Fibrillazione atriale
+                      </SelectItem>
+                      <SelectItem key="flutter atriale">Flutter atriale</SelectItem>
+                      <SelectItem key="da pacemaker">Da pacemaker</SelectItem>
+                      <SelectItem key="altro">Altro</SelectItem>
+                    </Select>
+                    <MisuraInput
+                      label="PR"
+                      unit="ms"
+                      decimals={false}
+                      value={visitaData.ecg.pr}
+                      onValueChange={(v) => handleBloccoChange("ecg", "pr", v)}
+                      draft={draftOf("ecg.pr")}
+                      onDraftChange={(d) => setDraft("ecg.pr", d)}
+                      {...misura("ecg.pr")}
+                    />
+                    <MisuraInput
+                      label="QRS"
+                      unit="ms"
+                      decimals={false}
+                      value={visitaData.ecg.qrs}
+                      onValueChange={(v) => handleBloccoChange("ecg", "qrs", v)}
+                      draft={draftOf("ecg.qrs")}
+                      onDraftChange={(d) => setDraft("ecg.qrs", d)}
+                      {...misura("ecg.qrs")}
+                    />
+                    <MisuraInput
+                      label="QT"
+                      unit="ms"
+                      decimals={false}
+                      value={visitaData.ecg.qt}
+                      onValueChange={(v) => handleBloccoChange("ecg", "qt", v)}
+                      draft={draftOf("ecg.qt")}
+                      onDraftChange={(d) => setDraft("ecg.qt", d)}
+                      {...misura("ecg.qt")}
+                    />
+                    <MisuraInput
+                      label="Asse QRS"
+                      unit="°"
+                      decimals={false}
+                      value={visitaData.ecg.asse}
+                      onValueChange={(v) => handleBloccoChange("ecg", "asse", v)}
+                      draft={draftOf("ecg.asse")}
+                      onDraftChange={(d) => setDraft("ecg.asse", d)}
+                      {...misura("ecg.asse")}
+                    />
+                  </div>
+                  <div className="max-w-xs">
+                        <CalcSuggestion
+                      label="QTc (Bazett)"
+                      outcome={qtcCalc}
+                      segnale={qtcSegnale}
+                    />
+                  </div>
+                  <RefertoTextarea
+                    value={visitaData.ecg.referto ?? ""}
+                    onValueChange={(value) =>
+                      handleBloccoChange("ecg", "referto", value)
+                    }
+                    variant="bordered"
+                    minRows={4}
+                    placeholder="Ritmo, conduzione, ripolarizzazione, confronto con i tracciati precedenti..."
+                  />
+                </div>
+
+                {/* Sezione 5: Ecocardiogramma */}
+                <div className="space-y-2 relative group">
+                  <ModuloHeader
+                    numero="5"
+                    titolo="Ecocardiogramma"
+                    azione={
+                      <TemplateSelector
+                        templates={allTemplates.filter(
+                          (t) =>
+                            t.category === "visita" &&
+                            t.section === "ecocardiogramma",
+                        )}
+                        onSelect={(t) =>
+                          applyBloccoTemplate("ecocardiogramma", t)
+                        }
+                      />
+                    }
+                  />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <MisuraInput
+                      label="DTD VS"
+                      unit="mm"
+                      decimals={false}
+                      value={visitaData.ecocardiogramma.ddvs}
+                      onValueChange={(v) =>
+                        handleBloccoChange("ecocardiogramma", "ddvs", v)
+                      }
+                      draft={draftOf("eco.ddvs")}
+                      onDraftChange={(d) => setDraft("eco.ddvs", d)}
+                      {...misura("eco.ddvs")}
+                    />
+                    <MisuraInput
+                      label="DTS VS"
+                      unit="mm"
+                      decimals={false}
+                      value={visitaData.ecocardiogramma.dsvs}
+                      onValueChange={(v) =>
+                        handleBloccoChange("ecocardiogramma", "dsvs", v)
+                      }
+                      draft={draftOf("eco.dsvs")}
+                      onDraftChange={(d) => setDraft("eco.dsvs", d)}
+                      {...misura("eco.dsvs")}
+                    />
+                    <MisuraInput
+                      label="SIV"
+                      unit="mm"
+                      decimals={false}
+                      value={visitaData.ecocardiogramma.siv}
+                      onValueChange={(v) =>
+                        handleBloccoChange("ecocardiogramma", "siv", v)
+                      }
+                      draft={draftOf("eco.siv")}
+                      onDraftChange={(d) => setDraft("eco.siv", d)}
+                      {...misura("eco.siv")}
+                    />
+                    <MisuraInput
+                      label="Parete post."
+                      unit="mm"
+                      decimals={false}
+                      value={visitaData.ecocardiogramma.pp}
+                      onValueChange={(v) =>
+                        handleBloccoChange("ecocardiogramma", "pp", v)
+                      }
+                      draft={draftOf("eco.pp")}
+                      onDraftChange={(d) => setDraft("eco.pp", d)}
+                      {...misura("eco.pp")}
+                    />
+                    <MisuraInput
+                      label="FE"
+                      unit="%"
+                      decimals={false}
+                      value={visitaData.ecocardiogramma.fe}
+                      onValueChange={(v) =>
+                        handleBloccoChange("ecocardiogramma", "fe", v)
+                      }
+                      draft={draftOf("eco.fe")}
+                      onDraftChange={(d) => setDraft("eco.fe", d)}
+                      {...misura("eco.fe")}
+                    />
+                    <MisuraInput
+                      label="Atrio sx"
+                      unit="mm"
+                      decimals={false}
+                      value={visitaData.ecocardiogramma.atrioSinistro}
+                      onValueChange={(v) =>
+                        handleBloccoChange("ecocardiogramma", "atrioSinistro", v)
+                      }
+                      draft={draftOf("eco.as")}
+                      onDraftChange={(d) => setDraft("eco.as", d)}
+                      {...misura("eco.as")}
+                    />
+                    <MisuraInput
+                      label="Radice aortica"
+                      unit="mm"
+                      decimals={false}
+                      value={visitaData.ecocardiogramma.radiceAortica}
+                      onValueChange={(v) =>
+                        handleBloccoChange("ecocardiogramma", "radiceAortica", v)
+                      }
+                      draft={draftOf("eco.rad")}
+                      onDraftChange={(d) => setDraft("eco.rad", d)}
+                      {...misura("eco.rad")}
+                    />
+                    <MisuraInput
+                      label="Aorta asc."
+                      unit="mm"
+                      decimals={false}
+                      value={visitaData.ecocardiogramma.aortaAscendente}
+                      onValueChange={(v) =>
+                        handleBloccoChange("ecocardiogramma", "aortaAscendente", v)
+                      }
+                      draft={draftOf("eco.aoasc")}
+                      onDraftChange={(d) => setDraft("eco.aoasc", d)}
+                      {...misura("eco.aoasc")}
+                    />
+                    <MisuraInput
+                      label="TAPSE"
+                      unit="mm"
+                      decimals={false}
+                      value={visitaData.ecocardiogramma.tapse}
+                      onValueChange={(v) =>
+                        handleBloccoChange("ecocardiogramma", "tapse", v)
+                      }
+                      draft={draftOf("eco.tapse")}
+                      onDraftChange={(d) => setDraft("eco.tapse", d)}
+                      {...misura("eco.tapse")}
+                    />
+                    <MisuraInput
+                      label="PAPs"
+                      unit="mmHg"
+                      decimals={false}
+                      value={visitaData.ecocardiogramma.paps}
+                      onValueChange={(v) =>
+                        handleBloccoChange("ecocardiogramma", "paps", v)
+                      }
+                      draft={draftOf("eco.paps")}
+                      onDraftChange={(d) => setDraft("eco.paps", d)}
+                      {...misura("eco.paps")}
+                    />
+                    <MisuraInput
+                      label="E/A"
+                      value={visitaData.ecocardiogramma.rapportoEA}
+                      onValueChange={(v) =>
+                        handleBloccoChange("ecocardiogramma", "rapportoEA", v)
+                      }
+                      draft={draftOf("eco.ea")}
+                      onDraftChange={(d) => setDraft("eco.ea", d)}
+                      {...misura("eco.ea")}
+                    />
+                    <MisuraInput
+                      label="E/e'"
+                      value={visitaData.ecocardiogramma.rapportoEe}
+                      onValueChange={(v) =>
+                        handleBloccoChange("ecocardiogramma", "rapportoEe", v)
+                      }
+                      draft={draftOf("eco.ee")}
+                      onDraftChange={(d) => setDraft("eco.ee", d)}
+                      {...misura("eco.ee")}
+                    />
+                  </div>
+                  <RefertoTextarea
+                    value={visitaData.ecocardiogramma.referto ?? ""}
+                    onValueChange={(value) =>
+                      handleBloccoChange("ecocardiogramma", "referto", value)
+                    }
+                    variant="bordered"
+                    minRows={5}
+                    placeholder="Camere, cinesi, valvole, sezioni destre, pericardio..."
+                  />
+                </div>
+
+                {/* Sezione 6: TC coronarica */}
+                <div className="space-y-2 relative group">
+                  <ModuloHeader
+                    numero="6"
+                    titolo="TC coronarica"
+                    azione={
+                      <TemplateSelector
+                        templates={allTemplates.filter(
+                          (t) =>
+                            t.category === "visita" &&
+                            t.section === "tcCoronarica",
+                        )}
+                        onSelect={(t) => applyBloccoTemplate("tcCoronarica", t)}
+                      />
+                    }
+                  />
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <Input
+                      type="date"
+                      label="Data esame"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      value={visitaData.tcCoronarica.dataEsame ?? ""}
+                      onValueChange={(v) =>
+                        handleBloccoChange("tcCoronarica", "dataEsame", v)
+                      }
+                    />
+                    <Input
+                      label="Struttura"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="Dove e' stato eseguito"
+                      value={visitaData.tcCoronarica.struttura ?? ""}
+                      onValueChange={(v) =>
+                        handleBloccoChange("tcCoronarica", "struttura", v)
+                      }
+                    />
+                    <MisuraInput
+                      label="Calcium score"
+                      unit="Agatston"
+                      decimals={false}
+                      value={visitaData.tcCoronarica.cacScore}
+                      onValueChange={(v) =>
+                        handleBloccoChange("tcCoronarica", "cacScore", v)
+                      }
+                      draft={draftOf("tc.cac")}
+                      onDraftChange={(d) => setDraft("tc.cac", d)}
+                      {...misura("tc.cac")}
+                    />
+                    <Select
+                      label="CAD-RADS"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="—"
+                      description={
+                        <PrecedenteTesto
+                          precedente={precedenti["tcCoronarica.cadRads"]}
+                          descrivi={(k) =>
+                            CAD_RADS_OPTIONS.find((o) => o.key === k)?.label ?? k
+                          }
+                        />
+                      }
+                      classNames={{ description: "m-0" }}
+                      selectedKeys={
+                        visitaData.tcCoronarica.cadRads
+                          ? [visitaData.tcCoronarica.cadRads]
+                          : []
+                      }
+                      onSelectionChange={(keys) =>
+                        handleBloccoChange(
+                          "tcCoronarica",
+                          "cadRads",
+                          (Array.from(keys)[0] as string) ?? "",
+                        )
+                      }
+                    >
+                      {CAD_RADS_OPTIONS.map((o) => (
+                        <SelectItem key={o.key}>{o.label}</SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+                  {fasciaCacScore(visitaData.tcCoronarica.cacScore) && (
+                    <p className="text-xs text-default-500">
+                      Calcificazione coronarica:{" "}
+                      <span className="font-semibold text-gray-700">
+                        {fasciaCacScore(visitaData.tcCoronarica.cacScore)}
+                      </span>{" "}
+                      — fasce Agatston di uso comune, descrittive e non
+                      diagnostiche.
+                    </p>
+                  )}
+                  <RefertoTextarea
+                    value={visitaData.tcCoronarica.referto ?? ""}
+                    onValueChange={(value) =>
+                      handleBloccoChange("tcCoronarica", "referto", value)
+                    }
+                    variant="bordered"
+                    minRows={4}
+                    placeholder="Sintesi del referto radiologico, sedi delle placche, conclusioni..."
+                  />
+                </div>
+
+                {/* Sezione 7: Test ergometrico */}
+                <ModuloCollassabile
+                  numero="7"
+                  titolo="Test ergometrico"
+                  sottotitolo="non eseguito"
+                  compilato={bloccoCompilato("testErgometrico")}
+                  azione={
+                    <TemplateSelector
+                      templates={allTemplates.filter(
+                        (t) =>
+                          t.category === "visita" &&
+                          t.section === "testErgometrico",
+                      )}
+                      onSelect={(t) => applyBloccoTemplate("testErgometrico", t)}
+                    />
+                  }
+                >
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <Input
+                      type="date"
+                      label="Data esame"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      value={visitaData.testErgometrico.dataEsame ?? ""}
+                      onValueChange={(v) =>
+                        handleBloccoChange("testErgometrico", "dataEsame", v)
+                      }
+                    />
+                    <Select
+                      label="Protocollo"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="—"
+                      selectedKeys={
+                        visitaData.testErgometrico.protocollo
+                          ? [visitaData.testErgometrico.protocollo]
+                          : []
+                      }
+                      onSelectionChange={(keys) =>
+                        handleBloccoChange(
+                          "testErgometrico",
+                          "protocollo",
+                          (Array.from(keys)[0] as string) ?? "",
+                        )
+                      }
+                    >
+                      <SelectItem key="Bruce">Bruce</SelectItem>
+                      <SelectItem key="Bruce modificato">
+                        Bruce modificato
+                      </SelectItem>
+                      <SelectItem key="Cicloergometro a rampa">
+                        Cicloergometro a rampa
+                      </SelectItem>
+                      <SelectItem key="Altro">Altro</SelectItem>
+                    </Select>
+                    <MisuraInput
+                      label="Durata"
+                      unit="min"
+                      value={visitaData.testErgometrico.durataMin}
+                      onValueChange={(v) =>
+                        handleBloccoChange("testErgometrico", "durataMin", v)
+                      }
+                      draft={draftOf("erg.durata")}
+                      onDraftChange={(d) => setDraft("erg.durata", d)}
+                      {...misura("erg.durata")}
+                    />
+                    <MisuraInput
+                      label="Carico max"
+                      unit="watt"
+                      decimals={false}
+                      value={visitaData.testErgometrico.caricoWatt}
+                      onValueChange={(v) =>
+                        handleBloccoChange("testErgometrico", "caricoWatt", v)
+                      }
+                      draft={draftOf("erg.watt")}
+                      onDraftChange={(d) => setDraft("erg.watt", d)}
+                      {...misura("erg.watt")}
+                    />
+                    <MisuraInput
+                      label="METs"
+                      value={visitaData.testErgometrico.mets}
+                      onValueChange={(v) =>
+                        handleBloccoChange("testErgometrico", "mets", v)
+                      }
+                      draft={draftOf("erg.mets")}
+                      onDraftChange={(d) => setDraft("erg.mets", d)}
+                      {...misura("erg.mets")}
+                    />
+                    <MisuraInput
+                      label="FC max raggiunta"
+                      unit="bpm"
+                      decimals={false}
+                      value={visitaData.testErgometrico.fcMax}
+                      onValueChange={(v) =>
+                        handleBloccoChange("testErgometrico", "fcMax", v)
+                      }
+                      draft={draftOf("erg.fcmax")}
+                      onDraftChange={(d) => setDraft("erg.fcmax", d)}
+                      {...misura("erg.fcmax")}
+                    />
+                    <Input
+                      label="P.A. al picco"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="Es. 180/90"
+                      value={visitaData.testErgometrico.paMax ?? ""}
+                      onValueChange={(v) =>
+                        handleBloccoChange("testErgometrico", "paMax", v)
+                      }
+                    />
+                    <Select
+                      label="Esito"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="—"
+                      selectedKeys={
+                        visitaData.testErgometrico.esito
+                          ? [visitaData.testErgometrico.esito]
+                          : []
+                      }
+                      onSelectionChange={(keys) =>
+                        handleBloccoChange(
+                          "testErgometrico",
+                          "esito",
+                          (Array.from(keys)[0] as string) ?? "",
+                        )
+                      }
+                    >
+                      <SelectItem key="negativo">
+                        Negativo per ischemia inducibile
+                      </SelectItem>
+                      <SelectItem key="positivo">
+                        Positivo per ischemia inducibile
+                      </SelectItem>
+                      <SelectItem key="dubbio">Dubbio</SelectItem>
+                      <SelectItem key="non diagnostico">
+                        Non diagnostico
+                      </SelectItem>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+                    <Input
+                      label="Motivo dell'interruzione"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="Esaurimento muscolare, sintomi, aritmia..."
+                      value={visitaData.testErgometrico.motivoInterruzione ?? ""}
+                      onValueChange={(v) =>
+                        handleBloccoChange(
+                          "testErgometrico",
+                          "motivoInterruzione",
+                          v,
+                        )
+                      }
+                    />
+                    <CalcSuggestion
+                      label="FC raggiunta sulla teorica"
+                      outcome={fcMaxPctCalc}
+                    />
+                  </div>
+                  <RefertoTextarea
+                    value={visitaData.testErgometrico.referto ?? ""}
+                    onValueChange={(value) =>
+                      handleBloccoChange("testErgometrico", "referto", value)
+                    }
+                    variant="bordered"
+                    minRows={4}
+                    placeholder="Comportamento pressorio, alterazioni del tratto ST, sintomi, aritmie da sforzo..."
+                  />
+                </ModuloCollassabile>
+
+                {/* Sezione 8: Holter ECG */}
+                <ModuloCollassabile
+                  numero="8"
+                  titolo="ECG dinamico secondo Holter"
+                  sottotitolo="non eseguito"
+                  compilato={bloccoCompilato("holterEcg")}
+                  azione={
+                    <TemplateSelector
+                      templates={allTemplates.filter(
+                        (t) =>
+                          t.category === "visita" && t.section === "holterEcg",
+                      )}
+                      onSelect={(t) => applyBloccoTemplate("holterEcg", t)}
+                    />
+                  }
+                >
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <Input
+                      type="date"
+                      label="Data inizio"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      value={visitaData.holterEcg.dataEsame ?? ""}
+                      onValueChange={(v) =>
+                        handleBloccoChange("holterEcg", "dataEsame", v)
+                      }
+                    />
+                    <MisuraInput
+                      label="Durata"
+                      unit="ore"
+                      decimals={false}
+                      value={visitaData.holterEcg.durataOre}
+                      onValueChange={(v) =>
+                        handleBloccoChange("holterEcg", "durataOre", v)
+                      }
+                      draft={draftOf("hecg.durata")}
+                      onDraftChange={(d) => setDraft("hecg.durata", d)}
+                      {...misura("hecg.durata")}
+                    />
+                    <MisuraInput
+                      label="FC media"
+                      unit="bpm"
+                      decimals={false}
+                      value={visitaData.holterEcg.fcMedia}
+                      onValueChange={(v) =>
+                        handleBloccoChange("holterEcg", "fcMedia", v)
+                      }
+                      draft={draftOf("hecg.fcmedia")}
+                      onDraftChange={(d) => setDraft("hecg.fcmedia", d)}
+                      {...misura("hecg.fcmedia")}
+                    />
+                    <Select
+                      label="Ritmo prevalente"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="—"
+                      selectedKeys={
+                        visitaData.holterEcg.ritmoPrevalente
+                          ? [visitaData.holterEcg.ritmoPrevalente]
+                          : []
+                      }
+                      onSelectionChange={(keys) =>
+                        handleBloccoChange(
+                          "holterEcg",
+                          "ritmoPrevalente",
+                          (Array.from(keys)[0] as string) ?? "",
+                        )
+                      }
+                    >
+                      <SelectItem key="sinusale">Sinusale</SelectItem>
+                      <SelectItem key="fibrillazione atriale">
+                        Fibrillazione atriale
+                      </SelectItem>
+                      <SelectItem key="da pacemaker">Da pacemaker</SelectItem>
+                      <SelectItem key="altro">Altro</SelectItem>
+                    </Select>
+                    <MisuraInput
+                      label="FC minima"
+                      unit="bpm"
+                      decimals={false}
+                      value={visitaData.holterEcg.fcMin}
+                      onValueChange={(v) =>
+                        handleBloccoChange("holterEcg", "fcMin", v)
+                      }
+                      draft={draftOf("hecg.fcmin")}
+                      onDraftChange={(d) => setDraft("hecg.fcmin", d)}
+                      {...misura("hecg.fcmin")}
+                    />
+                    <MisuraInput
+                      label="FC massima"
+                      unit="bpm"
+                      decimals={false}
+                      value={visitaData.holterEcg.fcMax}
+                      onValueChange={(v) =>
+                        handleBloccoChange("holterEcg", "fcMax", v)
+                      }
+                      draft={draftOf("hecg.fcmax")}
+                      onDraftChange={(d) => setDraft("hecg.fcmax", d)}
+                      {...misura("hecg.fcmax")}
+                    />
+                    <MisuraInput
+                      label="BESV / 24h"
+                      decimals={false}
+                      value={visitaData.holterEcg.besv}
+                      onValueChange={(v) =>
+                        handleBloccoChange("holterEcg", "besv", v)
+                      }
+                      draft={draftOf("hecg.besv")}
+                      onDraftChange={(d) => setDraft("hecg.besv", d)}
+                      {...misura("hecg.besv")}
+                    />
+                    <MisuraInput
+                      label="BEV / 24h"
+                      decimals={false}
+                      value={visitaData.holterEcg.bev}
+                      onValueChange={(v) =>
+                        handleBloccoChange("holterEcg", "bev", v)
+                      }
+                      draft={draftOf("hecg.bev")}
+                      onDraftChange={(d) => setDraft("hecg.bev", d)}
+                      {...misura("hecg.bev")}
+                    />
+                    <MisuraInput
+                      label="Pausa max"
+                      unit="s"
+                      value={visitaData.holterEcg.pausaMaxSec}
+                      onValueChange={(v) =>
+                        handleBloccoChange("holterEcg", "pausaMaxSec", v)
+                      }
+                      draft={draftOf("hecg.pausa")}
+                      onDraftChange={(d) => setDraft("hecg.pausa", d)}
+                      {...misura("hecg.pausa")}
+                    />
+                  </div>
+                  <RefertoTextarea
+                    value={visitaData.holterEcg.referto ?? ""}
+                    onValueChange={(value) =>
+                      handleBloccoChange("holterEcg", "referto", value)
+                    }
+                    variant="bordered"
+                    minRows={4}
+                    placeholder="Ritmo, aritmie sopraventricolari e ventricolari, pause, correlazione con i sintomi riferiti sul diario..."
+                  />
+                </ModuloCollassabile>
+
+                {/* Sezione 9: Holter pressorio */}
+                <ModuloCollassabile
+                  numero="9"
+                  titolo="Monitoraggio pressorio delle 24 ore"
+                  sottotitolo="non eseguito"
+                  compilato={bloccoCompilato("holterPressorio")}
+                  azione={
+                    <TemplateSelector
+                      templates={allTemplates.filter(
+                        (t) =>
+                          t.category === "visita" &&
+                          t.section === "holterPressorio",
+                      )}
+                      onSelect={(t) => applyBloccoTemplate("holterPressorio", t)}
+                    />
+                  }
+                >
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <Input
+                      type="date"
+                      label="Data inizio"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      value={visitaData.holterPressorio.dataEsame ?? ""}
+                      onValueChange={(v) =>
+                        handleBloccoChange("holterPressorio", "dataEsame", v)
+                      }
+                    />
+                    <MisuraInput
+                      label="Media 24h sist."
+                      unit="mmHg"
+                      decimals={false}
+                      value={visitaData.holterPressorio.media24Sist}
+                      onValueChange={(v) =>
+                        handleBloccoChange("holterPressorio", "media24Sist", v)
+                      }
+                      draft={draftOf("hp.m24s")}
+                      onDraftChange={(d) => setDraft("hp.m24s", d)}
+                      {...misura("hp.m24s")}
+                    />
+                    <MisuraInput
+                      label="Media 24h diast."
+                      unit="mmHg"
+                      decimals={false}
+                      value={visitaData.holterPressorio.media24Diast}
+                      onValueChange={(v) =>
+                        handleBloccoChange("holterPressorio", "media24Diast", v)
+                      }
+                      draft={draftOf("hp.m24d")}
+                      onDraftChange={(d) => setDraft("hp.m24d", d)}
+                      {...misura("hp.m24d")}
+                    />
+                    <MisuraInput
+                      label="Carico pressorio"
+                      unit="%"
+                      decimals={false}
+                      value={visitaData.holterPressorio.caricoPressorioPct}
+                      onValueChange={(v) =>
+                        handleBloccoChange(
+                          "holterPressorio",
+                          "caricoPressorioPct",
+                          v,
+                        )
+                      }
+                      draft={draftOf("hp.carico")}
+                      onDraftChange={(d) => setDraft("hp.carico", d)}
+                      {...misura("hp.carico")}
+                    />
+                    <MisuraInput
+                      label="Media diurna sist."
+                      unit="mmHg"
+                      decimals={false}
+                      value={visitaData.holterPressorio.mediaDiurnaSist}
+                      onValueChange={(v) =>
+                        handleBloccoChange(
+                          "holterPressorio",
+                          "mediaDiurnaSist",
+                          v,
+                        )
+                      }
+                      draft={draftOf("hp.mds")}
+                      onDraftChange={(d) => setDraft("hp.mds", d)}
+                      {...misura("hp.mds")}
+                    />
+                    <MisuraInput
+                      label="Media diurna diast."
+                      unit="mmHg"
+                      decimals={false}
+                      value={visitaData.holterPressorio.mediaDiurnaDiast}
+                      onValueChange={(v) =>
+                        handleBloccoChange(
+                          "holterPressorio",
+                          "mediaDiurnaDiast",
+                          v,
+                        )
+                      }
+                      draft={draftOf("hp.mdd")}
+                      onDraftChange={(d) => setDraft("hp.mdd", d)}
+                      {...misura("hp.mdd")}
+                    />
+                    <MisuraInput
+                      label="Media notturna sist."
+                      unit="mmHg"
+                      decimals={false}
+                      value={visitaData.holterPressorio.mediaNotturnaSist}
+                      onValueChange={(v) =>
+                        handleBloccoChange(
+                          "holterPressorio",
+                          "mediaNotturnaSist",
+                          v,
+                        )
+                      }
+                      draft={draftOf("hp.mns")}
+                      onDraftChange={(d) => setDraft("hp.mns", d)}
+                      {...misura("hp.mns")}
+                    />
+                    <MisuraInput
+                      label="Media notturna diast."
+                      unit="mmHg"
+                      decimals={false}
+                      value={visitaData.holterPressorio.mediaNotturnaDiast}
+                      onValueChange={(v) =>
+                        handleBloccoChange(
+                          "holterPressorio",
+                          "mediaNotturnaDiast",
+                          v,
+                        )
+                      }
+                      draft={draftOf("hp.mnd")}
+                      onDraftChange={(d) => setDraft("hp.mnd", d)}
+                      {...misura("hp.mnd")}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+                    <MisuraInput
+                      label="Calo notturno riportato"
+                      unit="%"
+                      value={visitaData.holterPressorio.caloNotturnoPct}
+                      onValueChange={(v) =>
+                        handleBloccoChange(
+                          "holterPressorio",
+                          "caloNotturnoPct",
+                          v,
+                        )
+                      }
+                      draft={draftOf("hp.calo")}
+                      onDraftChange={(d) => setDraft("hp.calo", d)}
+                      {...misura("hp.calo")}
+                    />
+                    <CalcSuggestion
+                      label="Calo notturno calcolato"
+                      outcome={caloNotturnoCalc}
+                    />
+                  </div>
+                  <RefertoTextarea
+                    value={visitaData.holterPressorio.referto ?? ""}
+                    onValueChange={(value) =>
+                      handleBloccoChange("holterPressorio", "referto", value)
+                    }
+                    variant="bordered"
+                    minRows={4}
+                    placeholder="Profilo circadiano, controllo pressorio nelle 24 ore, tolleranza della terapia in corso..."
+                  />
+                </ModuloCollassabile>
+
+                {/* Sezione 10: Accertamenti */}
                 <div className="space-y-2 relative group">
                   <label className="text-sm font-bold text-gray-700 block mb-1">
-                    4. Accertamenti
+                    10. Accertamenti
                   </label>
                   <RefertoTextarea
                     value={visitaData.accertamenti}
@@ -1362,11 +3195,11 @@ export default function AddVisit() {
                   />
                 </div>
 
-                {/* Sezione 5: Conclusioni e terapia */}
+                {/* Sezione 11: Conclusioni e terapia */}
                 <div className="space-y-2 relative group">
                   <div className="flex justify-between items-end mb-1">
                     <label className="text-sm font-bold text-gray-700">
-                      5. Conclusioni e Terapia
+                      11. Conclusioni e Terapia
                     </label>
                     <TemplateSelector
                       templates={allTemplates.filter(

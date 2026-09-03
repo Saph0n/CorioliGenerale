@@ -53,10 +53,12 @@ import {
   CertificatoService,
   RicettaService,
   TemplateService,
+  PreferenceService,
 } from "../../services/OfflineServices";
 import { PdfService } from "../../services/PdfService";
 import {
   Patient,
+  AppartenenzaGruppo,
   Visit,
   Doctor,
   RichiestaEsameComplementare,
@@ -84,6 +86,22 @@ import {
   validateBirthDate,
 } from "../../utils/formValidation";
 import { AppModal } from "../../components/AppModal";
+import {
+  formattaDurata,
+  giorniDa,
+  gruppiDelPaziente,
+  gruppoKey,
+} from "../../utils/gruppiRicerca";
+
+/** Da quanto il paziente è in un gruppo, per il tooltip del chip. */
+function dettaglioArruolamento(g: AppartenenzaGruppo): string {
+  if (!g.dal) return "data di arruolamento non registrata";
+  const quando = new Date(`${g.dal}T12:00:00`).toLocaleDateString("it-IT");
+  const giorni = giorniDa(g.dal);
+  return giorni == null
+    ? `arruolato il ${quando}`
+    : `arruolato il ${quando} · da ${formattaDurata(giorni)}`;
+}
 
 function calculateAge(birthDateString: string): string {
   if (!birthDateString) return "";
@@ -192,6 +210,8 @@ export default function PatientHistory() {
   const [editingRichiestaEsame, setEditingRichiestaEsame] =
     useState<RichiestaEsameComplementare | null>(null);
   const [notaBeneLocal, setNotaBeneLocal] = useState("");
+  /** Gruppi di ricerca: attivi solo se la funzione e' abilitata in Impostazioni. */
+  const [gruppiAbilitati, setGruppiAbilitati] = useState(false);
   const [savingNotaBene, setSavingNotaBene] = useState(false);
   const [isNotaBeneOpen, setIsNotaBeneOpen] = useState(false);
   const [nuovaRichiestaNome, setNuovaRichiestaNome] = useState("");
@@ -329,6 +349,21 @@ export default function PatientHistory() {
   useEffect(() => {
     setNotaBeneLocal(patient?.notaBene ?? "");
   }, [patient?.id, patient?.notaBene]);
+
+  useEffect(() => {
+    const carica = async () => {
+      try {
+        const prefs = await PreferenceService.getPreferences();
+        setGruppiAbilitati(Boolean(prefs?.gruppiRicercaEnabled));
+      } catch {
+        setGruppiAbilitati(false);
+      }
+    };
+    void carica();
+    const onFocus = () => void carica();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -1480,6 +1515,43 @@ export default function PatientHistory() {
                     )}
                   </div>
                 )}
+                {/* Sola lettura: i gruppi si assegnano dalla pagina del
+                    progetto, dove si vede tutta la coorte. Qui il chip dice a
+                    cosa partecipa il paziente e ci porta dentro. */}
+                {gruppiAbilitati && gruppiDelPaziente(patient).length > 0 && (
+                  <div className="flex items-start gap-1.5 mt-1">
+                    <FlaskConical
+                      size={13}
+                      className="text-default-400 shrink-0 mt-1"
+                      aria-hidden
+                    />
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {gruppiDelPaziente(patient).map((g) => (
+                        <Chip
+                          key={gruppoKey(g.nome)}
+                          size="sm"
+                          variant="flat"
+                          // Tinta brand invece di `secondary`, che in questo
+                          // tema è slate quasi bianco: il chip è cliccabile e
+                          // deve leggersi come tale, non come testo semplice.
+                          classNames={{
+                            base: "cursor-pointer border border-brand-200 bg-brand-50 transition-colors hover:bg-brand-100",
+                            content: "text-brand-700 font-medium",
+                          }}
+                          title={`${dettaglioArruolamento(g)} — apri il gruppo`}
+                          onClick={() =>
+                            navigate(
+                              `/gruppi-ricerca?gruppo=${encodeURIComponent(g.nome)}`,
+                            )
+                          }
+                        >
+                          {g.nome}
+                        </Chip>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {patient.allergie && patient.allergie.trim() !== "" && (
                   <div className="text-sm text-danger-500 pt-1 flex items-center gap-1">
                     <span className="inline-flex shrink-0 items-center">

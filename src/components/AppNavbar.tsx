@@ -125,7 +125,7 @@ export default function AppNavbar() {
         }
 
         if (doctor) {
-          const { blocked, reason } = await sendHeartbeat(doctor, "corioli-generale");
+          const { blocked, reason } = await sendHeartbeat(doctor, "corioli-cardiologia");
           if (blocked === null) return;
           const payload = {
             blocked: blocked,
@@ -201,11 +201,11 @@ export default function AppNavbar() {
             to="/"
             onClick={(e) => onGuardedNavClick(e, "/")}
             className="flex min-w-0 items-center outline-none ring-offset-2 ring-offset-background rounded-md focus-visible:ring-2 focus-visible:ring-primary"
-            aria-label="Corioli Generale — vai alla dashboard"
+            aria-label="Corioli Cardiologia — vai alla dashboard"
           >
             <img
               src={`${import.meta.env.BASE_URL}corioli-logo-navbar.png`}
-              alt="Corioli Generale"
+              alt="Corioli Cardiologia"
               width={220}
               height={40}
               className="h-7 w-auto max-h-8 object-contain object-left md:h-8 md:max-h-9"

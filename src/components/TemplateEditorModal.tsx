@@ -60,7 +60,10 @@ const SECTION_TO_CAMPO = Object.fromEntries(
 const SECTION_LABELS: Partial<Record<TemplateSection, string>> = {
   prestazione: "1. Anamnesi (campo unico)",
   esameObiettivo: "3. Esame Obiettivo",
-  conclusioni: "4. Conclusioni e Terapia",
+  ecg: "4. ECG",
+  ecocardiogramma: "5. Ecocardiogramma",
+  tcCoronarica: "6. TC coronarica",
+  conclusioni: "8. Conclusioni e Terapia",
   anamnesiFamiliare: "1. Anamnesi · Familiare",
   anamnesiFisiologica: "1. Anamnesi · Fisiologica",
   anamnesiPatologica: "1. Anamnesi · Patologica",
@@ -71,7 +74,15 @@ const SECTION_LABELS: Partial<Record<TemplateSection, string>> = {
 };
 
 const SECTIONS_BY_CATEGORY: Record<TemplateCategory, TemplateSection[]> = {
-  visita: ["prestazione", ...ANAMNESI_SUBSECTIONS, "esameObiettivo", "conclusioni"],
+  visita: [
+    "prestazione",
+    ...ANAMNESI_SUBSECTIONS,
+    "esameObiettivo",
+    "ecg",
+    "ecocardiogramma",
+    "tcCoronarica",
+    "conclusioni",
+  ],
   terapie: ["generale"],
   ricette: ["generale"],
   esame_complementare: ["nome"],
@@ -102,7 +113,10 @@ const VISITA_FIELDS: VisitFieldMock[] = [
   { section: "prestazione", label: "1. Anamnesi", hasModello: true },
   { label: "2. Descrizione Problema", hasModello: false },
   { section: "esameObiettivo", label: "3. Esame Obiettivo", hasModello: true },
-  { section: "conclusioni", label: "4. Conclusioni e Terapia", hasModello: true },
+  { section: "ecg", label: "4. ECG", hasModello: true },
+  { section: "ecocardiogramma", label: "5. Ecocardiogramma", hasModello: true },
+  { section: "tcCoronarica", label: "6. TC coronarica", hasModello: true },
+  { section: "conclusioni", label: "8. Conclusioni e Terapia", hasModello: true },
 ];
 
 type LivePreviewContent = {
@@ -572,6 +586,9 @@ export function TemplateEditorModal({
             ? anamnesiSections.map((s) => s.templateSection)
             : []),
           "esameObiettivo",
+          "ecg",
+          "ecocardiogramma",
+          "tcCoronarica",
           "conclusioni",
         ]
       : SECTIONS_BY_CATEGORY[category];
