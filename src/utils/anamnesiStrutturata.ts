@@ -71,7 +71,7 @@ export const ANAMNESI_STRUTTURATA_FIELDS: AnamnesiCampoMeta[] = [
   {
     key: "patologica",
     label: "Patologica",
-    placeholder: "Patologie note, ricoveri, comorbilita'...",
+    placeholder: "Patologie note, ricoveri, comorbilità...",
     minRows: 3,
     templateSection: "anamnesiPatologica",
   },
@@ -99,7 +99,7 @@ export const ANAMNESI_STRUTTURATA_FIELDS: AnamnesiCampoMeta[] = [
   {
     key: "abitudini",
     label: "Abitudini di vita",
-    placeholder: "Fumo, alcol, attivita' fisica, occupazione...",
+    placeholder: "Fumo, alcol, attività fisica, occupazione...",
     minRows: 2,
     templateSection: "anamnesiAbitudini",
   },

@@ -2,6 +2,7 @@ import { StorageService, Patient, Visit, VisitRevision, Doctor, Document, AppDat
 import { MedicalTemplates } from '../data/medicalTemplates';
 import { computeVisitChanges } from '../utils/visitHistory';
 import { BACKUP_SCHEMA_VERSION } from '../utils/backupValidation';
+import { correggiAccenti } from '../utils/accenti';
 
 declare global {
   interface Window {
@@ -511,6 +512,57 @@ class LocalStorageFallbackService implements StorageService {
     return doctor;
   }
 
+  /**
+   * Tutti i modelli predefiniti, appiattiti da `MedicalTemplates`.
+   *
+   * Ricavati dalle chiavi dell'oggetto invece che da un elenco scritto a mano:
+   * era la riga a mano a lasciare indietro i modelli di test ergometrico e
+   * Holter, presenti nel file ma mai seminati, e quindi con il selettore
+   * "Modello" vuoto in quei tre moduli.
+   */
+  private modelliPredefiniti(): Omit<MedicalTemplate, 'id'>[] {
+    const sezioni = Object.keys(MedicalTemplates.visita) as (keyof typeof MedicalTemplates.visita)[];
+    const visita = sezioni.flatMap((sezione) =>
+      MedicalTemplates.visita[sezione].map((t) => ({
+        category: 'visita' as const,
+        section: sezione as MedicalTemplate['section'],
+        label: t.label,
+        text: t.text,
+        isDefault: true,
+      })),
+    );
+
+    // Le altre categorie sono piatte. Rientrano nel riallineamento come la
+    // visita: gli schemi dietetici stanno fra i modelli di terapia, e senza
+    // questo non arriverebbero a chi ha gia' lo store popolato.
+    const nota = (t: { note?: string }) => (t.note ? { note: t.note } : {});
+    const piatte: Omit<MedicalTemplate, 'id'>[] = [
+      ...MedicalTemplates.terapie.map((t) => ({
+        category: 'terapie' as const, section: 'generale' as const,
+        label: t.label, text: t.text, isDefault: true,
+      })),
+      ...MedicalTemplates.ricette.map((t) => ({
+        category: 'ricette' as const, section: 'generale' as const,
+        label: t.label, text: t.text, ...nota(t), isDefault: true,
+      })),
+      ...MedicalTemplates.esami_complementari.map((t) => ({
+        category: 'esame_complementare' as const, section: 'nome' as const,
+        label: t.label, text: t.text, ...nota(t), isDefault: true,
+      })),
+      ...(MedicalTemplates.certificati ?? []).map((t) => ({
+        category: 'certificato' as const, section: 'generale' as const,
+        label: t.label, text: t.text, ...nota(t as { note?: string }), isDefault: true,
+      })),
+    ];
+
+    return [...visita, ...piatte];
+  }
+
+  /** Identita' di un modello predefinito, per riconoscerlo fra un avvio e l'altro. */
+  private firmaModello(t: { category: string; section: string; label: string }): string {
+    return `${t.category}|${t.section}|${t.label}`;
+  }
+
   // Template
   async getTemplates(): Promise<MedicalTemplate[]> {
     const templates = await this.getFromStorage<MedicalTemplate>('templates');
@@ -520,30 +572,82 @@ class LocalStorageFallbackService implements StorageService {
       // Initialize with defaults if empty
       const defaultTemplates: MedicalTemplate[] = [];
 
-      // Visita (referto: anamnesi, esame obiettivo, conclusioni)
-      MedicalTemplates.visita.prestazione.forEach(t => defaultTemplates.push({ id: generateId(), category: 'visita', section: 'prestazione', label: t.label, text: t.text, isDefault: true }));
-      MedicalTemplates.visita.esameObiettivo.forEach(t => defaultTemplates.push({ id: generateId(), category: 'visita', section: 'esameObiettivo', label: t.label, text: t.text, isDefault: true }));
-      MedicalTemplates.visita.conclusioni.forEach(t => defaultTemplates.push({ id: generateId(), category: 'visita', section: 'conclusioni', label: t.label, text: t.text, isDefault: true }));
-      MedicalTemplates.visita.ecg.forEach(t => defaultTemplates.push({ id: generateId(), category: 'visita', section: 'ecg', label: t.label, text: t.text, isDefault: true }));
-      MedicalTemplates.visita.ecocardiogramma.forEach(t => defaultTemplates.push({ id: generateId(), category: 'visita', section: 'ecocardiogramma', label: t.label, text: t.text, isDefault: true }));
-      MedicalTemplates.visita.tcCoronarica.forEach(t => defaultTemplates.push({ id: generateId(), category: 'visita', section: 'tcCoronarica', label: t.label, text: t.text, isDefault: true }));
-
-      // Terapie (discorsive — sezione Conclusioni e Terapie della visita)
-      MedicalTemplates.terapie.forEach(t => defaultTemplates.push({ id: generateId(), category: 'terapie', section: 'generale', label: t.label, text: t.text, isDefault: true }));
-
-      // Ricette (testo libero — modal Nuova ricetta)
-      MedicalTemplates.ricette.forEach(t => defaultTemplates.push({ id: generateId(), category: 'ricette', section: 'generale', label: t.label, text: t.text, note: t.note, isDefault: true }));
-
-      // Esami complementari
-      MedicalTemplates.esami_complementari.forEach(t => defaultTemplates.push({ id: generateId(), category: 'esame_complementare', section: 'nome', label: t.label, text: t.text, note: t.note, isDefault: true }));
-
-      // Certificati
-      if (MedicalTemplates.certificati) {
-        MedicalTemplates.certificati.forEach(t => defaultTemplates.push({ id: generateId(), category: 'certificato', section: 'generale', label: t.label, text: t.text, note: (t as { note?: string }).note, isDefault: true }));
-      }
+      // Tutti i modelli predefiniti, di ogni categoria: `modelliPredefiniti`
+      // le raccoglie gia' tutte, e ripeterle qui per categoria — come si faceva
+      // finche' la funzione copriva la sola visita — le duplicherebbe.
+      this.modelliPredefiniti().forEach(t => defaultTemplates.push({ id: generateId(), ...t }));
 
       await this.saveToStorage('templates', defaultTemplates);
+      await this.saveToStorage(
+        'templates_seeded',
+        this.modelliPredefiniti().map((t) => this.firmaModello(t)),
+      );
       return defaultTemplates;
+    }
+
+    // Modelli predefiniti aggiunti dopo l'installazione.
+    //
+    // Il seed iniziale scatta solo a store vuoto, quindi senza questo passaggio
+    // un modello nuovo non raggiungerebbe mai chi ha gia' l'applicazione: ne
+    // arrivano dal cardiologo a ogni giro, e finora ogni categoria si e' dovuta
+    // ripescare a mano (vedi i blocchi certificato / ricette / esami qui sotto).
+    //
+    // Un predefinito viene aggiunto solo se non e' **ne' gia' seminato ne' gia'
+    // presente**. Servono tutte e due le condizioni:
+    //  - l'elenco dei seminati fa restare cancellato un modello che il medico
+    //    ha cancellato, che altrimenti ricomparirebbe a ogni avvio;
+    //  - il confronto con quelli presenti evita i doppioni quando l'elenco dei
+    //    seminati e' piu' vecchio dell'insieme dei predefiniti. E' successo:
+    //    un marker scritto quando si seminava la sola categoria "visita" non
+    //    conosceva terapie e ricette, e al primo avvio le duplicava tutte.
+    const firmeSeminate = new Set(await this.getFromStorage<string>('templates_seeded'));
+    const firmePresenti = new Set(templates.map((t) => this.firmaModello(t)));
+    const mancanti = this.modelliPredefiniti().filter((t) => {
+      const firma = this.firmaModello(t);
+      return !firmeSeminate.has(firma) && !firmePresenti.has(firma);
+    });
+    if (mancanti.length > 0) {
+      // `templates` viene mutato di proposito: i blocchi qui sotto continuano a
+      // leggerlo e a salvarlo, e devono vedere anche i modelli appena aggiunti.
+      templates.push(...mancanti.map((t) => ({ id: generateId(), ...t })));
+      await this.saveToStorage('templates', templates);
+    }
+    // L'elenco dei seminati assorbe anche cio' che era gia' nello store: da qui
+    // in avanti cancellare uno di quei modelli lo tiene cancellato.
+    await this.saveToStorage('templates_seeded', [
+      ...new Set([
+        ...firmeSeminate,
+        ...firmePresenti,
+        ...mancanti.map((t) => this.firmaModello(t)),
+      ]),
+    ]);
+
+    // Accenti nei modelli gia' in archivio: migrazione una-tantum.
+    //
+    // I predefiniti erano scritti con l'apostrofo ASCII ("attivita'"), forma che
+    // serviva alla stampa e che il PDF produce comunque da solo (vedi `san()`
+    // in PdfService). A schermo pero' si legge male, e i modelli seminati prima
+    // di questa correzione conservano la vecchia grafia.
+    //
+    // Cambia **solo la tipografia**, mai il contenuto: per questo si applica
+    // anche ai modelli che il medico ha modificato, senza sovrascriverne il
+    // testo. Il marcatore la fa girare una volta sola.
+    if (!(await this.getPreference('templates_accenti_v1'))) {
+      let toccati = 0;
+      const corretti = templates.map((t) => {
+        const testo = correggiAccenti(t.text ?? '');
+        const nota = t.note ? correggiAccenti(t.note) : t.note;
+        const label = correggiAccenti(t.label ?? '');
+        if (testo === t.text && nota === t.note && label === t.label) return t;
+        toccati++;
+        return { ...t, text: testo, note: nota, label };
+      });
+      if (toccati > 0) {
+        templates.length = 0;
+        templates.push(...corretti);
+        await this.saveToStorage('templates', templates);
+      }
+      await this.setPreference('templates_accenti_v1', '1');
     }
 
     // For existing users: seed certificato if not yet present

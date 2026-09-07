@@ -28,6 +28,12 @@ export interface Segnale {
   livello: LivelloSegnale;
   /** Perche' e' segnalato, con la soglia di riferimento. */
   nota: string;
+  /**
+   * Nome breve della fascia ("borderline", "sfavorevole"), per le tabelle
+   * compatte dove una frase intera per riga sarebbe un muro di testo. La
+   * `nota` per esteso resta disponibile nel tooltip.
+   */
+  etichetta?: string;
 }
 
 /** Sesso del paziente, dove la soglia ne dipende. */
@@ -35,12 +41,21 @@ export type Sesso = "M" | "F" | undefined;
 
 const norma: Segnale = { livello: "nella-norma", nota: "" };
 
-function attenzione(nota: string): Segnale {
-  return { livello: "attenzione", nota };
+/**
+ * Variante "nella norma" con un testo: serve dove il valore viene mostrato
+ * comunque (il riquadro del BMI, per esempio) e la fascia va nominata anche
+ * quando e' quella giusta. Nell'elenco dei valori segnalati resta esclusa.
+ */
+function nellaNorma(nota: string, etichetta?: string): Segnale {
+  return { livello: "nella-norma", nota, etichetta };
 }
 
-function alterato(nota: string): Segnale {
-  return { livello: "alterato", nota };
+function attenzione(nota: string, etichetta?: string): Segnale {
+  return { livello: "attenzione", nota, etichetta };
+}
+
+function alterato(nota: string, etichetta?: string): Segnale {
+  return { livello: "alterato", nota, etichetta };
 }
 
 /** Chiavi delle misure con una soglia di riferimento definita. */
@@ -71,7 +86,8 @@ export type ChiaveMisura =
   | "lab.alt"
   | "lab.uricemia"
   | "lab.tsh"
-  | "vitali.frequenzaCardiaca";
+  | "vitali.frequenzaCardiaca"
+  | "vitali.bmi";
 
 /**
  * Valuta una misura rispetto ai limiti di riferimento correnti.
@@ -109,8 +125,11 @@ export function valutaMisura(
 
     // ── Ecocardiogramma ─────────────────────────────────────────────────────
     case "eco.fe":
-      if (n < 40) return alterato("FE < 40%: funzione sistolica ridotta");
-      if (n < 50) return attenzione("FE 40-49%: funzione sistolica lievemente ridotta");
+      // Il 40 sta nella fascia ridotta, non in quella di mezzo: e' il confine
+      // che ESC 2021 usa per definire HFrEF, e su cui si decide il fenotipo
+      // dello scompenso (vedi `scompenso.ts`).
+      if (n <= 40) return alterato("FE ≤ 40%: funzione sistolica ridotta");
+      if (n < 50) return attenzione("FE 41-49%: funzione sistolica lievemente ridotta");
       if (n > 70) return attenzione("FE > 70%: ipercinesia");
       return norma;
 
@@ -150,16 +169,23 @@ export function valutaMisura(
     case "lab.ldl":
       // Soglia generica: l'obiettivo terapeutico dipende dalla categoria di
       // rischio e non viene deciso qui.
-      if (n >= 190) return alterato("LDL ≥ 190 mg/dL: ipercolesterolemia marcata");
-      if (n >= 115) return attenzione("LDL ≥ 115 mg/dL: sopra il riferimento generale");
+      if (n >= 190) {
+        return alterato("LDL ≥ 190 mg/dL: ipercolesterolemia marcata", "marcata");
+      }
+      if (n >= 115) {
+        return attenzione(
+          "LDL ≥ 115 mg/dL: sopra il riferimento generale",
+          "sopra riferimento",
+        );
+      }
       return norma;
 
     case "lab.ctHdl":
       // Fasce indicate dal cardiologo: < 4 ottimale, 4-5 borderline, > 5 a
       // rischio. Il rapporto descrive il profilo lipidico, non stratifica il
       // rischio del paziente.
-      if (n > 5) return alterato("> 5: profilo lipidico sfavorevole");
-      if (n >= 4) return attenzione("4-5: profilo lipidico borderline");
+      if (n > 5) return alterato("> 5: profilo lipidico sfavorevole", "sfavorevole");
+      if (n >= 4) return attenzione("4-5: profilo lipidico borderline", "borderline");
       return norma;
 
     case "lab.tgHdl":
@@ -167,9 +193,10 @@ export function valutaMisura(
       if (n > 3.5) {
         return alterato(
           "> 3,5: suggestivo di insulino-resistenza e LDL piccole e dense",
+          "a rischio",
         );
       }
-      if (n >= 2) return attenzione("2-3,5: fascia intermedia");
+      if (n >= 2) return attenzione("2-3,5: fascia intermedia", "intermedio");
       return norma;
 
     case "lab.apoB":
@@ -205,8 +232,10 @@ export function valutaMisura(
       return norma;
 
     case "lab.egfr":
-      if (n < 30) return alterato("eGFR < 30: insufficienza renale severa (G4-G5)");
-      if (n < 60) return attenzione("eGFR < 60: funzione renale ridotta (G3)");
+      if (n < 30) {
+        return alterato("eGFR < 30: insufficienza renale severa (G4-G5)", "severa");
+      }
+      if (n < 60) return attenzione("eGFR < 60: funzione renale ridotta (G3)", "ridotta");
       return norma;
 
     case "lab.albuminuria":
@@ -244,6 +273,18 @@ export function valutaMisura(
       return norma;
 
     // ── Parametri vitali ────────────────────────────────────────────────────
+    case "vitali.bmi":
+      // Fasce OMS per l'adulto. Il BMI non distingue massa magra e massa
+      // grassa: in un soggetto molto muscoloso o in presenza di edemi la
+      // fascia va letta con l'occhio clinico, non presa alla lettera.
+      if (n >= 40) return alterato("BMI ≥ 40: obesità di III grado", "obesità III");
+      if (n >= 35) return alterato("BMI 35-39,9: obesità di II grado", "obesità II");
+      if (n >= 30) return alterato("BMI 30-34,9: obesità di I grado", "obesità I");
+      if (n >= 25) return attenzione("BMI 25-29,9: sovrappeso", "sovrappeso");
+      if (n >= 18.5) return nellaNorma("BMI 18,5-24,9: normopeso", "normopeso");
+      if (n >= 16) return attenzione("BMI 16-18,4: sottopeso", "sottopeso");
+      return alterato("BMI < 16: sottopeso grave", "sottopeso grave");
+
     case "vitali.frequenzaCardiaca":
       if (n > 100) return attenzione("> 100 bpm: tachicardia");
       if (n < 50) return attenzione("< 50 bpm: bradicardia");

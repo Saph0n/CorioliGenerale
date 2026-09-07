@@ -33,13 +33,19 @@ function formatta(n: number): string {
  *
  * Non ha assi né numeri: dice solo la forma della traiettoria. I numeri stanno
  * nel pannello esteso, che si apre cliccandola.
+ *
+ * `max-w-full` non e' decorativo: nella colonna del laboratorio le celle sono
+ * larghe centosessanta pixel, e un SVG con larghezza fissa sporgeva oltre la
+ * scheda facendo comparire una barra di scorrimento orizzontale. Con width e
+ * height espliciti piu' `max-width`, l'immagine si rimpicciolisce mantenendo
+ * le proporzioni invece di sfondare il contenitore.
  */
 export function Sparkline({
   serie,
   corrente,
   dataCorrente,
-  larghezza = 76,
-  altezza = 22,
+  larghezza = 112,
+  altezza = 24,
 }: {
   serie: PuntoStorico[];
   /** Valore in digitazione, aggiunto come punto aperto. */
@@ -62,7 +68,7 @@ export function Sparkline({
       width={larghezza}
       height={altezza}
       viewBox={`0 0 ${larghezza} ${altezza}`}
-      className="overflow-visible"
+      className="max-w-full"
       role="img"
       aria-label={`Andamento su ${completa.length} rilevazioni`}
     >

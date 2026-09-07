@@ -24,13 +24,20 @@ describe("frazione di eiezione", () => {
     expect(valutaMisura("eco.fe", 75).livello).toBe("attenzione");
   });
 
-  it("porta con se' la soglia che ha superato", () => {
+  it("porta con sé la soglia che ha superato", () => {
     expect(valutaMisura("eco.fe", 35).nota).toContain("40");
+  });
+
+  it("una FE di 40 è già funzione sistolica ridotta", () => {
+    // Confine ESC 2021: il 40 appartiene alla fascia ridotta, ed e' lo stesso
+    // taglio con cui `scompenso.ts` assegna il fenotipo HFrEF.
+    expect(valutaMisura("eco.fe", 40).livello).toBe("alterato");
+    expect(valutaMisura("eco.fe", 41).livello).toBe("attenzione");
   });
 });
 
 describe("QTc", () => {
-  it("usa una soglia piu' alta per le donne", () => {
+  it("usa una soglia più alta per le donne", () => {
     expect(valutaMisura("ecg.qtc", 455, "M").livello).toBe("attenzione");
     expect(valutaMisura("ecg.qtc", 455, "F").livello).toBe("nella-norma");
   });
@@ -57,7 +64,7 @@ describe("conduzione all'ECG", () => {
 });
 
 describe("spessori parietali", () => {
-  it("applica il limite femminile piu' basso", () => {
+  it("applica il limite femminile più basso", () => {
     expect(valutaMisura("eco.siv", 10, "F").livello).toBe("attenzione");
     expect(valutaMisura("eco.siv", 10, "M").livello).toBe("nella-norma");
   });
@@ -191,7 +198,7 @@ describe("pannello metabolico contestuale", () => {
     expect(valutaMisura("lab.alt", 200).livello).toBe("alterato");
   });
 
-  it("dichiara che il riferimento delle transaminasi e' indicativo", () => {
+  it("dichiara che il riferimento delle transaminasi è indicativo", () => {
     expect(valutaMisura("lab.ast", 60).nota).toContain("indicativo");
   });
 
@@ -246,5 +253,43 @@ describe("rapporti lipidici", () => {
     // In mmol/L le soglie sono diverse: se il medico legge un referto in altre
     // unita' deve accorgersene dalla nota.
     expect(valutaMisura("lab.tgHdl", 4.2).nota).toContain("insulino-resistenza");
+  });
+});
+
+describe("BMI", () => {
+  it("assegna la fascia OMS corretta a ciascun livello", () => {
+    expect(valutaMisura("vitali.bmi", 15).etichetta).toBe("sottopeso grave");
+    expect(valutaMisura("vitali.bmi", 17).etichetta).toBe("sottopeso");
+    expect(valutaMisura("vitali.bmi", 22).etichetta).toBe("normopeso");
+    expect(valutaMisura("vitali.bmi", 27).etichetta).toBe("sovrappeso");
+    expect(valutaMisura("vitali.bmi", 32).etichetta).toBe("obesità I");
+    expect(valutaMisura("vitali.bmi", 37).etichetta).toBe("obesità II");
+    expect(valutaMisura("vitali.bmi", 42).etichetta).toBe("obesità III");
+  });
+
+  it("i bordi delle fasce cadono in quella superiore", () => {
+    expect(valutaMisura("vitali.bmi", 18.5).etichetta).toBe("normopeso");
+    expect(valutaMisura("vitali.bmi", 24.9).etichetta).toBe("normopeso");
+    expect(valutaMisura("vitali.bmi", 25).etichetta).toBe("sovrappeso");
+    expect(valutaMisura("vitali.bmi", 30).etichetta).toBe("obesità I");
+  });
+
+  it("il normopeso resta `nella-norma`, sovrappeso e obesità salgono di livello", () => {
+    expect(valutaMisura("vitali.bmi", 22).livello).toBe("nella-norma");
+    expect(valutaMisura("vitali.bmi", 27).livello).toBe("attenzione");
+    expect(valutaMisura("vitali.bmi", 32).livello).toBe("alterato");
+    expect(valutaMisura("vitali.bmi", 17).livello).toBe("attenzione");
+    expect(valutaMisura("vitali.bmi", 15).livello).toBe("alterato");
+  });
+
+  it("il normopeso non entra nell'elenco dei valori segnalati", () => {
+    // Il riquadro del BMI e' sempre visibile e ha un colore anche quando il
+    // valore e' giusto: il pannello di sintesi invece deve restare pulito.
+    const voci = ordinaSegnalati([
+      { etichetta: "BMI", valore: "22,0", segnale: valutaMisura("vitali.bmi", 22) },
+      { etichetta: "BMI", valore: "32,0", segnale: valutaMisura("vitali.bmi", 32) },
+    ]);
+    expect(voci).toHaveLength(1);
+    expect(voci[0].valore).toBe("32,0");
   });
 });

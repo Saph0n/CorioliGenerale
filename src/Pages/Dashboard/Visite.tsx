@@ -238,7 +238,7 @@ export default function Visite() {
       if (electronAPI?.openPdfForPrint) {
         const base64 = await blobToBase64(blob);
         await electronAPI.openPdfForPrint(base64);
-        showToast("PDF aperto nell'app predefinita. Usa Stampa da li'.");
+        showToast("PDF aperto nell'app predefinita. Usa Stampa da lì.");
       } else {
         const pdfUrl = URL.createObjectURL(blob);
         const w = window.open(pdfUrl, "_blank");

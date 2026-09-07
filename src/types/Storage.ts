@@ -195,16 +195,56 @@ export interface EcocardiogrammaData {
   referto?: string;
 }
 
-/** TC coronarica: calcium score e grado di stenosi, storicizzati per il confronto. */
+/**
+ * TC coronarica: calcium score e angio-TC, storicizzati per il confronto.
+ *
+ * La categoria del calcium score e il percentile **non si salvano**: si
+ * ricavano dal punteggio a ogni lettura, così cambiare la soglia severa del
+ * centro (300 o 400) non lascia in archivio categorie calcolate con la vecchia
+ * impostazione.
+ */
 export interface TcCoronaricaData {
   /** Data di esecuzione dell'esame (ISO), spesso diversa da quella della visita. */
   dataEsame?: string;
   /** Struttura che ha eseguito e refertato l'esame. */
   struttura?: string;
-  /** Calcium score secondo Agatston. */
+  /** Metodica e apparecchio (es. "TC multidetettore 128 strati, protocollo dedicato"). */
+  metodica?: string;
+
+  /** Calcium score secondo Agatston, come misurato e senza arrotondamenti. */
   cacScore?: number;
-  /** Categoria CAD-RADS del grado di stenosi (chiave di CAD_RADS_OPTIONS). */
+
+  /** Categoria CAD-RADS del grado di stenosi (chiave di CAD_RADS_CATEGORIE). */
   cadRads?: string;
+  /**
+   * Modificatori CAD-RADS applicati (N, HRP, S, G, E). Sono più d'uno per lo
+   * stesso esame: uno stent e una placca ad alto rischio convivono.
+   */
+  cadRadsModificatori?: string[];
+  /** Burden di placca: P1, P2, P3 o P4. */
+  burdenPlacca?: string;
+
+  /**
+   * Componente della placca, in due campi distinti e non in un unico valore
+   * aggregato: una placca calcifica al 90% e una non calcifica al 90% hanno
+   * implicazioni diverse e non vanno riassunte in un numero solo.
+   */
+  componenteCalcifica?: number;
+  componenteNonCalcifica?: number;
+
+  /** Numeri dei segmenti SCCT con placca (modello a 18 segmenti). */
+  segmenti?: number[];
+
+  /** Stenosi più severa su base per-paziente (%). */
+  stenosiMassima?: number;
+  /** Segmento SCCT in cui si trova la stenosi massima. */
+  stenosiMassimaSegmento?: number;
+
+  /** Valore del FFR-TC, quando l'esame lo riporta. */
+  ffrCt?: number;
+  /** Esito del FFR-TC: I+, I− o I±. */
+  ffrCtEsito?: string;
+
   /** Sintesi del referto radiologico. */
   referto?: string;
 }
@@ -283,6 +323,118 @@ export interface HolterPressorioData {
   caloNotturnoPct?: number;
   /** Percentuale di misurazioni oltre la soglia. */
   caricoPressorioPct?: number;
+  /** Refertazione testuale. */
+  referto?: string;
+}
+
+/**
+ * Scompenso cardiaco: classe funzionale e peptide natriuretico.
+ *
+ * Il fenotipo (HFrEF / HFpEF) **non si salva**: si ricava dalla
+ * frazione di eiezione dell'ecocardiogramma della stessa visita, così non puo'
+ * restare indietro rispetto alla FE se questa viene corretta.
+ */
+export interface ScompensoData {
+  /** Classe funzionale NYHA attribuita dal medico. */
+  nyha?: "I" | "II" | "III" | "IV";
+  /** NT-proBNP (pg/mL). */
+  ntProBnp?: number;
+  /**
+   * Contesto del prelievo: le soglie di esclusione sono diverse fra
+   * ambulatorio (125 pg/mL) e urgenza (300), quindi senza questo dato il
+   * valore non e' interpretabile.
+   */
+  contestoBnp?: "ambulatoriale" | "acuto";
+  /** Data del dosaggio del peptide (ISO), spesso diversa da quella della visita. */
+  dataBnp?: string;
+  /** Refertazione testuale. */
+  referto?: string;
+}
+
+/**
+ * Fattori di rischio cardiovascolare, da spuntare per averli sott'occhio
+ * accanto ai parametri.
+ *
+ * Sono **anamnestici**: non cambiano da un controllo all'altro, e infatti alla
+ * visita nuova arrivano già spuntati come nell'ultima (restano modificabili).
+ * Si salvano comunque sulla visita e non sull'anagrafica, così resta la storia:
+ * di un paziente si vede a che controllo è comparso il diabete.
+ *
+ * Il fumo non è qui: sta già su `visita.fumatore`, che ha tre stati (sì / no /
+ * non rilevato) perché alimenta il calcolo SCORE2, dove "non rilevato" e "no"
+ * non sono la stessa cosa.
+ */
+export interface FattoriRischioCvData {
+  /** Ipertensione arteriosa nota, anche se controllata dalla terapia. */
+  ipertensione?: boolean;
+  /** Dislipidemia nota o in trattamento. */
+  dislipidemia?: boolean;
+  /** Diabete mellito o prediabete. */
+  diabete?: boolean;
+  /** Familiarità per cardiopatia ischemica precoce. */
+  familiaritaCad?: boolean;
+  /** Obesità (BMI ≥ 30). */
+  obesita?: boolean;
+  /** Sedentarietà: assenza di attività fisica regolare. */
+  sedentarieta?: boolean;
+  /** Pregresso evento cardiovascolare: sposta il paziente in prevenzione secondaria. */
+  eventoCvPregresso?: boolean;
+}
+
+/**
+ * Fibrillazione atriale: i fattori dichiarati dal medico per il CHA₂DS₂-VASc e
+ * per l'HAS-BLED.
+ *
+ * I punteggi **non si salvano**: si ricalcolano dai fattori a ogni apertura,
+ * come il fenotipo dello scompenso, così non possono restare indietro se il
+ * medico corregge una casella. Non si salvano nemmeno età e sesso, che il
+ * punteggio prende dall'anagrafica.
+ *
+ * I campi sono booleani piatti e non due oggetti annidati perché un fattore
+ * non selezionato resta `undefined`: è la condizione che permette al
+ * salvataggio di riconoscere un modulo mai compilato e di ometterlo dalla
+ * visita, invece di scriverci dentro una decina di `false`.
+ */
+export interface FibrillazioneAtrialeData {
+  /** Forma clinica dell'aritmia. */
+  tipo?: "parossistica" | "persistente" | "persistente-lunga" | "permanente";
+  /**
+   * Terapia anticoagulante in atto. Non è un dato accessorio: la voce
+   * "INR labile" dell'HAS-BLED vale solo per chi è in warfarin.
+   */
+  anticoagulante?: "nessuno" | "warfarin" | "doac";
+
+  // CHA₂DS₂-VASc — prefisso `cv`.
+  //
+  // Ipertensione e diabete non sono qui: il punteggio li legge da
+  // `fattoriRischio`, dove il medico li ha già dichiarati. Chiederli una
+  // seconda volta significherebbe poterli avere spuntati di là e no di qua.
+  /** Scompenso cardiaco o disfunzione ventricolare sinistra (1 punto). */
+  cvScompenso?: boolean;
+  /** Pregresso ictus, TIA o tromboembolismo (2 punti). */
+  cvIctus?: boolean;
+  /** Malattia vascolare: IMA, arteriopatia periferica, placca aortica (1 punto). */
+  cvVascolare?: boolean;
+
+  // HAS-BLED — prefisso `hb`. L'ictus compare in entrambi i punteggi e va
+  // spuntato due volte: sono due domande diverse sullo stesso evento.
+  /** Ipertensione non controllata, PAS > 160 mmHg (1 punto). */
+  hbIpertensioneNonControllata?: boolean;
+  /** Funzione renale alterata (1 punto). */
+  hbFunzioneRenale?: boolean;
+  /** Funzione epatica alterata (1 punto). */
+  hbFunzioneEpatica?: boolean;
+  /** Ictus pregresso (1 punto). */
+  hbIctus?: boolean;
+  /** Storia di sanguinamento o predisposizione emorragica (1 punto). */
+  hbSanguinamento?: boolean;
+  /** INR labile: conta solo in terapia con warfarin (1 punto). */
+  hbInrLabile?: boolean;
+  /** Antiaggreganti o FANS in associazione (1 punto). */
+  hbFarmaci?: boolean;
+  /** Consumo eccessivo di alcol (1 punto). */
+  hbAlcol?: boolean;
+
   /** Refertazione testuale. */
   referto?: string;
 }
@@ -394,6 +546,22 @@ export interface Visit {
     holterEcg?: HolterEcgData;
     /** Monitoraggio pressorio delle 24 ore. */
     holterPressorio?: HolterPressorioData;
+    /** Scompenso cardiaco: classe NYHA e NT-proBNP. */
+    scompenso?: ScompensoData;
+    /** Fibrillazione atriale: fattori di CHA₂DS₂-VASc e HAS-BLED. */
+    fibrillazioneAtriale?: FibrillazioneAtrialeData;
+    /** Fattori di rischio cardiovascolare spuntati accanto ai parametri. */
+    fattoriRischio?: FattoriRischioCvData;
+    /**
+     * Sintesi del rischio cardiovascolare scritta dal medico.
+     *
+     * È l'unico punto in cui rischio calcolato (SCORE2) e rischio osservato
+     * all'imaging (calcium score, CAD-RADS) vengono messi insieme, e li mette
+     * insieme una persona: l'applicazione **non calcola un rischio combinato**,
+     * perché nessuna formula condivisa lo fa e sommarli darebbe a un numero
+     * inventato l'autorevolezza dei due che lo hanno prodotto.
+     */
+    sintesiRischio?: string;
   };
   createdAt: string;
   updatedAt: string;

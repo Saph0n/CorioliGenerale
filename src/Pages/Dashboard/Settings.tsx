@@ -69,6 +69,7 @@ import {
 } from "../../services/OfflineServices";
 import { MedicalTemplate } from "../../types/Storage";
 import { normalizeRegistro } from "../../utils/gruppiRicerca";
+import { SOGLIA_CAC_PREDEFINITA } from "../../utils/tcCoronarica";
 import { getMissingDoctorProfileFields } from "../../utils/doctorProfile";
 import {
   AnamnesiConfig,
@@ -290,6 +291,7 @@ const SettingsScreen = () => {
     gruppiRicerca: [] as string[],
     showDoctorPhoneInPdf: true,
     showDoctorEmailInPdf: true,
+    sogliaCacSevera: SOGLIA_CAC_PREDEFINITA as number,
   });
   const [duplicateGroups, setDuplicateGroups] = useState<
     Array<{ key: string; patients: any[] }>
@@ -519,7 +521,7 @@ const SettingsScreen = () => {
 
   const handlePreferenceChange = (
     field: string,
-    value: boolean | string | string[] | AnamnesiConfig,
+    value: boolean | number | string | string[] | AnamnesiConfig,
   ) => {
     setPreferences(prev => ({ ...prev, [field]: value }));
   };
@@ -2025,6 +2027,42 @@ const SettingsScreen = () => {
                       handlePreferenceChange("showDoctorEmailInPdf", value)
                     }
                   />
+                </div>
+              </div>
+
+              {/* La soglia oltre cui la calcificazione coronarica si dice
+                  severa non è universale: alcuni centri usano 300, altri 400.
+                  È quindi un'impostazione del centro e non una costante, e la
+                  categoria mostrata dichiara sempre quale soglia ha applicato. */}
+              <div className="rounded-lg border border-default-200 p-4 space-y-3">
+                <p className="text-sm font-medium text-gray-800">
+                  Calcium score coronarico
+                </p>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-default-700">
+                      Soglia di calcificazione severa
+                    </p>
+                    <p className="text-xs text-default-500">
+                      Agatston oltre il quale il referto parla di calcificazione
+                      severa. Le fasce 0, 1-99 e 100-299 non cambiano.
+                    </p>
+                  </div>
+                  <Select
+                    aria-label="Soglia di calcificazione severa"
+                    size="sm"
+                    className="w-36 shrink-0"
+                    selectedKeys={[String(preferences.sogliaCacSevera ?? SOGLIA_CAC_PREDEFINITA)]}
+                    onSelectionChange={(keys) => {
+                      const v = Number(Array.from(keys)[0]);
+                      if (v === 300 || v === 400) {
+                        handlePreferenceChange("sogliaCacSevera", v);
+                      }
+                    }}
+                  >
+                    <SelectItem key="300">≥ 300</SelectItem>
+                    <SelectItem key="400">≥ 400</SelectItem>
+                  </Select>
                 </div>
               </div>
             </CardBody>

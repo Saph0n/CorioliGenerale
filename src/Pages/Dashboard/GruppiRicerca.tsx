@@ -13,18 +13,22 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  Tooltip,
 } from "@nextui-org/react";
 import {
   ArrowLeft,
   ArrowRight,
   FlaskConical,
   Plus,
+  Trash2,
+  UserMinus,
   UserPlus,
   Users,
 } from "lucide-react";
 import { PatientService, PreferenceService } from "../../services/OfflineServices";
 import type { AppartenenzaGruppo, Patient } from "../../types/Storage";
 import { AppModal } from "../../components/AppModal";
+import { ConfirmDangerModal } from "../../components/ConfirmDangerModal";
 import { PageHeader } from "../../components/PageHeader";
 import { PageLoadingSkeleton } from "../../components/AppStartupSkeleton";
 import { CodiceFiscaleValue } from "../../components/CodiceFiscaleValue";
@@ -41,6 +45,7 @@ import {
   gruppoKey,
   normalizeRegistro,
   pazienteInGruppo,
+  rimuoviGruppo,
   sanitizeGruppo,
   statoGruppi,
   validaNomeGruppo,
@@ -109,6 +114,17 @@ export default function GruppiRicerca() {
   const [dataArruolamento, setDataArruolamento] = useState(todayIsoDate());
   const [arruolando, setArruolando] = useState(false);
   const [erroreArruolo, setErroreArruolo] = useState<string | null>(null);
+  /** Paziente da togliere da un progetto, in attesa di conferma. */
+  const [daRimuovere, setDaRimuovere] = useState<{
+    patient: Patient;
+    gruppo: string;
+  } | null>(null);
+  const [rimuovendo, setRimuovendo] = useState(false);
+  const [erroreRimozione, setErroreRimozione] = useState<string | null>(null);
+  /** Progetto da eliminare, in attesa di conferma. */
+  const [daEliminare, setDaEliminare] = useState<StatoGruppo | null>(null);
+  const [eliminando, setEliminando] = useState(false);
+  const [erroreElimina, setErroreElimina] = useState<string | null>(null);
 
   useEffect(() => {
     const carica = async () => {
@@ -303,6 +319,99 @@ export default function GruppiRicerca() {
   };
 
   /**
+   * Toglie un paziente dal progetto.
+   *
+   * Del paziente non si perde nulla: sparisce l'appartenenza e con essa la
+   * data di arruolamento, che riarruolandolo non torna indietro. Per questo il
+   * gesto passa da una conferma invece di essere immediato.
+   */
+  const rimuoviDalProgetto = async () => {
+    if (!daRimuovere) return;
+    const { patient, gruppo } = daRimuovere;
+    setRimuovendo(true);
+    setErroreRimozione(null);
+    try {
+      const gruppi = rimuoviGruppo(gruppiDelPaziente(patient), gruppo);
+      await PatientService.updatePatient(patient.id, {
+        gruppiRicerca: gruppi,
+        updatedAt: new Date().toISOString(),
+      });
+      setPatients((prec) =>
+        prec.map((p) =>
+          p.id === patient.id ? { ...p, gruppiRicerca: gruppi } : p,
+        ),
+      );
+      setDaRimuovere(null);
+    } catch (e) {
+      console.error("Rimozione dal gruppo non riuscita:", e);
+      setErroreRimozione("Rimozione non riuscita.");
+    } finally {
+      setRimuovendo(false);
+    }
+  };
+
+  /**
+   * Elimina un progetto.
+   *
+   * Prima toglie l'appartenenza a tutti i suoi pazienti, poi il nome dal
+   * registro nelle preferenze. **L'ordine conta**: l'elenco dei gruppi e'
+   * l'unione fra il registro e le appartenenze dei pazienti, quindi togliere
+   * solo il registro lascerebbe il progetto a schermo, ricostruito dai
+   * pazienti. Al contrario, se la scrittura delle preferenze non riesce resta
+   * un progetto vuoto, che si rielimina senza danno.
+   *
+   * Un paziente per volta, come nell'arruolamento: se si interrompe a meta',
+   * quelli gia' fatti restano tolti e un nuovo tentativo riparte dai restanti.
+   */
+  const eliminaGruppo = async () => {
+    if (!daEliminare) return;
+    const nome = daEliminare.nome;
+    const key = gruppoKey(nome);
+    setEliminando(true);
+    setErroreElimina(null);
+    const svuotati = new Map<string, AppartenenzaGruppo[]>();
+    try {
+      for (const p of patients.filter((x) => pazienteInGruppo(x, nome))) {
+        const gruppi = rimuoviGruppo(gruppiDelPaziente(p), nome);
+        await PatientService.updatePatient(p.id, {
+          gruppiRicerca: gruppi,
+          updatedAt: new Date().toISOString(),
+        });
+        svuotati.set(p.id, gruppi);
+      }
+      // Come in `creaGruppo`: si rilegge il registro da disco perche'
+      // `savePreferences` riscrive l'intero oggetto.
+      const prefs = (await PreferenceService.getPreferences()) ?? {};
+      const aggiornato = normalizeRegistro(prefs.gruppiRicerca).filter(
+        (g) => gruppoKey(g) !== key,
+      );
+      await PreferenceService.savePreferences({
+        ...prefs,
+        gruppiRicerca: aggiornato,
+      });
+      setRegistro(aggiornato);
+      setDaEliminare(null);
+      if (soloGruppo && gruppoKey(soloGruppo) === key) tornaAiProgetti();
+    } catch (e) {
+      console.error("Eliminazione gruppo non riuscita:", e);
+      setErroreElimina(
+        svuotati.size > 0
+          ? `Tolti ${svuotati.size} pazienti dal progetto, poi si è interrotto. Riprova per completare.`
+          : "Eliminazione non riuscita.",
+      );
+    } finally {
+      if (svuotati.size > 0) {
+        setPatients((prec) =>
+          prec.map((p) =>
+            svuotati.has(p.id) ? { ...p, gruppiRicerca: svuotati.get(p.id) } : p,
+          ),
+        );
+      }
+      setEliminando(false);
+    }
+  };
+
+  /**
    * I progetti da mostrare, ciascuno con la sua coorte.
    *
    * Nell'elenco ci sono anche i progetti ancora vuoti, come scheda normale:
@@ -459,6 +568,25 @@ export default function GruppiRicerca() {
           >
             {arruolati.length}
           </Chip>
+          {/* Il div ferma il click: l'intestazione, nell'elenco, apre il
+              progetto, e un cestino che ci entra dentro sarebbe una trappola. */}
+          <div onClick={(e) => e.stopPropagation()}>
+            <Tooltip content="Elimina il progetto" size="sm">
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="text-default-400 data-[hover=true]:text-danger"
+                aria-label={`Elimina il progetto ${stato.nome}`}
+                onPress={() => {
+                  setErroreElimina(null);
+                  setDaEliminare(stato);
+                }}
+              >
+                <Trash2 size={15} />
+              </Button>
+            </Tooltip>
+          </div>
           {!progettoAperto && (
             <ArrowRight
               size={14}
@@ -533,10 +661,30 @@ export default function GruppiRicerca() {
                   </div>
                 </div>
               </div>
-              <ArrowRight
-                size={14}
-                className="text-gray-300 group-hover:text-brand-600 transition-colors flex-shrink-0"
-              />
+              <div
+                className="flex items-center gap-1 flex-shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Tooltip content="Togli dal progetto" size="sm">
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="light"
+                    className="text-default-400 data-[hover=true]:text-danger"
+                    aria-label={`Togli ${nomeCompleto(patient)} dal progetto ${stato.nome}`}
+                    onPress={() => {
+                      setErroreRimozione(null);
+                      setDaRimuovere({ patient, gruppo: stato.nome });
+                    }}
+                  >
+                    <UserMinus size={15} />
+                  </Button>
+                </Tooltip>
+                <ArrowRight
+                  size={14}
+                  className="text-gray-300 group-hover:text-brand-600 transition-colors"
+                />
+              </div>
             </div>
             ))}
           </div>
@@ -720,6 +868,65 @@ export default function GruppiRicerca() {
           </ModalFooter>
         </ModalContent>
       </AppModal>
+
+      <ConfirmDangerModal
+        isOpen={daRimuovere !== null}
+        onClose={() => {
+          setDaRimuovere(null);
+          setErroreRimozione(null);
+        }}
+        title="Togli dal progetto"
+        subtitle="La data di arruolamento non è recuperabile"
+        confirmLabel="Togli dal progetto"
+        isLoading={rimuovendo}
+        onConfirm={() => void rimuoviDalProgetto()}
+      >
+        <p className="text-sm text-default-600">
+          Vuoi togliere{" "}
+          <strong>
+            {daRimuovere ? nomeCompleto(daRimuovere.patient) : ""}
+          </strong>{" "}
+          da <strong>{daRimuovere?.gruppo}</strong>?
+        </p>
+        <p className="text-xs text-default-500">
+          Il paziente e le sue visite restano in archivio: sparisce solo
+          l&apos;appartenenza al progetto. Riarruolandolo la data di
+          arruolamento riparte da capo.
+        </p>
+        {erroreRimozione && (
+          <p className="text-xs text-danger">{erroreRimozione}</p>
+        )}
+      </ConfirmDangerModal>
+
+      <ConfirmDangerModal
+        isOpen={daEliminare !== null}
+        onClose={() => {
+          setDaEliminare(null);
+          setErroreElimina(null);
+        }}
+        title="Elimina il progetto"
+        confirmLabel="Elimina il progetto"
+        isLoading={eliminando}
+        onConfirm={() => void eliminaGruppo()}
+      >
+        <p className="text-sm text-default-600">
+          Vuoi eliminare <strong>{daEliminare?.nome}</strong>?
+        </p>
+        <p className="text-xs text-default-500">
+          {daEliminare && daEliminare.partecipanti > 0 ? (
+            <>
+              {daEliminare.partecipanti === 1
+                ? "1 paziente verrà tolto"
+                : `${daEliminare.partecipanti} pazienti verranno tolti`}{" "}
+              dal progetto, insieme alle loro date di arruolamento. Pazienti e
+              visite restano in archivio: si elimina il progetto, non la coorte.
+            </>
+          ) : (
+            "Il progetto è vuoto: non ci sono arruolamenti da perdere."
+          )}
+        </p>
+        {erroreElimina && <p className="text-xs text-danger">{erroreElimina}</p>}
+      </ConfirmDangerModal>
 
       <AppModal
         isOpen={gruppoTarget !== null}

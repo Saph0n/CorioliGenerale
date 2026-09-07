@@ -78,7 +78,7 @@ describe("normalizeGruppi", () => {
     expect(normalizeGruppi([{ nome: "A", dal: "2026-13-45" }])).toEqual([g("A")]);
   });
 
-  it("fra due date duplicate tiene la piu' vecchia", () => {
+  it("fra due date duplicate tiene la più vecchia", () => {
     expect(
       normalizeGruppi([g("A", "2026-05-01"), g("a", "2026-01-01")]),
     ).toEqual([{ nome: "A", dal: "2026-01-01" }]);
@@ -118,7 +118,7 @@ describe("assegnazione ai pazienti", () => {
     ]);
   });
 
-  it("non duplica un gruppo gia' presente", () => {
+  it("non duplica un gruppo già presente", () => {
     expect(aggiungiGruppo([g("Progetto X")], "progetto x", "2026-09-01")).toEqual([
       g("Progetto X"),
     ]);
@@ -187,7 +187,7 @@ describe("elenco dei gruppi", () => {
     expect(elenco).toEqual(["Alfa", "Beta", "Zeta"]);
   });
 
-  it("recupera i gruppi dai pazienti se il registro e' vuoto", () => {
+  it("recupera i gruppi dai pazienti se il registro è vuoto", () => {
     // Le preferenze non finiscono nei backup: dopo un ripristino i gruppi
     // devono ricomparire dai dati dei pazienti.
     expect(elencoGruppi([], [paz([g("Progetto X")])])).toEqual(["Progetto X"]);
@@ -205,7 +205,7 @@ describe("rinomina", () => {
     ).toEqual([{ nome: "Progetto Y", dal: "2026-01-01" }, g("Altro")]);
   });
 
-  it("non crea doppioni se il nuovo nome esiste gia'", () => {
+  it("non crea doppioni se il nuovo nome esiste già", () => {
     expect(rinominaInElenco([g("A"), g("B")], "A", "b")).toHaveLength(1);
   });
 
@@ -271,7 +271,7 @@ describe("stato dei gruppi per la dashboard", () => {
     paz(),
   ];
 
-  it("conta i partecipanti e ordina per numerosita'", () => {
+  it("conta i partecipanti e ordina per numerosità", () => {
     const stati = statoGruppi(["Gruppo vuoto"], pazienti, oggi);
     expect(stati.map((s) => [s.nome, s.partecipanti])).toEqual([
       ["Progetto X", 2],
@@ -280,7 +280,7 @@ describe("stato dei gruppi per la dashboard", () => {
     ]);
   });
 
-  it("prende come inizio l'arruolamento piu' vecchio", () => {
+  it("prende come inizio l'arruolamento più vecchio", () => {
     const x = statoGruppi([], pazienti, oggi).find((s) => s.nome === "Progetto X");
     expect(x?.dataInizio).toBe("2026-01-15");
     expect(x?.ultimoArruolamento).toBe("2026-03-01");

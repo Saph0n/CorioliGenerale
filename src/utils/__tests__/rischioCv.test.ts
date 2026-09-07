@@ -29,13 +29,13 @@ describe("tabella degli obiettivi LDL", () => {
     expect(TARGET_LDL["molto-alto"].opzionale).toBeUndefined();
   });
 
-  it("descrive l'obiettivo con entrambe le unita'", () => {
+  it("descrive l'obiettivo con entrambe le unità", () => {
     const testo = descriviTargetLdl("alto");
     expect(testo).toContain("70 mg/dL");
     expect(testo).toContain("1,8 mmol/L");
   });
 
-  it("segnala nella descrizione che l'ultimo obiettivo e' un'opzione", () => {
+  it("segnala nella descrizione che l'ultimo obiettivo è un'opzione", () => {
     expect(descriviTargetLdl("molto-alto-ricorrente")).toContain("opzione");
   });
 });
@@ -87,7 +87,7 @@ describe("confronto con l'obiettivo", () => {
     expect(confrontaConTarget(95, "basso", TARGET_APOB)).toBeNull();
   });
 
-  it("riporta il carattere opzionale dell'obiettivo piu' stringente", () => {
+  it("riporta il carattere opzionale dell'obiettivo più stringente", () => {
     const esito = confrontaConTarget(50, "molto-alto-ricorrente", TARGET_LDL);
     expect(esito?.opzionale).toBe(true);
   });

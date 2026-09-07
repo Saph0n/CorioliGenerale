@@ -5,7 +5,7 @@ import {
   CertificatoPaziente,
   RicettaPaziente,
 } from "../types/Storage";
-import { DoctorService, PreferenceService } from "./OfflineServices";
+import { DoctorService, PreferenceService, VisitService } from "./OfflineServices";
 import {
   normalizeSignatureStampImage,
   signatureStampPdfFormat,
@@ -20,7 +20,6 @@ import {
 } from "../utils/anamnesiStrutturata";
 import { getRicettaTesto } from "../utils/ricettaTemplate";
 import {
-  CAD_RADS_OPTIONS,
   calcolaCaloNotturno,
   calcolaEgfrCkdEpi,
   calcolaPercentualeFcMax,
@@ -28,9 +27,26 @@ import {
   calcolaQtcBazett,
   calcolaRapportoCtHdl,
   calcolaRapportoTgHdl,
-  fasciaCacScore,
   stadioKdigo,
 } from "../utils/cardioCalcs";
+import {
+  CONTESTO_BNP_LABELS,
+  FENOTIPO_DA_DEFINIRE,
+  fenotipoConStorico,
+  valutaNtProBnp,
+  type FePrecedente,
+} from "../utils/scompenso";
+import {
+  calcolaChadsVasc,
+  calcolaHasBled,
+} from "../utils/fibrillazioneAtriale";
+import {
+  CAD_RADS_CATEGORIE,
+  SOGLIA_CAC_PREDEFINITA,
+  categoriaCac,
+  segmentoScct,
+  type SogliaCacSevera,
+} from "../utils/tcCoronarica";
 
 // ─── Layout ──────────────────────────────────────────────────────────────────
 const ML = 15;
@@ -60,7 +76,20 @@ interface FooterVisibilityOptions {
 }
 
 // ─── Sanitizer + utils ────────────────────────────────────────────────────────
-function san(t: string): string {
+
+/**
+ * Accenti -> apostrofo ASCII per la stampa.
+ *
+ * Il font standard di jsPDF (WinAnsi) non disegna le vocali accentate: senza
+ * questa conversione il referto uscirebbe con caratteri sbagliati. E' il motivo
+ * per cui nell'applicazione i testi si possono scrivere accentati.
+ *
+ * Esportata per essere coperta dai test: la mappa e' due righe di coppie
+ * numero-stringa, si e' gia' rotta una volta durante una correzione
+ * tipografica automatica, e un errore qui non si vede finche' qualcuno non
+ * stampa un referto.
+ */
+export function san(t: string): string {
   if (!t) return "";
   const M: Record<number, string> = {
     224: "a'", 232: "e'", 233: "e'", 236: "i'", 242: "o'", 249: "u'",
@@ -700,26 +729,277 @@ export class PdfService {
   private static drawTcCoronarica(
     doc: jsPDF, y: number,
     tc: NonNullable<Visit["visita"]>["tcCoronarica"],
+    sogliaCac: SogliaCacSevera = SOGLIA_CAC_PREDEFINITA,
   ): number {
     if (!tc) return y;
-    const fascia = fasciaCacScore(tc.cacScore);
+    const esitoCac = categoriaCac(tc.cacScore, sogliaCac);
     const cadRads = tc.cadRads
-      ? (CAD_RADS_OPTIONS.find((o) => o.key === tc.cadRads)?.label ?? tc.cadRads)
+      ? (CAD_RADS_CATEGORIE.find((o) => o.key === tc.cadRads)?.label ?? tc.cadRads)
       : "";
+
+    // I modificatori si scrivono attaccati alla categoria, come si refertano:
+    // "CAD-RADS 3 / HRP, S".
+    const modificatori = (tc.cadRadsModificatori ?? []).join(", ");
+
+    const segmenti = (tc.segmenti ?? [])
+      .map((n) => {
+        const sg = segmentoScct(n);
+        return sg ? `${sg.numero}. ${sg.nome}` : String(n);
+      })
+      .join("; ");
+
+    const stenosi = (() => {
+      if (tc.stenosiMassima == null) return "";
+      const sg = tc.stenosiMassimaSegmento != null
+        ? segmentoScct(tc.stenosiMassimaSegmento)
+        : null;
+      return `${tc.stenosiMassima}%${sg ? ` (segmento ${sg.numero}, ${sg.nome})` : ""}`;
+    })();
+
+    // Le due componenti restano distinte anche in stampa: aggregarle qui
+    // vanificherebbe la ragione per cui sono due campi.
+    const componenti = [
+      tc.componenteCalcifica != null ? `calcifica ${tc.componenteCalcifica}%` : "",
+      tc.componenteNonCalcifica != null
+        ? `non calcifica o mista ${tc.componenteNonCalcifica}%`
+        : "",
+    ].filter(Boolean).join(", ");
+
+    const ffr = (() => {
+      if (tc.ffrCt == null && !tc.ffrCtEsito) return "";
+      const valore = tc.ffrCt != null ? String(tc.ffrCt) : "";
+      const esito = tc.ffrCtEsito ?? "";
+      return [valore, esito].filter(Boolean).join(" ");
+    })();
+
     const misure = [
       { label: "Data esame", value: tc.dataEsame ? fd(tc.dataEsame) : "" },
       { label: "Struttura", value: v(tc.struttura, "") },
+      { label: "Metodica", value: v(tc.metodica, "") },
       {
         label: "Calcium score",
-        value: tc.cacScore != null ? `${tc.cacScore}${fascia ? ` (${fascia})` : ""}` : "",
+        value: tc.cacScore != null
+          ? `${tc.cacScore} Agatston${esitoCac ? ` - ${esitoCac.label} (${esitoCac.intervallo})` : ""}`
+          : "",
       },
-      { label: "CAD-RADS", value: cadRads },
+      {
+        label: "CAD-RADS",
+        value: cadRads ? `${cadRads}${modificatori ? ` / ${modificatori}` : ""}` : "",
+      },
+      { label: "Burden di placca", value: v(tc.burdenPlacca, "") },
+      { label: "Componente placca", value: componenti },
+      { label: "Stenosi massima", value: stenosi },
+      { label: "Segmenti con placca", value: segmenti },
+      { label: "FFR-TC", value: ffr },
     ];
     if (!misure.some((m) => m.value) && !tc.referto?.trim()) return y;
 
     y = this.sezione(doc, y, "TC coronarica");
     y = this.drawDettagliTable(doc, y, misure);
+    // L'avvertenza sul CAC accompagna il punteggio anche fuori dall'app: e' il
+    // referto che qualcun altro leggera' senza avere davanti la maschera.
+    if (esitoCac) y = this.drawRefertoModulo(doc, y, esitoCac.flag);
     y = this.drawRefertoModulo(doc, y, tc.referto);
+    return y + 4;
+  }
+
+  /**
+   * Frazioni di eiezione delle visite precedenti dello stesso paziente.
+   *
+   * Serve al fenotipo HFimpEF, che nasce dal confronto fra due misure e quindi
+   * non e' ricavabile dalla sola visita in stampa. Le si rilegge qui invece di
+   * farsele passare da chi chiama: il referto si genera da sei punti diversi
+   * dell'applicazione, e in due di quelli la cronologia del paziente non e'
+   * caricata. Se la lettura fallisce il fenotipo ripiega sulla sola FE
+   * corrente: un referto senza la sigla HFimpEF e' un peggioramento
+   * accettabile, un referto che non si genera no.
+   */
+  private static async fePrecedenti(
+    patientId: string,
+    visitaCorrenteId: string,
+  ): Promise<FePrecedente[]> {
+    try {
+      const visite = await VisitService.getVisitsByPatientId(patientId);
+      return visite
+        .filter((v) => v.id !== visitaCorrenteId)
+        .map((v) => ({
+          valore: Number(v.visita?.ecocardiogramma?.fe),
+          // L'ecocardiogramma non ha una data propria: la FE si riferisce alla
+          // visita in cui e' stata registrata.
+          data: v.dataVisita,
+        }))
+        .filter((p) => Number.isFinite(p.valore) && p.valore > 0);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Scompenso cardiaco.
+   *
+   * Il fenotipo e l'esito del peptide vengono **ricalcolati qui** dalla FE e
+   * dal valore salvati, non ripresi da un campo: e' la stessa ragione per cui
+   * il test ergometrico ricalcola la percentuale di FC massima, cioe' evitare
+   * che il referto porti un giudizio rimasto indietro rispetto ai numeri che
+   * lo hanno prodotto.
+   */
+  private static drawScompenso(
+    doc: jsPDF, y: number,
+    sc: NonNullable<Visit["visita"]>["scompenso"],
+    fe: number | undefined,
+    patient: Patient,
+    fePrecedenti: FePrecedente[] = [],
+  ): number {
+    if (!sc) return y;
+    const eta = Number(calcAge(patient.dataNascita));
+    const fenotipo = fenotipoConStorico(fe, fePrecedenti);
+    const esito = valutaNtProBnp(
+      sc.ntProBnp,
+      sc.contestoBnp,
+      Number.isFinite(eta) ? eta : undefined,
+    );
+    const misure = [
+      // Senza FE la riga resta, con il motivo: chi legge deve sapere che il
+      // fenotipo manca, non che e' stato valutato e trovato normale.
+      {
+        label: "Fenotipo (da FE)",
+        value: fenotipo ? fenotipo.label : FENOTIPO_DA_DEFINIRE.label,
+      },
+      { label: "Classe NYHA", value: sc.nyha ? `NYHA ${sc.nyha}` : "" },
+      { label: "Data dosaggio", value: sc.dataBnp ? fd(sc.dataBnp) : "" },
+      {
+        label: "NT-proBNP",
+        value:
+          sc.ntProBnp != null
+            ? `${sc.ntProBnp} pg/mL${esito ? ` (${esito.titolo})` : ""}`
+            : "",
+      },
+      {
+        label: "Contesto",
+        value: sc.contestoBnp ? CONTESTO_BNP_LABELS[sc.contestoBnp] : "",
+      },
+    ];
+    if (!misure.some((m) => m.value) && !sc.referto?.trim()) return y;
+
+    y = this.sezione(doc, y, "Scompenso cardiaco");
+    y = this.drawDettagliTable(doc, y, misure);
+    // Per l'HFimpEF il confronto che lo ha prodotto vale piu' della sigla: il
+    // referto porta le due FE e la nota di non alleggerire la terapia, che e'
+    // il rischio del momento in cui la frazione risale.
+    if (!fenotipo) y = this.drawRefertoModulo(doc, y, FENOTIPO_DA_DEFINIRE.motivo);
+    if (fenotipo?.riferimento) y = this.drawRefertoModulo(doc, y, fenotipo.riferimento);
+    if (fenotipo?.avvertenza) y = this.drawRefertoModulo(doc, y, fenotipo.avvertenza);
+    if (esito) y = this.drawRefertoModulo(doc, y, esito.nota);
+    y = this.drawRefertoModulo(doc, y, sc.referto);
+    return y + 4;
+  }
+
+  /**
+   * Fibrillazione atriale: CHA₂DS₂-VASc e HAS-BLED.
+   *
+   * I punteggi si ricalcolano qui dai fattori salvati, come il fenotipo dello
+   * scompenso. Vengono stampati **separati**, con le voci che li compongono:
+   * sono due domande diverse e affiancarli come un bilancio unico
+   * suggerirebbe una sottrazione che le linee guida non fanno.
+   */
+  private static drawFibrillazioneAtriale(
+    doc: jsPDF, y: number,
+    fa: NonNullable<Visit["visita"]>["fibrillazioneAtriale"],
+    patient: Patient,
+    fattoriRischio: NonNullable<Visit["visita"]>["fattoriRischio"],
+  ): number {
+    if (!fa) return y;
+    const etaNum = Number(calcAge(patient.dataNascita));
+    const eta = Number.isFinite(etaNum) ? etaNum : undefined;
+    const sesso =
+      patient.sesso === "M" || patient.sesso === "F" ? patient.sesso : undefined;
+
+    const chads = calcolaChadsVasc({
+      eta,
+      sesso,
+      fattori: {
+        scompenso: fa.cvScompenso,
+        // Dichiarati fra i fattori di rischio della visita, non nel modulo FA.
+        ipertensione: fattoriRischio?.ipertensione,
+        diabete: fattoriRischio?.diabete,
+        ictus: fa.cvIctus,
+        vascolare: fa.cvVascolare,
+      },
+    });
+    const hasBled = calcolaHasBled({
+      eta,
+      inTao: fa.anticoagulante === "warfarin",
+      fattori: {
+        ipertensioneNonControllata: fa.hbIpertensioneNonControllata,
+        funzioneRenale: fa.hbFunzioneRenale,
+        funzioneEpatica: fa.hbFunzioneEpatica,
+        ictus: fa.hbIctus,
+        sanguinamento: fa.hbSanguinamento,
+        inrLabile: fa.hbInrLabile,
+        farmaci: fa.hbFarmaci,
+        alcol: fa.hbAlcol,
+      },
+    });
+
+    const TIPO_LABEL: Record<string, string> = {
+      parossistica: "Parossistica",
+      persistente: "Persistente",
+      "persistente-lunga": "Persistente di lunga durata",
+      permanente: "Permanente",
+    };
+    const TAO_LABEL: Record<string, string> = {
+      nessuno: "Nessuna",
+      warfarin: "Warfarin (TAO)",
+      doac: "Anticoagulante orale diretto (DOAC)",
+    };
+
+    const misure = [
+      { label: "Forma clinica", value: fa.tipo ? TIPO_LABEL[fa.tipo] ?? fa.tipo : "" },
+      {
+        label: "Anticoagulazione",
+        value: fa.anticoagulante ? TAO_LABEL[fa.anticoagulante] ?? fa.anticoagulante : "",
+      },
+      {
+        label: "CHA2DS2-VASc",
+        value: chads.ok ? `${chads.esito.punteggio} / ${chads.esito.massimo}` : "",
+      },
+      {
+        label: "HAS-BLED",
+        value: hasBled.ok ? `${hasBled.esito.punteggio} / ${hasBled.esito.massimo}` : "",
+      },
+    ];
+    if (!misure.some((m) => m.value) && !fa.referto?.trim()) return y;
+
+    y = this.sezione(doc, y, "Fibrillazione atriale");
+    y = this.drawDettagliTable(doc, y, misure);
+
+    // Le voci che compongono il punteggio: un totale da solo non e'
+    // verificabile da chi legge il referto senza riaprire la scheda.
+    if (chads.ok && chads.esito.voci.length > 0) {
+      y = this.drawRefertoModulo(
+        doc, y,
+        `CHA2DS2-VASc: ${chads.esito.voci
+          .map((v) => `${v.label} (+${v.punti})`)
+          .join("; ")}.`,
+      );
+    }
+    if (chads.ok) y = this.drawRefertoModulo(doc, y, chads.esito.nota);
+    if (hasBled.ok && hasBled.esito.voci.length > 0) {
+      y = this.drawRefertoModulo(
+        doc, y,
+        `HAS-BLED: ${hasBled.esito.voci
+          .map((v) => `${v.label} (+${v.punti})`)
+          .join("; ")}.`,
+      );
+    }
+    if (hasBled.ok) y = this.drawRefertoModulo(doc, y, hasBled.esito.nota);
+    if (hasBled.ok && hasBled.esito.modificabili.length > 0) {
+      y = this.drawRefertoModulo(
+        doc, y,
+        `Fattori emorragici modificabili: ${hasBled.esito.modificabili.join("; ")}.`,
+      );
+    }
+    y = this.drawRefertoModulo(doc, y, fa.referto);
     return y + 4;
   }
 
@@ -981,8 +1261,9 @@ export class PdfService {
       },
     ]);
 
-    y = this.drawTextSection(doc, y, "Descrizione Problema / Dati Clinici", vis.problemaClinico);
-
+    // L'anamnesi precede il motivo della visita, come nel referto cardiologico
+    // standard: chi legge deve avere la storia del paziente prima della
+    // domanda che lo ha portato qui. Stesso ordine della maschera di inserimento.
     if (hasAnamnesiStrutturataContent(nv.anamnesiStrutturata)) {
       const anamnesiCfg = parseAnamnesiConfig(prefs).generale;
       y = this.drawStructuredAnamnesi(
@@ -992,14 +1273,31 @@ export class PdfService {
       y = this.drawTextSection(doc, y, "Anamnesi", vis.prestazione);
     }
 
+    y = this.drawTextSection(doc, y, "Descrizione Problema / Dati Clinici", vis.problemaClinico);
+
     y = this.drawTextSection(doc, y, "Esame Obiettivo", vis.esameObiettivo);
     y = this.drawEcg(doc, y, vis.ecg, vis.frequenzaCardiaca);
     y = this.drawEcocardiogramma(doc, y, vis.ecocardiogramma);
-    y = this.drawTcCoronarica(doc, y, vis.tcCoronarica);
+    y = this.drawTcCoronarica(
+      doc, y, vis.tcCoronarica,
+      Number(prefs?.sogliaCacSevera) === 400 ? 400 : SOGLIA_CAC_PREDEFINITA,
+    );
     y = this.drawTestErgometrico(doc, y, vis.testErgometrico, patient);
     y = this.drawHolterEcg(doc, y, vis.holterEcg);
     y = this.drawHolterPressorio(doc, y, vis.holterPressorio);
     y = this.drawLaboratorio(doc, y, vis.laboratorio, patient);
+    y = this.drawScompenso(
+      doc, y, vis.scompenso, vis.ecocardiogramma?.fe, patient,
+      await this.fePrecedenti(patient.id, visit.id),
+    );
+    y = this.drawFibrillazioneAtriale(
+      doc, y, vis.fibrillazioneAtriale, patient, vis.fattoriRischio,
+    );
+    // La sintesi del rischio si stampa: e' il punto in cui il medico mette
+    // insieme rischio calcolato e reperti di imaging, e le linee guida chiedono
+    // che quell'integrazione resti documentata. Il punteggio SCORE2 e gli
+    // obiettivi lipidici restano invece di supporto e non entrano nel referto.
+    y = this.drawTextSection(doc, y, "Sintesi del rischio cardiovascolare", vis.sintesiRischio);
     y = this.drawTextSection(doc, y, "Accertamenti", vis.accertamenti);
     if (options?.includeImages) y = await this.drawImages(doc, vis.immagini, y);
     this.drawTextSection(doc, y, "Conclusioni e Terapia", vis.terapiaSpecifica);
@@ -1055,7 +1353,7 @@ export class PdfService {
     const doc = new jsPDF();
     try {
       const tipoL: Record<CertificatoPaziente["tipo"], string> = {
-        assenza_lavoro: "Assenza da lavoro", idoneita: "Idoneita'", malattia: "Malattia", altro: "Altro",
+        assenza_lavoro: "Assenza da lavoro", idoneita: "Idoneità", malattia: "Malattia", altro: "Altro",
       };
       let y = this.drawHeader(doc, "CERTIFICATO MEDICO", tipoL[certificato.tipo] || certificato.tipo, doctor);
       y = this.drawPatientBlock(doc, patient, certificato.dataCertificato, y, "Data certificato", { showDate: false, showSesso: false, showBirthDate: false });

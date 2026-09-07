@@ -33,7 +33,7 @@ describe("serie con il valore in digitazione", () => {
     expect(s[3].data).toBe("2026-02-20");
   });
 
-  it("riordina quando la visita e' retrodatata rispetto all'ultimo esame", () => {
+  it("riordina quando la visita è retrodatata rispetto all'ultimo esame", () => {
     const s = serieConCorrente(storico, 95, "2024-09-01");
     expect(s.map((p) => p.data)).toEqual([
       "2023-01-05",
@@ -43,7 +43,7 @@ describe("serie con il valore in digitazione", () => {
     ]);
   });
 
-  it("lascia la serie intatta se non c'e' un valore in digitazione", () => {
+  it("lascia la serie intatta se non c'è un valore in digitazione", () => {
     expect(serieConCorrente(storico, undefined, "2026-02-20")).toBe(storico);
     expect(serieConCorrente(storico, Number.NaN, "2026-02-20")).toBe(storico);
   });
@@ -64,7 +64,7 @@ describe("proiezione sul disegno", () => {
     expect(punti[2].x).toBeCloseTo(100, 1);
   });
 
-  it("mette il valore piu' alto in cima e il piu' basso in fondo", () => {
+  it("mette il valore più alto in cima e il più basso in fondo", () => {
     const serie = [punto("2024-01-01", 50), punto("2025-01-01", 150)];
     const { punti, min, max } = proietta(serie, 100, 60, 10);
     expect(min).toBe(50);
@@ -73,7 +73,7 @@ describe("proiezione sul disegno", () => {
     expect(punti[1].y).toBeLessThan(punti[0].y);
   });
 
-  it("mette la linea a meta' altezza quando il valore non cambia mai", () => {
+  it("mette la linea a metà altezza quando il valore non cambia mai", () => {
     const serie = [punto("2024-01-01", 90), punto("2025-01-01", 90)];
     const { punti } = proietta(serie, 100, 60, 10);
     expect(punti[0].y).toBeCloseTo(30, 5);

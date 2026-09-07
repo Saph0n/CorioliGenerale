@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { SCORE2_OP_COEFFICIENTS_VALIDATED } from "../score2OpCoefficients";
 import {
-  CAD_RADS_OPTIONS,
   calcolaEgfrCkdEpi,
   calcolaHomaIr,
   calcolaLdlFriedewald,
@@ -13,9 +13,9 @@ import {
   fasciaHomaIr,
   calcolaQtcBazett,
   calcolaScore2,
+  calcolaScore2Op,
   categoriaRischioScore2,
   computeScore2,
-  fasciaCacScore,
   stadioKdigo,
 } from "../cardioCalcs";
 import {
@@ -80,7 +80,7 @@ describe("eGFR CKD-EPI 2021", () => {
     if (out.ok) expect(out.result.value).toBeLessThan(95);
   });
 
-  it("a parita' di creatinina la donna ha eGFR piu' basso dell'uomo", () => {
+  it("a parità di creatinina la donna ha eGFR più basso dell'uomo", () => {
     const uomo = calcolaEgfrCkdEpi(1.2, 55, "M");
     const donna = calcolaEgfrCkdEpi(1.2, 55, "F");
     expect(uomo.ok && donna.ok).toBe(true);
@@ -131,29 +131,6 @@ describe("QTc secondo Bazett", () => {
   });
 });
 
-describe("fasce del calcium score", () => {
-  it.each([
-    [0, "Assente (0)"],
-    [50, "Lieve (1-99)"],
-    [250, "Moderata (100-399)"],
-    [800, "Severa (≥ 400)"],
-  ])("CAC %s", (score, atteso) => {
-    expect(fasciaCacScore(score as number)).toBe(atteso);
-  });
-
-  it("nessuna fascia senza valore", () => {
-    expect(fasciaCacScore(undefined)).toBeNull();
-    expect(fasciaCacScore(-1)).toBeNull();
-  });
-});
-
-describe("CAD-RADS", () => {
-  it("copre le categorie da 0 a 5 piu' N", () => {
-    const keys = CAD_RADS_OPTIONS.map((o) => o.key);
-    expect(keys).toEqual(["0", "1", "2", "3", "4A", "4B", "5", "N"]);
-  });
-});
-
 describe("SCORE2", () => {
   const paziente = {
     eta: 55,
@@ -175,7 +152,7 @@ describe("SCORE2", () => {
     }
   });
 
-  it("rifiuta le eta' fuori dal range di validita'", () => {
+  it("rifiuta le età fuori dal range di validità", () => {
     const out = calcolaScore2({ ...paziente, eta: 75 });
     expect(out.ok).toBe(false);
     if (!out.ok) expect(out.reason).toContain("SCORE2-OP");
@@ -200,45 +177,45 @@ describe("SCORE2", () => {
     expect(fumatore.value).toBeGreaterThan(nonFumatore.value);
   });
 
-  it("una pressione piu' alta aumenta il rischio", () => {
+  it("una pressione più alta aumenta il rischio", () => {
     const alta = computeScore2({ ...paziente, pas: 170 });
     const bassa = computeScore2({ ...paziente, pas: 120 });
     expect(alta.value).toBeGreaterThan(bassa.value);
   });
 
-  it("un HDL piu' alto riduce il rischio", () => {
+  it("un HDL più alto riduce il rischio", () => {
     const hdlBasso = computeScore2({ ...paziente, hdl: 35 });
     const hdlAlto = computeScore2({ ...paziente, hdl: 70 });
     expect(hdlAlto.value).toBeLessThan(hdlBasso.value);
   });
 
-  it("l'eta' maggiore aumenta il rischio", () => {
+  it("l'età maggiore aumenta il rischio", () => {
     const giovane = computeScore2({ ...paziente, eta: 45 });
     const anziano = computeScore2({ ...paziente, eta: 65 });
     expect(anziano.value).toBeGreaterThan(giovane.value);
   });
 
-  it("le regioni a rischio piu' alto danno percentuali piu' alte", () => {
+  it("le regioni a rischio più alto danno percentuali più alte", () => {
     const basso = computeScore2({ ...paziente, region: "basso" });
     const moltoAlto = computeScore2({ ...paziente, region: "molto_alto" });
     expect(moltoAlto.value).toBeGreaterThan(basso.value);
   });
 });
 
-describe("categorie di rischio SCORE2 per eta'", () => {
-  it("sotto i 50 anni la soglia di rischio alto e' 2,5%", () => {
+describe("categorie di rischio SCORE2 per età", () => {
+  it("sotto i 50 anni la soglia di rischio alto è 2,5%", () => {
     expect(categoriaRischioScore2(2.4, 45)).toBe("basso-moderato");
     expect(categoriaRischioScore2(2.6, 45)).toBe("alto");
     expect(categoriaRischioScore2(8, 45)).toBe("molto-alto");
   });
 
-  it("fra 50 e 69 anni la soglia e' 5%", () => {
+  it("fra 50 e 69 anni la soglia è 5%", () => {
     expect(categoriaRischioScore2(4.9, 60)).toBe("basso-moderato");
     expect(categoriaRischioScore2(6, 60)).toBe("alto");
     expect(categoriaRischioScore2(12, 60)).toBe("molto-alto");
   });
 
-  it("dai 70 anni in su la soglia e' 7,5%", () => {
+  it("dai 70 anni in su la soglia è 7,5%", () => {
     expect(categoriaRischioScore2(7, 72)).toBe("basso-moderato");
     expect(categoriaRischioScore2(10, 72)).toBe("alto");
     expect(categoriaRischioScore2(20, 72)).toBe("molto-alto");
@@ -311,7 +288,7 @@ describe("SCORE2 — casi di riferimento", () => {
     );
   });
 
-  it("la regione moderata da' un rischio piu' basso di quella alta", () => {
+  it("la regione moderata da' un rischio più basso di quella alta", () => {
     const paziente = {
       eta: 60,
       sesso: "F" as const,
@@ -327,13 +304,13 @@ describe("SCORE2 — casi di riferimento", () => {
 });
 
 describe("frequenza cardiaca massima teorica", () => {
-  it("applica 220 - eta'", () => {
+  it("applica 220 - età", () => {
     const out = calcolaFcMaxTeorica(60);
     expect(out.ok).toBe(true);
     if (out.ok) expect(out.result.value).toBe(160);
   });
 
-  it("non calcola senza eta'", () => {
+  it("non calcola senza età", () => {
     expect(calcolaFcMaxTeorica(undefined).ok).toBe(false);
   });
 
@@ -346,7 +323,7 @@ describe("frequenza cardiaca massima teorica", () => {
     }
   });
 
-  it("non segnala nulla di anomalo quando il test e' massimale", () => {
+  it("non segnala nulla di anomalo quando il test è massimale", () => {
     const out = calcolaPercentualeFcMax(150, 60);
     expect(out.ok).toBe(true);
     if (out.ok) expect(out.result.source).not.toContain("submassimale");
@@ -415,9 +392,9 @@ describe("rapporto trigliceridi / HDL", () => {
     if (out.ok) expect(out.result.source).toContain("insulino-resistenza");
   });
 
-  it("sotto 2 segnala la buona sensibilita' insulinica", () => {
+  it("sotto 2 segnala la buona sensibilità insulinica", () => {
     const out = calcolaRapportoTgHdl(80, 60);
-    if (out.ok) expect(out.result.source).toContain("sensibilita'");
+    if (out.ok) expect(out.result.source).toContain("sensibilità");
   });
 
   it("dichiara che le fasce valgono per i mg/dL", () => {
@@ -437,5 +414,43 @@ describe("fasce dell'HOMA-IR", () => {
     const out = calcolaHomaIr(100, 15);
     expect(out.ok).toBe(true);
     if (out.ok) expect(out.result.source).toContain("insulino-resistenza");
+  });
+});
+
+describe("SCORE2-OP", () => {
+  const anziano = {
+    eta: 75,
+    sesso: "M" as const,
+    fumatore: false,
+    pas: 140,
+    colesteroloTotale: 200,
+    hdl: 50,
+    region: "moderato" as const,
+  };
+
+  it("dai 70 anni SCORE2 passa la mano a SCORE2-OP", () => {
+    // Prima diceva solo "oltre serve SCORE2-OP" e si fermava: ora nomina il
+    // modello giusto e spiega perche' il numero non c'e' ancora.
+    const out = calcolaScore2(anziano);
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.reason).toContain("SCORE2-OP non attivo");
+  });
+
+  it("non produce numeri finche' i coefficienti non sono verificati", () => {
+    expect(SCORE2_OP_COEFFICIENTS_VALIDATED).toBe(false);
+    const out = calcolaScore2Op(anziano);
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.reason).toContain("verificati");
+  });
+
+  it("rifiuta le età fuori dai 70-89 anni", () => {
+    const out = calcolaScore2Op({ ...anziano, eta: 95 });
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.reason).toContain("70 e 89");
+  });
+
+  it("sotto i 70 anni resta in carico a SCORE2, che risponde", () => {
+    const out = calcolaScore2({ ...anziano, eta: 65 });
+    expect(out.ok).toBe(true);
   });
 });

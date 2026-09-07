@@ -36,10 +36,16 @@ const BORDO_SEGNALE: Record<LivelloSegnale, string> = {
   alterato: "border-danger-400 data-[hover=true]:border-danger-500",
 };
 
-/** Classi del testo per livello di segnalazione. */
+/**
+ * Classi del testo per livello di segnalazione.
+ *
+ * L'ambra e' al passo 700 e non al 600: su fondo bianco il 600 sta a 3,15 di
+ * contrasto, sotto il minimo leggibile, e queste note sono scritte piccole.
+ * Il 700 sale a 5,2 restando riconoscibile come giallo di avviso.
+ */
 const TESTO_SEGNALE: Record<LivelloSegnale, string> = {
   "nella-norma": "text-default-400",
-  attenzione: "text-warning-600",
+  attenzione: "text-warning-700",
   alterato: "text-danger-600",
 };
 
@@ -70,7 +76,7 @@ function RigaPrecedente({
 
   return (
     <Tooltip content={descriviPrecedente(precedente)} placement="bottom" delay={300}>
-      <span className="inline-flex items-center gap-1 text-[10px] leading-tight text-default-400 cursor-help">
+      <span className="inline-flex min-w-0 items-center gap-1 text-[10px] leading-tight text-default-400 cursor-help">
         <span className="font-medium text-default-500">
           prec. {String(precedente.valore).replace(".", ",")}
         </span>
@@ -137,7 +143,7 @@ function BottoneAndamento({
       <PopoverTrigger>
         <button
           type="button"
-          className="shrink-0 rounded px-0.5 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+          className="block w-full max-w-full rounded opacity-80 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
           aria-label={`Andamento di ${titolo} nel tempo`}
         >
           <Sparkline
@@ -224,23 +230,19 @@ export function MisuraInput({
 
   const note =
     precedente || livello !== "nella-norma" || mostraAndamento ? (
-      <span className="flex flex-col gap-0.5 pt-0.5">
+      <span className="flex min-w-0 flex-col gap-0.5 pt-0.5">
         {segnale && <RigaSegnale segnale={segnale} />}
-        <span className="flex items-center justify-between gap-1">
-          {precedente ? (
-            <RigaPrecedente precedente={precedente} corrente={value} />
-          ) : (
-            <span />
-          )}
-          <BottoneAndamento
-            titolo={label}
-            unita={unit}
-            serie={storico}
-            corrente={value}
-            dataCorrente={dataCorrente ?? oggiIso()}
-            riferimento={riferimento}
-          />
-        </span>
+        {precedente && <RigaPrecedente precedente={precedente} corrente={value} />}
+        {/* Il grafico sta su una riga sua: accanto al valore precedente non
+            entrerebbe nella colonna stretta del laboratorio. */}
+        <BottoneAndamento
+          titolo={label}
+          unita={unit}
+          serie={storico}
+          corrente={value}
+          dataCorrente={dataCorrente ?? oggiIso()}
+          riferimento={riferimento}
+        />
       </span>
     ) : undefined;
 
@@ -497,42 +499,47 @@ export function RigaCalcolata({
 
   if (!outcome.ok) {
     return (
-      <div className="flex flex-col gap-0.5 py-0.5">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[11px] text-default-500">{label}</span>
-          <span className="text-[11px] text-default-300">—</span>
+      <Tooltip content={outcome.reason} placement="left" delay={200}>
+        <div className="flex cursor-help items-baseline justify-between gap-2 py-1">
+          <span className="text-xs text-default-500">{label}</span>
+          <span className="text-sm text-default-300">—</span>
         </div>
-        <span className="text-[10px] leading-tight text-default-400">
-          {outcome.reason}
-        </span>
-      </div>
+      </Tooltip>
     );
   }
 
   const { display, unit, source } = outcome.result;
+  // Nel tooltip la formula e, quando c'e', la soglia per esteso: nella riga
+  // resta la parola della fascia, che e' quello che si legge di sfuggita.
+  const spiegazione = segnale?.nota ? `${source} · ${segnale.nota}` : source;
+
   return (
-    <div className="flex flex-col gap-0.5 py-0.5">
-      <div className="flex items-baseline justify-between gap-2">
-        <Tooltip content={source} placement="left" delay={300}>
-          <span className="cursor-help text-[11px] text-default-600 underline decoration-dotted decoration-default-300 underline-offset-2">
-            {label}
+    <Tooltip content={spiegazione} placement="left" delay={200}>
+      <div className="flex cursor-help items-baseline justify-between gap-2 py-1">
+        <span className="text-xs text-default-600">{label}</span>
+        <span className="flex items-baseline gap-1.5 whitespace-nowrap">
+          {segnale?.etichetta && (
+            <span
+              className={`text-[10px] font-medium ${TESTO_SEGNALE[livello]}`}
+            >
+              {segnale.etichetta}
+            </span>
+          )}
+          <span
+            className={`text-[15px] font-semibold tabular-nums leading-none ${
+              livello === "nella-norma" ? "text-gray-900" : TESTO_SEGNALE[livello]
+            }`}
+          >
+            {display}
           </span>
-        </Tooltip>
-        <span
-          className={`text-xs font-semibold tabular-nums ${
-            livello === "nella-norma" ? "text-gray-800" : TESTO_SEGNALE[livello]
-          }`}
-        >
-          {display}
           {unit ? (
-            <span className="ml-1 text-[10px] font-normal text-default-400">
+            <span className="text-[10px] font-normal text-default-500">
               {unit}
             </span>
           ) : null}
         </span>
       </div>
-      {segnale && <RigaSegnale segnale={segnale} />}
-    </div>
+    </Tooltip>
   );
 }
 
@@ -545,14 +552,14 @@ export function RigaCalcolata({
  */
 export function StrisciaCalcolati({ children }: { children: ReactNode }) {
   return (
-    <div className="mt-1 rounded-md bg-default-50/70 px-2 py-1.5">
-      {/* `default-500` e non `400`: a 9px il grigio piu' chiaro scende sotto il
+    <div className="mt-1 rounded-md bg-default-50/70 px-2.5 py-2">
+      {/* `default-500` e non `400`: a 9px il grigio più chiaro scende sotto il
           contrasto minimo leggibile, e questa didascalia dice una cosa che deve
-          restare leggibile, cioe' che i valori sotto non sono dosati. */}
-      <p className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-default-500">
+          restare leggibile, cioè che i valori sotto non sono dosati. */}
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-default-500">
         Calcolati · non entrano nel referto
       </p>
-      {children}
+      <div className="divide-y divide-default-200/70">{children}</div>
     </div>
   );
 }
@@ -683,7 +690,13 @@ export function ModuloCollassabile({
         </Button>
         {aperto && azione}
       </div>
-      {aperto && <div className="space-y-2">{children}</div>}
+      {/* `flex flex-col gap-2` e non `space-y-2`: le etichette
+          `labelPlacement="outside"` sono posizionate in modo assoluto e NextUI
+          riserva loro spazio con un margine sul campo, che `space-y-*`
+          sovrascrive facendole finire sopra alla riga precedente. Vale la
+          stessa ragione già annotata sulla card del rischio; `gap` non tocca i
+          margini dei figli e lascia il ritmo verticale invariato. */}
+      {aperto && <div className="flex flex-col gap-2">{children}</div>}
     </div>
   );
 }

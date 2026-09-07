@@ -16,6 +16,11 @@ import {
   SCORE2_RECALIBRATION,
   type Score2Region,
 } from "./score2Coefficients";
+import {
+  SCORE2_OP_COEFFICIENTS_VALIDATED,
+  SCORE2_OP_MAX_AGE,
+  SCORE2_OP_MIN_AGE,
+} from "./score2OpCoefficients";
 
 /** Esito di un calcolo: valore + unita' + fonte, oppure il motivo per cui non e' calcolabile. */
 export interface CalcResult {
@@ -162,7 +167,7 @@ export function calcolaRapportoTgHdl(
   const r = tg / h;
   const fascia =
     r < 2
-      ? "buona sensibilita' insulinica"
+      ? "buona sensibilità insulinica"
       : r <= 3.5
         ? "intermedio"
         : "suggestivo di insulino-resistenza";
@@ -214,7 +219,7 @@ export function calcolaHomaIr(
  * prima di darle per definitive.
  */
 export function fasciaHomaIr(homa: number): string {
-  if (homa < 2) return "sensibilita' insulinica conservata";
+  if (homa < 2) return "sensibilità insulinica conservata";
   if (homa < 2.5) return "borderline";
   return "suggestivo di insulino-resistenza";
 }
@@ -233,7 +238,7 @@ export function calcolaEgfrCkdEpi(
   const scr = num(creatinina);
   const age = num(eta);
   if (scr == null || age == null || (sesso !== "M" && sesso !== "F")) {
-    return { ok: false, reason: "Servono creatininemia, eta' e sesso del paziente." };
+    return { ok: false, reason: "Servono creatininemia, età e sesso del paziente." };
   }
   const k = sesso === "F" ? 0.7 : 0.9;
   const alpha = sesso === "F" ? -0.241 : -0.302;
@@ -304,16 +309,16 @@ export function calcolaQtcBazett(
  */
 export function calcolaFcMaxTeorica(eta: number | undefined): CalcOutcome {
   const age = num(eta);
-  if (age == null) return { ok: false, reason: "Serve l'eta' del paziente." };
+  if (age == null) return { ok: false, reason: "Serve l'età del paziente." };
   const fc = 220 - age;
-  if (fc <= 0) return { ok: false, reason: "Eta' fuori dai limiti della formula." };
+  if (fc <= 0) return { ok: false, reason: "Età fuori dai limiti della formula." };
   return {
     ok: true,
     result: {
       value: fc,
       display: fmt(fc, 0),
       unit: "bpm",
-      source: "220 − eta' — stima di popolazione, ampia variabilita' individuale",
+      source: "220 − età — stima di popolazione, ampia variabilità individuale",
     },
   };
 }
@@ -329,7 +334,7 @@ export function calcolaPercentualeFcMax(
   const fc = num(fcRaggiunta);
   const teorica = calcolaFcMaxTeorica(eta);
   if (fc == null || !teorica.ok) {
-    return { ok: false, reason: "Servono la FC massima raggiunta e l'eta'." };
+    return { ok: false, reason: "Servono la FC massima raggiunta e l'età." };
   }
   const pct = (fc / teorica.result.value) * 100;
   return {
@@ -341,7 +346,7 @@ export function calcolaPercentualeFcMax(
       source:
         pct < 85
           ? "Sotto l'85%: test submassimale"
-          : "Rispetto a 220 − eta'",
+          : "Rispetto a 220 − età",
     },
   };
 }
@@ -381,33 +386,6 @@ export function calcolaCaloNotturno(
     },
   };
 }
-
-// ─── TC coronarica ───────────────────────────────────────────────────────────
-
-/**
- * Fasce di gravita' del calcium score (Agatston). Sono le fasce di uso comune
- * in refertazione; restano un descrittore, non una diagnosi.
- */
-export function fasciaCacScore(score: number | undefined): string | null {
-  const s = score == null ? null : Number(score);
-  if (s == null || !Number.isFinite(s) || s < 0) return null;
-  if (s === 0) return "Assente (0)";
-  if (s < 100) return "Lieve (1-99)";
-  if (s < 400) return "Moderata (100-399)";
-  return "Severa (≥ 400)";
-}
-
-/** Categorie CAD-RADS 2.0 per il grado di stenosi coronarica. */
-export const CAD_RADS_OPTIONS: { key: string; label: string }[] = [
-  { key: "0", label: "CAD-RADS 0 — nessuna placca (0%)" },
-  { key: "1", label: "CAD-RADS 1 — minima (1-24%)" },
-  { key: "2", label: "CAD-RADS 2 — lieve (25-49%)" },
-  { key: "3", label: "CAD-RADS 3 — moderata (50-69%)" },
-  { key: "4A", label: "CAD-RADS 4A — severa (70-99%)" },
-  { key: "4B", label: "CAD-RADS 4B — tronco comune > 50% o trivasale ≥ 70%" },
-  { key: "5", label: "CAD-RADS 5 — occlusione totale (100%)" },
-  { key: "N", label: "CAD-RADS N — non diagnostico" },
-];
 
 // ─── SCORE2 ──────────────────────────────────────────────────────────────────
 
@@ -486,13 +464,19 @@ export function calcolaScore2(input: Partial<Score2Input>): CalcOutcome {
     return {
       ok: false,
       reason:
-        "Servono eta', sesso, abitudine al fumo, PA sistolica, colesterolo totale e HDL.",
+        "Servono età, sesso, abitudine al fumo, PA sistolica, colesterolo totale e HDL.",
     };
+  }
+  // Dai 70 anni il modello giusto e' SCORE2-OP: invece di fermarsi, la
+  // funzione ci passa la mano, cosi' il medico legge perche' il numero manca e
+  // non solo che manca.
+  if (eta >= SCORE2_OP_MIN_AGE) {
+    return calcolaScore2Op({ eta, sesso, fumatore, pas, colesteroloTotale, hdl, region });
   }
   if (eta < SCORE2_MIN_AGE || eta > SCORE2_MAX_AGE) {
     return {
       ok: false,
-      reason: `SCORE2 e' validato fra ${SCORE2_MIN_AGE} e ${SCORE2_MAX_AGE} anni (oltre serve SCORE2-OP).`,
+      reason: `SCORE2 è validato fra ${SCORE2_MIN_AGE} e ${SCORE2_MAX_AGE} anni.`,
     };
   }
   if (!SCORE2_COEFFICIENTS_VALIDATED) {
@@ -550,4 +534,51 @@ export function computeScore2(input: Score2Input): CalcResult {
     unit: "% a 10 anni",
     source: "SCORE2 (ESC 2021), regione di rischio selezionata",
   };
+}
+
+// ─── SCORE2-OP ───────────────────────────────────────────────────────────────
+
+/**
+ * Rischio cardiovascolare a 10 anni secondo SCORE2-OP (70-89 anni).
+ *
+ * Come `calcolaScore2`, non restituisce nulla finche' i coefficienti non sono
+ * stati riscontrati sulla pubblicazione: vedi `score2OpCoefficients.ts`. La
+ * differenza rispetto a SCORE2 non e' solo l'eta' — cambiano centratura,
+ * termini di interazione e sopravvivenza di base — quindi non c'e' modo di
+ * "adattare" il modello dei piu' giovani a un ottantenne.
+ */
+export function calcolaScore2Op(input: Partial<Score2Input>): CalcOutcome {
+  const { eta, sesso, fumatore, pas, colesteroloTotale, hdl, region } = input;
+
+  if (
+    eta == null ||
+    (sesso !== "M" && sesso !== "F") ||
+    fumatore == null ||
+    pas == null ||
+    colesteroloTotale == null ||
+    hdl == null ||
+    region == null
+  ) {
+    return {
+      ok: false,
+      reason:
+        "Servono età, sesso, abitudine al fumo, PA sistolica, colesterolo totale e HDL.",
+    };
+  }
+  if (eta < SCORE2_OP_MIN_AGE || eta > SCORE2_OP_MAX_AGE) {
+    return {
+      ok: false,
+      reason: `SCORE2-OP è validato fra ${SCORE2_OP_MIN_AGE} e ${SCORE2_OP_MAX_AGE} anni.`,
+    };
+  }
+  if (!SCORE2_OP_COEFFICIENTS_VALIDATED) {
+    return {
+      ok: false,
+      reason:
+        "SCORE2-OP non attivo: i coefficienti del modello per i 70-89 anni devono ancora essere inseriti e verificati sulla pubblicazione ESC 2021.",
+    };
+  }
+
+  // Il calcolo va qui quando i coefficienti ci saranno.
+  return { ok: false, reason: "Coefficienti SCORE2-OP non disponibili." };
 }

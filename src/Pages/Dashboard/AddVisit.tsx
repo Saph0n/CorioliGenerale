@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+} from "react";
 import {
   Card,
   CardBody,
@@ -17,6 +23,7 @@ import {
   DropdownMenu,
   DropdownItem,
   Chip,
+  Checkbox,
   Tooltip,
 } from "@nextui-org/react";
 import { useSearchParams, useNavigate, useParams } from "react-router-dom";
@@ -83,6 +90,7 @@ import {
   isDoctorProfileComplete,
 } from "../../utils/doctorProfile";
 import { AppModal } from "../../components/AppModal";
+import { ProntuarioModal } from "../../components/cardio/ProntuarioModal";
 import {
   CalcSuggestion,
   GruppoCampi,
@@ -96,7 +104,6 @@ import {
   RiquadroTarget,
 } from "../../components/cardio/CardioFields";
 import {
-  CAD_RADS_OPTIONS,
   calcolaEgfrCkdEpi,
   calcolaHomaIr,
   calcolaLdlFriedewald,
@@ -107,7 +114,6 @@ import {
   calcolaRapportoTgHdl,
   calcolaQtcBazett,
   calcolaScore2,
-  fasciaCacScore,
   stadioKdigo,
 } from "../../utils/cardioCalcs";
 import {
@@ -123,6 +129,7 @@ import {
 import {
   costruisciPrecedenti,
   costruisciSerie,
+  dataBreve,
 } from "../../utils/confrontoMisure";
 import {
   CATEGORIA_RISCHIO_LABELS,
@@ -134,10 +141,41 @@ import {
   type CategoriaRischioCv,
 } from "../../utils/rischioCv";
 import {
+  CLASSI_NYHA,
+  CONTESTO_BNP_LABELS,
+  NYHA_LABELS,
+  confondentiNtProBnp,
+  fenotipoConStorico,
+  valutaNtProBnp,
+  type ContestoBnp,
+} from "../../utils/scompenso";
+import {
+  BURDEN_PLACCA,
+  CAD_RADS_CATEGORIE,
+  ESITI_FFR_CT,
+  MODIFICATORI_CAD_RADS,
+  SEGMENTI_SCCT,
+  SOGLIA_CAC_PREDEFINITA,
+  categoriaCac,
+  coerenzaComponenti,
+  descriviVariazione,
+  percentileMesa,
+  progressioneCac,
+  type SogliaCacSevera,
+} from "../../utils/tcCoronarica";
+import {
+  FATTORI_CHADSVASC,
+  FATTORI_HASBLED,
+  calcolaChadsVasc,
+  calcolaHasBled,
+  type FattoreHasBled,
+} from "../../utils/fibrillazioneAtriale";
+import {
   scomponiPressione,
   valutaMisura,
   valutaPressione,
   type ChiaveMisura,
+  type LivelloSegnale,
 } from "../../utils/rangeClinici";
 
 function getAltezzaCmForBmi(patient: Patient | null): number | null {
@@ -145,9 +183,24 @@ function getAltezzaCmForBmi(patient: Patient | null): number | null {
   return parseOptionalHeight(String(patient.altezza)) ?? null;
 }
 
-function computeBmi(weightKg: number, heightCm: number): string {
+/**
+ * Colore del riquadro BMI per livello.
+ *
+ * Qui il verde del `nella-norma` ci sta: il riquadro e' uno solo e resta
+ * sempre acceso, quindi il colore distingue le fasce invece di segnalare
+ * un'eccezione in mezzo a molti campi neutri.
+ */
+const RIQUADRO_BMI: Record<LivelloSegnale, string> = {
+  "nella-norma": "text-success-700 bg-success-50 border-success-200",
+  attenzione: "text-warning-700 bg-warning-50 border-warning-200",
+  alterato: "text-danger-700 bg-danger-50 border-danger-200",
+};
+
+function computeBmi(weightKg: number, heightCm: number): number | null {
   const h = heightCm / 100;
-  return (weightKg / (h * h)).toFixed(1);
+  if (!(h > 0) || !(weightKg > 0)) return null;
+  const bmi = weightKg / (h * h);
+  return Number.isFinite(bmi) ? bmi : null;
 }
 
 const TemplateSelector = ({
@@ -224,6 +277,7 @@ const createDefaultVisitaData = () => ({
   frequenzaCardiaca: "",
   fumatore: "" as "" | "si" | "no",
   categoriaRischioCv: "" as "" | CategoriaRischioCv,
+  sintesiRischio: "",
   immagini: [] as string[],
   ecg: {} as NonNullable<NonNullable<Visit["visita"]>["ecg"]>,
   ecocardiogramma: {} as NonNullable<
@@ -238,6 +292,13 @@ const createDefaultVisitaData = () => ({
   holterPressorio: {} as NonNullable<
     NonNullable<Visit["visita"]>["holterPressorio"]
   >,
+  scompenso: {} as NonNullable<NonNullable<Visit["visita"]>["scompenso"]>,
+  fibrillazioneAtriale: {} as NonNullable<
+    NonNullable<Visit["visita"]>["fibrillazioneAtriale"]
+  >,
+  fattoriRischio: {} as NonNullable<
+    NonNullable<Visit["visita"]>["fattoriRischio"]
+  >,
 });
 
 /** Blocchi annidati della visita, aggiornati con lo stesso handler. */
@@ -248,7 +309,146 @@ type BloccoVisita =
   | "laboratorio"
   | "testErgometrico"
   | "holterEcg"
-  | "holterPressorio";
+  | "holterPressorio"
+  | "scompenso"
+  | "fibrillazioneAtriale"
+  | "fattoriRischio";
+
+/**
+ * Da fattore del punteggio a campo salvato.
+ *
+ * I due punteggi condividono l'ictus pregresso: senza il prefisso finirebbero
+ * sullo stesso campo e spuntarlo di qua lo spunterebbe anche di la', mentre
+ * sono due domande diverse sullo stesso evento.
+ */
+const CAMPO_CHADSVASC: Record<"scompenso" | "ictus" | "vascolare", string> = {
+  scompenso: "cvScompenso",
+  ictus: "cvIctus",
+  vascolare: "cvVascolare",
+};
+
+/**
+ * Fattori di rischio cardiovascolare da spuntare accanto ai parametri.
+ *
+ * Il fumo non e' in elenco: sta gia' nel campo "Fumatore" qui sopra, che ha tre
+ * stati perche' alimenta SCORE2, dove "non rilevato" e "no" non coincidono.
+ */
+const FATTORI_RISCHIO_CV: {
+  chiave: keyof NonNullable<NonNullable<Visit["visita"]>["fattoriRischio"]>;
+  label: string;
+}[] = [
+  { chiave: "ipertensione", label: "Ipertensione arteriosa" },
+  { chiave: "dislipidemia", label: "Dislipidemia" },
+  { chiave: "diabete", label: "Diabete o prediabete" },
+  { chiave: "familiaritaCad", label: "Familiarità per CAD precoce" },
+  { chiave: "obesita", label: "Obesità" },
+  { chiave: "sedentarieta", label: "Sedentarietà" },
+  { chiave: "eventoCvPregresso", label: "Pregresso evento cardiovascolare" },
+];
+
+const CAMPO_HASBLED: Record<FattoreHasBled, string> = {
+  ipertensioneNonControllata: "hbIpertensioneNonControllata",
+  funzioneRenale: "hbFunzioneRenale",
+  funzioneEpatica: "hbFunzioneEpatica",
+  ictus: "hbIctus",
+  sanguinamento: "hbSanguinamento",
+  inrLabile: "hbInrLabile",
+  farmaci: "hbFarmaci",
+  alcol: "hbAlcol",
+};
+
+/** Forme cliniche della fibrillazione atriale. */
+const TIPI_FA: { key: string; label: string }[] = [
+  { key: "parossistica", label: "Parossistica — risoluzione entro 7 giorni" },
+  { key: "persistente", label: "Persistente — oltre 7 giorni" },
+  { key: "persistente-lunga", label: "Persistente di lunga durata — oltre 12 mesi" },
+  { key: "permanente", label: "Permanente — ritmo sinusale non perseguito" },
+];
+
+/** Terapia anticoagulante in atto: decide se l'INR labile è una voce sensata. */
+const ANTICOAGULANTI: { key: string; label: string }[] = [
+  { key: "nessuno", label: "Nessuna terapia anticoagulante" },
+  { key: "warfarin", label: "Warfarin (TAO)" },
+  { key: "doac", label: "Anticoagulante orale diretto (DOAC)" },
+];
+
+/**
+ * Riquadro con il totale di un punteggio, le voci che lo compongono e la sua
+ * lettura.
+ *
+ * Le voci sono elencate di proposito: un "5" da solo non e' verificabile,
+ * mentre l'elenco permette al medico di accorgersi al volo di una casella
+ * spuntata per sbaglio senza dover ricontare a mente.
+ */
+function RiquadroPunteggio({
+  titolo,
+  esito,
+  allarme,
+  inFondo,
+  children,
+}: {
+  titolo: string;
+  esito:
+    | { ok: true; esito: { punteggio: number; massimo: number; voci: { label: string; punti: number }[]; nota: string } }
+    | { ok: false; reason: string };
+  /** `true` colora il riquadro: usato dall'HAS-BLED sopra soglia. */
+  allarme?: boolean;
+  /**
+   * Spinge il riquadro in fondo alla colonna.
+   *
+   * Serve quando due punteggi stanno affiancati e hanno un numero diverso di
+   * fattori: senza, i due totali finiscono a quote diverse e il confronto a
+   * colpo d'occhio — che e' il motivo per cui sono affiancati — si perde.
+   */
+  inFondo?: boolean;
+  children?: ReactNode;
+}) {
+  const fondo = inFondo ? "mt-auto" : "";
+  if (!esito.ok) {
+    return (
+      <div className={`rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 ${fondo}`}>
+        <p className="text-xs font-semibold text-warning-700">{titolo}</p>
+        <p className="mt-0.5 text-xs text-default-600">{esito.reason}</p>
+      </div>
+    );
+  }
+  const { punteggio, massimo, voci, nota } = esito.esito;
+  return (
+    <div
+      className={`rounded-lg border px-3 py-2 ${fondo} ${
+        allarme
+          ? "border-warning-300 bg-warning-50"
+          : "border-default-200 bg-default-50/60"
+      }`}
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-xs text-default-500">{titolo}</p>
+        <p className="text-lg font-semibold leading-none text-gray-800">
+          {punteggio}
+          <span className="text-xs font-normal text-default-500">
+            {" "}
+            / {massimo}
+          </span>
+        </p>
+      </div>
+      {voci.length > 0 && (
+        <ul className="mt-1.5 space-y-0.5 border-t border-default-200/70 pt-1.5">
+          {voci.map((v) => (
+            <li
+              key={v.label}
+              className="flex justify-between gap-2 text-xs text-default-600"
+            >
+              <span>{v.label}</span>
+              <span className="tabular-nums text-default-500">+{v.punti}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-1.5 text-xs text-default-600">{nota}</p>
+      {children}
+    </div>
+  );
+}
 
 /** Estrae la sistolica da "130/85" per alimentare SCORE2. */
 function parseSistolica(pa: string | undefined): number | undefined {
@@ -283,11 +483,17 @@ function visitaPerSalvataggio(
     ...(v.categoriaRischioCv
       ? { categoriaRischioCv: v.categoriaRischioCv }
       : {}),
+    ...(v.sintesiRischio?.trim() ? { sintesiRischio: v.sintesiRischio } : {}),
     immagini: v.immagini,
     ...(vuoto(v.ecg) ? {} : { ecg: v.ecg }),
     ...(vuoto(v.ecocardiogramma) ? {} : { ecocardiogramma: v.ecocardiogramma }),
     ...(vuoto(v.tcCoronarica) ? {} : { tcCoronarica: v.tcCoronarica }),
     ...(vuoto(v.laboratorio) ? {} : { laboratorio: v.laboratorio }),
+    ...(vuoto(v.scompenso) ? {} : { scompenso: v.scompenso }),
+    ...(vuoto(v.fibrillazioneAtriale)
+      ? {}
+      : { fibrillazioneAtriale: v.fibrillazioneAtriale }),
+    ...(vuoto(v.fattoriRischio) ? {} : { fattoriRischio: v.fattoriRischio }),
     ...(vuoto(v.testErgometrico) ? {} : { testErgometrico: v.testErgometrico }),
     ...(vuoto(v.holterEcg) ? {} : { holterEcg: v.holterEcg }),
     ...(vuoto(v.holterPressorio)
@@ -350,6 +556,8 @@ const MISURE: Record<string, { path: string; range?: ChiaveMisura }> = {
   "eco.ee": { path: "ecocardiogramma.rapportoEe", range: "eco.rapportoEe" },
   // TC coronarica
   "tc.cac": { path: "tcCoronarica.cacScore" },
+  // Scompenso
+  "sc.bnp": { path: "scompenso.ntProBnp" },
   // Test ergometrico
   "erg.durata": { path: "testErgometrico.durataMin" },
   "erg.watt": { path: "testErgometrico.caricoWatt" },
@@ -479,6 +687,10 @@ export default function AddVisit() {
   const [score2Region, setScore2Region] = useState<Score2Region>(
     SCORE2_DEFAULT_REGION,
   );
+  /** Soglia di calcificazione severa del centro (impostazioni): 300 o 400. */
+  const [sogliaCac, setSogliaCac] = useState<SogliaCacSevera>(
+    SOGLIA_CAC_PREDEFINITA,
+  );
 
   useEffect(() => {
     const loadData = async () => {
@@ -515,6 +727,25 @@ export default function AddVisit() {
           );
         });
         setPatientVisits(sortedVisits);
+        return sortedVisits;
+      };
+
+      /**
+       * Riporta i fattori di rischio dall'ultima visita che ne ha.
+       *
+       * Sono anamnestici e non cambiano da un controllo all'altro: richiederli
+       * a ogni visita sarebbe esattamente il tempo perso che rende i referti
+       * cardiologici volutamente scarni. Restano modificabili, e la copia e'
+       * per visita, cosi' resta la storia di quando un fattore e' comparso.
+       *
+       * Si applica **solo alla visita nuova**: in modifica i valori devono
+       * restare quelli salvati.
+       */
+      const riportaFattoriRischio = (visite: Visit[]) => {
+        const precedente = visite.find((v) => v.visita?.fattoriRischio);
+        const fattori = precedente?.visita?.fattoriRischio;
+        if (!fattori) return;
+        setVisitaData((prev) => ({ ...prev, fattoriRischio: { ...fattori } }));
       };
 
       if (visitId) {
@@ -546,14 +777,18 @@ export default function AddVisit() {
                 frequenzaCardiaca: visit.visita?.frequenzaCardiaca ?? "",
                 fumatore: visit.visita?.fumatore ?? "",
                 categoriaRischioCv: visit.visita?.categoriaRischioCv ?? "",
+                sintesiRischio: visit.visita?.sintesiRischio ?? "",
                 immagini: visit.visita?.immagini ?? [],
                 ecg: visit.visita?.ecg ?? {},
                 ecocardiogramma: visit.visita?.ecocardiogramma ?? {},
                 tcCoronarica: visit.visita?.tcCoronarica ?? {},
                 laboratorio: visit.visita?.laboratorio ?? {},
+                scompenso: visit.visita?.scompenso ?? {},
                 testErgometrico: visit.visita?.testErgometrico ?? {},
                 holterEcg: visit.visita?.holterEcg ?? {},
                 holterPressorio: visit.visita?.holterPressorio ?? {},
+                fibrillazioneAtriale: visit.visita?.fibrillazioneAtriale ?? {},
+                fattoriRischio: visit.visita?.fattoriRischio ?? {},
               }));
             } else {
               // Visita salvata prima del blocco `visita` (o importata): i campi
@@ -589,7 +824,9 @@ export default function AddVisit() {
           try {
             const patientData = await PatientService.getPatientById(patientId);
             setPatient(patientData);
-            if (patientData) await loadPatientVisits(patientData.id);
+            if (patientData) {
+              riportaFattoriRischio(await loadPatientVisits(patientData.id));
+            }
           } catch {
             setError("Errore nel caricamento dati paziente");
           }
@@ -597,7 +834,9 @@ export default function AddVisit() {
           try {
             const patientData = await PatientService.getPatientByCF(patientCf);
             setPatient(patientData);
-            if (patientData) await loadPatientVisits(patientData.id);
+            if (patientData) {
+              riportaFattoriRischio(await loadPatientVisits(patientData.id));
+            }
           } catch {
             setError("Errore nel caricamento dati paziente");
           }
@@ -625,6 +864,9 @@ export default function AddVisit() {
         setAnamnesiConfig(
           prefs ? parseAnamnesiConfig(prefs) : createDefaultAnamnesiConfig(),
         );
+        // Soglia di calcificazione severa impostata dal centro: 300 o 400.
+        const soglia = Number(prefs?.sogliaCacSevera);
+        setSogliaCac(soglia === 400 ? 400 : SOGLIA_CAC_PREDEFINITA);
       } catch {
         setAnamnesiConfig(createDefaultAnamnesiConfig());
       }
@@ -1076,7 +1318,7 @@ export default function AddVisit() {
   const handleBloccoChange = (
     blocco: BloccoVisita,
     field: string,
-    value: string | number | undefined,
+    value: string | number | boolean | string[] | number[] | undefined,
   ) => {
     if (initialLoadDone.current) setHasUnsavedChanges(true);
     setVisitaData((prev) => {
@@ -1363,6 +1605,192 @@ export default function AddVisit() {
     );
     return valutaPressione(sistolica, diastolica);
   }, [visitaData.pressioneArteriosa]);
+  /**
+   * Fenotipo dello scompenso: si ricava dalla FE dell'ecocardiogramma di questa
+   * visita e non viene salvato, così se la FE viene corretta il fenotipo non
+   * resta indietro.
+   */
+  const fenotipo = useMemo(
+    () =>
+      fenotipoConStorico(
+        visitaData.ecocardiogramma.fe,
+        serieStoriche["ecocardiogramma.fe"] ?? [],
+      ),
+    [visitaData.ecocardiogramma.fe, serieStoriche],
+  );
+
+  const altezzaCm = getAltezzaCmForBmi(patient);
+  /**
+   * BMI e fascia OMS. A differenza degli altri semafori il riquadro resta
+   * visibile anche quando il valore e' normale — il numero va mostrato
+   * comunque — quindi qui il livello `nella-norma` ha un colore suo invece di
+   * far sparire l'indicatore.
+   */
+  const bmi = useMemo(
+    () =>
+      altezzaCm != null ? computeBmi(visitaData.pesoCorporeo, altezzaCm) : null,
+    [visitaData.pesoCorporeo, altezzaCm],
+  );
+  const bmiSegnale = useMemo(
+    () => valutaMisura("vitali.bmi", bmi ?? undefined),
+    [bmi],
+  );
+
+  const esitoBnp = useMemo(
+    () =>
+      valutaNtProBnp(
+        visitaData.scompenso.ntProBnp,
+        visitaData.scompenso.contestoBnp,
+        etaPaziente,
+      ),
+    [visitaData.scompenso.ntProBnp, visitaData.scompenso.contestoBnp, etaPaziente],
+  );
+
+  /**
+   * Condizioni che spostano il peptide. Si mostrano solo quando c'e' un valore
+   * da leggere: fuori da quel contesto sarebbero avvisi senza oggetto.
+   */
+  const avvisiBnp = useMemo(
+    () =>
+      visitaData.scompenso.ntProBnp == null
+        ? []
+        : confondentiNtProBnp({
+            egfr: egfrCalc.ok ? egfrCalc.result.value : undefined,
+            bmi: bmi ?? undefined,
+            ritmo: visitaData.ecg.ritmo,
+            eta: etaPaziente,
+          }),
+    [visitaData.scompenso.ntProBnp, egfrCalc, bmi, visitaData.ecg.ritmo, etaPaziente],
+  );
+
+  const fa = visitaData.fibrillazioneAtriale;
+  const fattoriRischio = visitaData.fattoriRischio;
+
+  /** Categoria del calcium score, con la soglia severa impostata dal centro. */
+  const esitoCac = useMemo(
+    () => categoriaCac(visitaData.tcCoronarica.cacScore, sogliaCac),
+    [visitaData.tcCoronarica.cacScore, sogliaCac],
+  );
+
+  const percentileCac = useMemo(
+    () =>
+      percentileMesa({
+        score: visitaData.tcCoronarica.cacScore,
+        eta: etaPaziente,
+        sesso: sessoPaziente,
+      }),
+    [visitaData.tcCoronarica.cacScore, etaPaziente, sessoPaziente],
+  );
+
+  const avvisoComponenti = useMemo(
+    () =>
+      coerenzaComponenti(
+        visitaData.tcCoronarica.componenteCalcifica,
+        visitaData.tcCoronarica.componenteNonCalcifica,
+      ),
+    [
+      visitaData.tcCoronarica.componenteCalcifica,
+      visitaData.tcCoronarica.componenteNonCalcifica,
+    ],
+  );
+
+  /**
+   * Progressione del calcium score.
+   *
+   * Costruita sui soli esami realmente eseguiti, quello in corso compreso:
+   * niente punti intermedi fra due TC distanti anni, niente proiezioni. La
+   * data e' quella dell'esame e non della visita, perche' una TC puo' essere
+   * di mesi prima del controllo in cui viene vista.
+   */
+  const progressioneTc = useMemo(() => {
+    const storici = patientVisits
+      .filter((v) => v.id !== existingVisit?.id)
+      .map((v) => ({
+        score: Number(v.visita?.tcCoronarica?.cacScore),
+        data: v.visita?.tcCoronarica?.dataEsame || v.dataVisita,
+      }))
+      .filter((e) => Number.isFinite(e.score) && e.score >= 0);
+
+    const corrente = Number(visitaData.tcCoronarica.cacScore);
+    const dataCorrente =
+      visitaData.tcCoronarica.dataEsame || visitData.dataVisita;
+    const tutti = Number.isFinite(corrente)
+      ? [...storici, { score: corrente, data: dataCorrente }]
+      : storici;
+
+    return progressioneCac(tutti);
+  }, [
+    patientVisits,
+    existingVisit?.id,
+    visitaData.tcCoronarica.cacScore,
+    visitaData.tcCoronarica.dataEsame,
+    visitData.dataVisita,
+  ]);
+  const [isProntuarioOpen, setIsProntuarioOpen] = useState(false);
+  const tc = visitaData.tcCoronarica;
+
+  /**
+   * CHA₂DS₂-VASc e HAS-BLED. Come il fenotipo dello scompenso non vengono
+   * salvati: si ricalcolano dai fattori spuntati, cosi' correggere una casella
+   * aggiorna il punteggio invece di lasciarne uno vecchio nella scheda.
+   */
+  const chadsVascCalc = useMemo(
+    () =>
+      calcolaChadsVasc({
+        eta: etaPaziente,
+        sesso: sessoPaziente,
+        fattori: {
+          scompenso: fa.cvScompenso,
+          // Dichiarati fra i fattori di rischio accanto ai parametri: il
+          // punteggio li legge da li' invece di richiederli, altrimenti si
+          // potrebbero avere spuntati di la' e no di qua.
+          ipertensione: fattoriRischio.ipertensione,
+          diabete: fattoriRischio.diabete,
+          ictus: fa.cvIctus,
+          vascolare: fa.cvVascolare,
+        },
+      }),
+    [
+      etaPaziente,
+      sessoPaziente,
+      fa.cvScompenso,
+      fa.cvIctus,
+      fa.cvVascolare,
+      fattoriRischio.ipertensione,
+      fattoriRischio.diabete,
+    ],
+  );
+
+  const hasBledCalc = useMemo(
+    () =>
+      calcolaHasBled({
+        eta: etaPaziente,
+        inTao: fa.anticoagulante === "warfarin",
+        fattori: {
+          ipertensioneNonControllata: fa.hbIpertensioneNonControllata,
+          funzioneRenale: fa.hbFunzioneRenale,
+          funzioneEpatica: fa.hbFunzioneEpatica,
+          ictus: fa.hbIctus,
+          sanguinamento: fa.hbSanguinamento,
+          inrLabile: fa.hbInrLabile,
+          farmaci: fa.hbFarmaci,
+          alcol: fa.hbAlcol,
+        },
+      }),
+    [
+      etaPaziente,
+      fa.anticoagulante,
+      fa.hbIpertensioneNonControllata,
+      fa.hbFunzioneRenale,
+      fa.hbFunzioneEpatica,
+      fa.hbIctus,
+      fa.hbSanguinamento,
+      fa.hbInrLabile,
+      fa.hbFarmaci,
+      fa.hbAlcol,
+    ],
+  );
+
   const frequenzaSegnale = useMemo(() => {
     const n = Number(visitaData.frequenzaCardiaca);
     return valutaMisura(
@@ -1417,7 +1845,7 @@ export default function AddVisit() {
   const renderAnamnesiSection = () => (
     <div className="space-y-2 relative">
       <div className="flex justify-between items-end mb-1">
-        <label className="text-sm font-bold text-gray-700">2. Anamnesi</label>
+        <label className="text-sm font-bold text-gray-700">1. Anamnesi</label>
         {!useStructuredAnamnesi && (
           <TemplateSelector
             templates={allTemplates.filter(
@@ -1438,7 +1866,7 @@ export default function AddVisit() {
                 <div key={key} className="space-y-1">
                   <div className="flex justify-between items-end">
                     <label className="text-xs font-semibold text-gray-500">
-                      {`2.${idx + 1} ${label}`}
+                      {`1.${idx + 1} ${label}`}
                       {optional ? " (facoltativa)" : ""}
                     </label>
                     {fieldTemplates.length > 0 && (
@@ -1510,7 +1938,6 @@ export default function AddVisit() {
   ];
 
   const canCopyOrClear = Boolean(getPreviousVisit()) || copiedPrevious;
-  const altezzaCm = getAltezzaCmForBmi(patient);
   const immagini = visitaData.immagini ?? [];
 
   return (
@@ -1681,6 +2108,54 @@ export default function AddVisit() {
 
                 <Divider className="my-2" />
 
+                {/* Fattori di rischio cardiovascolare.
+                    Stanno qui e non dentro un modulo perché servono a colpo
+                    d'occhio mentre si scrive il referto. Alla visita nuova
+                    arrivano già spuntati come nell'ultima: sono anamnestici e
+                    ricompilarli ogni volta sarebbe tempo perso. */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Fattori di rischio CV
+                  </p>
+                  {/* Una casella per riga, con abbastanza aria fra loro.
+                      Due insidie del Checkbox di NextUI, che qui portavano
+                      entrambe a spuntare il fattore sbagliato con un clic:
+                      è `inline-flex`, quindi senza un contenitore proprio due
+                      fattori finiscono sulla stessa riga; e usa `p-2 -m-2` per
+                      allargare l'area di tocco, che percio' sborda di 8px
+                      sopra e sotto il suo spazio di layout. Da cui `space-y-3`
+                      e non `space-y-1`: sotto gli 11px le righe si
+                      sovrappongono anche quando sembrano separate. */}
+                  <div className="mt-2 space-y-3">
+                    {FATTORI_RISCHIO_CV.map((f) => (
+                      <div key={f.chiave}>
+                        <Checkbox
+                          size="sm"
+                          isSelected={fattoriRischio[f.chiave] === true}
+                          onValueChange={(c) =>
+                            handleBloccoChange(
+                              "fattoriRischio",
+                              f.chiave,
+                              c ? true : undefined,
+                            )
+                          }
+                        >
+                          <span className="text-sm text-gray-700">
+                            {f.label}
+                          </span>
+                        </Checkbox>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-default-500">
+                    Il fumo si indica nel campo qui sopra. Ipertensione e diabete
+                    alimentano anche il CHA&#8322;DS&#8322;-VASc del modulo
+                    Fibrillazione atriale.
+                  </p>
+                </div>
+
+                <Divider className="my-2" />
+
                 {/* Peso corporeo + BMI */}
                 {altezzaCm == null && (
                   <div className="mb-3 rounded-xl border border-dashed border-primary-200 bg-gradient-to-r from-primary-50/70 via-white to-primary-50/40 px-3 py-2.5">
@@ -1758,23 +2233,40 @@ export default function AddVisit() {
                     classNames={{ label: "pb-1" }}
                   />
 
-                  {/* Indicatore BMI (compatto e discreto) */}
-                  {visitaData.pesoCorporeo > 0 &&
-                    altezzaCm != null && (
-                      <div className="flex flex-col items-center justify-end pb-1 px-1.5 animate-appearance-in">
-                        <div
-                          className="flex flex-col items-center gap-0 rounded-md border px-2 py-1 text-primary-600 bg-primary-50/80 border-primary-200"
-                          title="Indice di massa corporea"
-                        >
-                          <div className="flex items-center gap-1 text-xs font-semibold">
-                            <span>
-                              BMI {computeBmi(visitaData.pesoCorporeo, altezzaCm)}
-                            </span>
-                          </div>
+                  {/* Indicatore BMI: numero + fascia OMS, colorato per fascia */}
+                  {bmi != null && (
+                    <div className="flex flex-col items-center justify-end pb-1 px-1.5 animate-appearance-in">
+                      <div
+                        className={`flex flex-col items-center gap-0 rounded-md border px-2 py-1 ${RIQUADRO_BMI[bmiSegnale.livello]}`}
+                        title={bmiSegnale.nota || "Indice di massa corporea"}
+                      >
+                        <div className="flex items-center gap-1 text-xs font-semibold">
+                          <span>BMI {bmi.toFixed(1).replace(".", ",")}</span>
                         </div>
+                        {bmiSegnale.etichetta && (
+                          <span className="text-[10px] font-medium leading-tight">
+                            {bmiSegnale.etichetta}
+                          </span>
+                        )}
                       </div>
-                    )}
+                    </div>
+                  )}
                 </div>
+                <Divider className="my-2" />
+
+                {/* Il prontuario chiude la card invece di spezzare il flusso
+                    dei parametri: è un'azione, non un dato da compilare, e in
+                    mezzo ai campi si leggeva come un campo. Sta in un modal
+                    perché è materiale da guardare mentre si scrive, non
+                    contenuto da stampare. */}
+                <Button
+                  size="sm"
+                  variant="flat"
+                  className="w-full"
+                  onPress={() => setIsProntuarioOpen(true)}
+                >
+                  Prontuario — pilastri, icosapent, colchicina
+                </Button>
               </CardBody>
             </Card>
 
@@ -2072,7 +2564,7 @@ export default function AddVisit() {
                   scritti nel referto.
                 </p>
 
-                {/* La classe di rischio la attribuisce il medico: e' quella che
+                {/* La classe di rischio la attribuisce il medico: è quella che
                     sblocca gli obiettivi lipidici, non un calcolo dell'app. */}
                 <Select
                   label="Classe di rischio CV"
@@ -2138,6 +2630,13 @@ export default function AddVisit() {
 
                 <Divider className="my-1" />
 
+                <p className="text-xs font-semibold uppercase tracking-wider text-default-500">
+                  {/* Dai 70 anni il modello è SCORE2-OP: l'intestazione li
+                      nomina entrambi, altrimenti su un paziente anziano
+                      annuncia SCORE2 e sotto compare un messaggio su un altro
+                      modello. */}
+                  Rischio calcolato (SCORE2 / SCORE2-OP)
+                </p>
                 <Select
                   label="Regione di rischio SCORE2"
                   size="sm"
@@ -2191,10 +2690,85 @@ export default function AddVisit() {
                     )
                   }
                 />
+                {/* Solo insieme a un punteggio: senza, spiegherebbe le fasce
+                    di una categoria che non è stata calcolata. */}
+                {score2Calc.ok && (
+                  <p className="text-[10px] leading-snug text-default-400">
+                    La categoria segue le fasce d&apos;eta&apos; ESC 2021. Non
+                    tiene conto di diabete, malattia renale o familiarita&apos;,
+                    che spostano il rischio e restano da valutare a parte.
+                  </p>
+                )}
+
+                <Divider className="my-1" />
+
+                {/* Rischio osservato all'imaging, tenuto separato da quello
+                    calcolato: sono due cose diverse e affiancarle sotto la
+                    stessa etichetta inviterebbe a sommarle. I valori si
+                    leggono dal modulo TC coronarica, non si reinseriscono. */}
+                <p className="text-xs font-semibold uppercase tracking-wider text-default-500">
+                  Rischio osservato da imaging
+                </p>
+                {esitoCac || tc.cadRads ? (
+                  <div className="rounded-lg border border-default-200 bg-default-50/60 px-3 py-2 space-y-1">
+                    {esitoCac && (
+                      <div>
+                        <p className="text-xs text-default-500">
+                          Calcium score
+                          {tc.dataEsame ? ` — ${dataBreve(tc.dataEsame)}` : ""}
+                        </p>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {/* Spazio esplicito: il transform JSX si mangia
+                              quello fra un'espressione e il testo che segue. */}
+                          {tc.cacScore}
+                          {" Agatston · "}
+                          {esitoCac.label}
+                        </p>
+                      </div>
+                    )}
+                    {tc.cadRads && (
+                      <div>
+                        <p className="text-xs text-default-500">Angio-TC</p>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {CAD_RADS_CATEGORIE.find((o) => o.key === tc.cadRads)?.label ??
+                            tc.cadRads}
+                        </p>
+                      </div>
+                    )}
+                    {!percentileCac.ok && esitoCac && (
+                      <p className="text-[10px] leading-snug text-default-400">
+                        {percentileCac.reason}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-[11px] leading-snug text-default-400">
+                    Compare inserendo calcium score o CAD-RADS nel modulo TC
+                    coronarica.
+                  </p>
+                )}
+
+                <Divider className="my-1" />
+
+                {/* Il solo punto in cui i due rischi si mettono insieme, e li
+                    mette insieme il medico: l'app non calcola un rischio
+                    combinato perché nessuna formula condivisa lo fa. */}
+                <p className="text-xs font-semibold uppercase tracking-wider text-default-500">
+                  Sintesi del medico
+                </p>
+                <RefertoTextarea
+                  value={visitaData.sintesiRischio}
+                  onValueChange={(value) =>
+                    handleVisitaChange("sintesiRischio", value)
+                  }
+                  variant="bordered"
+                  minRows={3}
+                  placeholder="Come rischio calcolato e reperti di imaging si compongono in questo paziente..."
+                />
                 <p className="text-[10px] leading-snug text-default-400">
-                  La categoria segue le fasce d&apos;eta&apos; ESC 2021. Non
-                  tiene conto di diabete, malattia renale o familiarita&apos;,
-                  che spostano il rischio e restano da valutare a parte.
+                  Rischio calcolato e rischio osservato restano separati: non
+                  viene prodotto un rischio combinato, l&apos;integrazione e la
+                  sua motivazione stanno in questo campo.
                 </p>
               </CardBody>
             </Card>
@@ -2265,10 +2839,16 @@ export default function AddVisit() {
                 Referto Medico
               </CardHeader>
               <CardBody className="p-6 space-y-8">
-                {/* Sezione 1: Descrizione */}
+                {/* Sezione 1: Anamnesi.
+                    L'anamnesi viene prima del motivo della visita: per capire
+                    perché il paziente è qui serve prima conoscerne la storia.
+                    È l'ordine dei referti cardiologici standard. */}
+                {renderAnamnesiSection()}
+
+                {/* Sezione 2: Descrizione */}
                 <div className="space-y-2 group">
                   <label className="text-sm font-bold text-gray-700 block mb-1">
-                    1. Descrizione Problema / Dati Clinici
+                    2. Descrizione Problema / Dati Clinici
                   </label>
                   <RefertoTextarea
                     value={visitaData.problemaClinico}
@@ -2280,9 +2860,6 @@ export default function AddVisit() {
                     placeholder="Il paziente riferisce..."
                   />
                 </div>
-
-                {/* Sezione 2: Anamnesi */}
-                {renderAnamnesiSection()}
 
                 {/* Sezione 3: Esame Obiettivo */}
                 <div className="space-y-2 relative group">
@@ -2585,30 +3162,35 @@ export default function AddVisit() {
                   />
                 </div>
 
-                {/* Sezione 6: TC coronarica */}
-                <div className="space-y-2 relative group">
-                  <ModuloHeader
-                    numero="6"
-                    titolo="TC coronarica"
-                    azione={
-                      <TemplateSelector
-                        templates={allTemplates.filter(
-                          (t) =>
-                            t.category === "visita" &&
-                            t.section === "tcCoronarica",
-                        )}
-                        onSelect={(t) => applyBloccoTemplate("tcCoronarica", t)}
-                      />
-                    }
-                  />
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                {/* Sezione 6: TC coronarica.
+                    Collassabile come i moduli 7-11: i campi sono molti, ma una
+                    visita su cento porta una TC coronarica, e tenerli aperti a
+                    vuoto è il tipo di ingombro che rende lenta la maschera. */}
+                <ModuloCollassabile
+                  numero="6"
+                  titolo="TC coronarica"
+                  sottotitolo="non eseguita"
+                  compilato={bloccoCompilato("tcCoronarica")}
+                  azione={
+                    <TemplateSelector
+                      templates={allTemplates.filter(
+                        (t) =>
+                          t.category === "visita" &&
+                          t.section === "tcCoronarica",
+                      )}
+                      onSelect={(t) => applyBloccoTemplate("tcCoronarica", t)}
+                    />
+                  }
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <Input
                       type="date"
                       label="Data esame"
                       size="sm"
                       variant="bordered"
                       labelPlacement="outside"
-                      value={visitaData.tcCoronarica.dataEsame ?? ""}
+                      max={todayIsoDate()}
+                      value={tc.dataEsame ?? ""}
                       onValueChange={(v) =>
                         handleBloccoChange("tcCoronarica", "dataEsame", v)
                       }
@@ -2618,17 +3200,35 @@ export default function AddVisit() {
                       size="sm"
                       variant="bordered"
                       labelPlacement="outside"
-                      placeholder="Dove e' stato eseguito"
-                      value={visitaData.tcCoronarica.struttura ?? ""}
+                      placeholder="Dove è stato eseguito"
+                      value={tc.struttura ?? ""}
                       onValueChange={(v) =>
                         handleBloccoChange("tcCoronarica", "struttura", v)
                       }
                     />
+                    <Input
+                      label="Metodica"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="Es. TC 128 strati, protocollo dedicato"
+                      value={tc.metodica ?? ""}
+                      onValueChange={(v) =>
+                        handleBloccoChange("tcCoronarica", "metodica", v)
+                      }
+                    />
+                  </div>
+
+                  {/* --- Calcium score --- */}
+                  <p className="text-xs font-semibold uppercase tracking-wider text-default-500">
+                    Calcium score
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <MisuraInput
-                      label="Calcium score"
-                      unit="Agatston"
+                      label="Agatston"
+                      unit="punteggio"
                       decimals={false}
-                      value={visitaData.tcCoronarica.cacScore}
+                      value={tc.cacScore}
                       onValueChange={(v) =>
                         handleBloccoChange("tcCoronarica", "cacScore", v)
                       }
@@ -2636,26 +3236,91 @@ export default function AddVisit() {
                       onDraftChange={(d) => setDraft("tc.cac", d)}
                       {...misura("tc.cac")}
                     />
+                    <div className="md:col-span-2">
+                      {esitoCac ? (
+                        <div className="rounded-lg border border-default-200 bg-default-50/60 px-3 py-2">
+                          <p className="text-sm font-semibold text-gray-800">
+                            {esitoCac.label}
+                          </p>
+                          <p className="text-xs text-default-500">
+                            {esitoCac.intervallo}
+                          </p>
+                          <p className="mt-1 text-xs text-default-500">
+                            {/* Percentile: finche' le tabelle MESA non ci sono,
+                                si dice perché manca invece di stimarlo. */}
+                            {percentileCac.ok
+                              ? `Percentile MESA: ${percentileCac.percentile}deg`
+                              : percentileCac.reason}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-default-500">
+                          La categoria compare inserendo il punteggio Agatston.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Avvertenza non modificabile: è la ragione per cui
+                      mostrare un Agatston in un gestionale è accettabile. */}
+                  {esitoCac && (
+                    <p className="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-xs text-warning-800">
+                      {esitoCac.flag}
+                    </p>
+                  )}
+
+                  {/* Progressione: un punto per esame realmente eseguito. */}
+                  {progressioneTc.length > 0 && (
+                    <div className="rounded-lg border border-default-200 px-3 py-2">
+                      <p className="text-xs font-semibold text-gray-700">
+                        Progressione fra esami consecutivi
+                      </p>
+                      <ul className="mt-1 space-y-0.5">
+                        {progressioneTc.map((v) => (
+                          <li
+                            key={`${v.da.data}-${v.a.data}`}
+                            className="text-xs text-default-600"
+                          >
+                            {dataBreve(v.da.data)}
+                            {" → "}
+                            {dataBreve(v.a.data)}
+                            {": "}
+                            {v.da.score}
+                            {" → "}
+                            {v.a.score}
+                            {" Agatston, "}
+                            {descriviVariazione(v)}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="mt-1 text-xs text-default-400">
+                        Solo valori realmente misurati: fra due esami non viene
+                        mostrato nessun valore intermedio.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* --- Angio-TC --- */}
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-default-500">
+                    Angio-TC
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <Select
                       label="CAD-RADS"
                       size="sm"
                       variant="bordered"
                       labelPlacement="outside"
-                      placeholder="—"
+                      placeholder="&mdash;"
                       description={
                         <PrecedenteTesto
                           precedente={precedenti["tcCoronarica.cadRads"]}
                           descrivi={(k) =>
-                            CAD_RADS_OPTIONS.find((o) => o.key === k)?.label ?? k
+                            CAD_RADS_CATEGORIE.find((o) => o.key === k)?.label ?? k
                           }
                         />
                       }
                       classNames={{ description: "m-0" }}
-                      selectedKeys={
-                        visitaData.tcCoronarica.cadRads
-                          ? [visitaData.tcCoronarica.cadRads]
-                          : []
-                      }
+                      selectedKeys={tc.cadRads ? [tc.cadRads] : []}
                       onSelectionChange={(keys) =>
                         handleBloccoChange(
                           "tcCoronarica",
@@ -2664,21 +3329,257 @@ export default function AddVisit() {
                         )
                       }
                     >
-                      {CAD_RADS_OPTIONS.map((o) => (
+                      {CAD_RADS_CATEGORIE.map((o) => (
                         <SelectItem key={o.key}>{o.label}</SelectItem>
                       ))}
                     </Select>
+                    <Select
+                      label="Burden di placca"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="&mdash;"
+                      selectedKeys={tc.burdenPlacca ? [tc.burdenPlacca] : []}
+                      onSelectionChange={(keys) =>
+                        handleBloccoChange(
+                          "tcCoronarica",
+                          "burdenPlacca",
+                          (Array.from(keys)[0] as string) ?? "",
+                        )
+                      }
+                    >
+                      {BURDEN_PLACCA.map((o) => (
+                        <SelectItem key={o.chiave}>{o.label}</SelectItem>
+                      ))}
+                    </Select>
+                    {/* Più di un modificatore per lo stesso esame: uno stent e
+                        una placca ad alto rischio convivono. Nelle targhette
+                        bastano le sigle: il campo sta in una colonna stretta, e
+                        le sigle sono il modo in cui i modificatori si scrivono
+                        nel referto. */}
+                    <Select
+                      label="Modificatori"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="Nessuno"
+                      selectionMode="multiple"
+                      classNames={{
+                        trigger: "h-auto min-h-10 py-1.5",
+                        value: "whitespace-normal",
+                        label: "!top-0 !-translate-y-full !pb-1",
+                      }}
+                      renderValue={(voci) => (
+                        <div className="flex flex-wrap gap-1">
+                          {voci.map((v) => (
+                            <Chip
+                              key={v.key}
+                              size="sm"
+                              variant="flat"
+                              classNames={{
+                                base: "h-5 bg-default-100",
+                                content: "px-1.5 text-[11px] text-default-700",
+                              }}
+                            >
+                              {String(v.key)}
+                            </Chip>
+                          ))}
+                        </div>
+                      )}
+                      selectedKeys={new Set(tc.cadRadsModificatori ?? [])}
+                      onSelectionChange={(keys) => {
+                        const v = Array.from(keys) as string[];
+                        handleBloccoChange(
+                          "tcCoronarica",
+                          "cadRadsModificatori",
+                          v.length > 0 ? v : undefined,
+                        );
+                      }}
+                    >
+                      {MODIFICATORI_CAD_RADS.map((o) => (
+                        <SelectItem key={o.chiave} textValue={o.label}>
+                          <span className="text-sm">{o.label}</span>
+                          <span className="block text-xs text-default-400">
+                            {o.nota}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </Select>
                   </div>
-                  {fasciaCacScore(visitaData.tcCoronarica.cacScore) && (
-                    <p className="text-xs text-default-500">
-                      Calcificazione coronarica:{" "}
-                      <span className="font-semibold text-gray-700">
-                        {fasciaCacScore(visitaData.tcCoronarica.cacScore)}
-                      </span>{" "}
-                      — fasce Agatston di uso comune, descrittive e non
-                      diagnostiche.
-                    </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <MisuraInput
+                      label="Componente calcifica"
+                      unit="%"
+                      decimals={false}
+                      value={tc.componenteCalcifica}
+                      onValueChange={(v) =>
+                        handleBloccoChange("tcCoronarica", "componenteCalcifica", v)
+                      }
+                      draft={draftOf("tc.calc")}
+                      onDraftChange={(d) => setDraft("tc.calc", d)}
+                    />
+                    <MisuraInput
+                      label="Non calcifica o mista"
+                      unit="%"
+                      decimals={false}
+                      value={tc.componenteNonCalcifica}
+                      onValueChange={(v) =>
+                        handleBloccoChange(
+                          "tcCoronarica",
+                          "componenteNonCalcifica",
+                          v,
+                        )
+                      }
+                      draft={draftOf("tc.noncalc")}
+                      onDraftChange={(d) => setDraft("tc.noncalc", d)}
+                    />
+                    <MisuraInput
+                      label="Stenosi massima"
+                      unit="%"
+                      decimals={false}
+                      value={tc.stenosiMassima}
+                      onValueChange={(v) =>
+                        handleBloccoChange("tcCoronarica", "stenosiMassima", v)
+                      }
+                      draft={draftOf("tc.stenosi")}
+                      onDraftChange={(d) => setDraft("tc.stenosi", d)}
+                    />
+                    <Select
+                      label="Segmento della stenosi"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="&mdash;"
+                      selectedKeys={
+                        tc.stenosiMassimaSegmento != null
+                          ? [String(tc.stenosiMassimaSegmento)]
+                          : []
+                      }
+                      onSelectionChange={(keys) => {
+                        const v = Array.from(keys)[0] as string | undefined;
+                        handleBloccoChange(
+                          "tcCoronarica",
+                          "stenosiMassimaSegmento",
+                          v ? Number(v) : undefined,
+                        );
+                      }}
+                    >
+                      {SEGMENTI_SCCT.map((sg) => (
+                        <SelectItem key={String(sg.numero)}>
+                          {`${sg.numero}. ${sg.nome}`}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+
+                  {avvisoComponenti && (
+                    <p className="text-xs text-warning-700">{avvisoComponenti}</p>
                   )}
+
+                  {/* Quali segmenti, non solo quale vaso: una placca sulla
+                      discendente anteriore prossimale e una distale non sono
+                      lo stesso quadro. */}
+                  {/* Le selezioni multiple di NextUI mettono i valori su una
+                      riga sola con la classe `truncate`: oltre i tre-quattro
+                      segmenti l'elenco veniva tagliato con i puntini, e quali
+                      segmenti portano placca e' esattamente il dato per cui
+                      esiste il modello a 18 segmenti. Con `renderValue` ogni
+                      voce diventa una targhetta e la riga puo' andare a capo;
+                      il trigger cresce in altezza invece di restare a 32px. */}
+                  <Select
+                    label="Segmenti con placca (modello SCCT a 18 segmenti)"
+                    size="sm"
+                    variant="bordered"
+                    labelPlacement="outside"
+                    placeholder="Nessun segmento indicato"
+                    selectionMode="multiple"
+                    classNames={{
+                      trigger: "h-auto min-h-10 py-1.5",
+                      value: "whitespace-normal",
+                      // NextUI ancora l'etichetta "outside" al centro del
+                      // campo: crescendo il campo, l'etichetta ci finisce
+                      // dentro e si legge sopra le targhette. Ancorata al
+                      // bordo superiore resta sopra a qualunque altezza.
+                      label: "!top-0 !-translate-y-full !pb-1",
+                    }}
+                    renderValue={(voci) => (
+                      <div className="flex flex-wrap gap-1">
+                        {voci.map((v) => (
+                          <Chip
+                            key={v.key}
+                            size="sm"
+                            variant="flat"
+                            classNames={{
+                              base: "h-5 bg-default-100",
+                              content: "px-1.5 text-[11px] text-default-700",
+                            }}
+                          >
+                            {v.textValue}
+                          </Chip>
+                        ))}
+                      </div>
+                    )}
+                    selectedKeys={
+                      new Set((tc.segmenti ?? []).map((n) => String(n)))
+                    }
+                    onSelectionChange={(keys) => {
+                      const v = Array.from(keys)
+                        .map((k) => Number(k))
+                        .sort((a, b) => a - b);
+                      handleBloccoChange(
+                        "tcCoronarica",
+                        "segmenti",
+                        v.length > 0 ? v : undefined,
+                      );
+                    }}
+                  >
+                    {SEGMENTI_SCCT.map((sg) => (
+                      <SelectItem
+                        key={String(sg.numero)}
+                        textValue={`${sg.numero}. ${sg.nome}`}
+                      >
+                        <span className="text-sm">{`${sg.numero}. ${sg.nome}`}</span>
+                        <span className="block text-xs text-default-400">
+                          {sg.vaso}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </Select>
+
+                  {/* FFR-TC: facoltativo, resta vuoto se l'esame non lo riporta. */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <MisuraInput
+                      label="FFR-TC (facoltativo)"
+                      unit="valore"
+                      value={tc.ffrCt}
+                      onValueChange={(v) =>
+                        handleBloccoChange("tcCoronarica", "ffrCt", v)
+                      }
+                      draft={draftOf("tc.ffr")}
+                      onDraftChange={(d) => setDraft("tc.ffr", d)}
+                    />
+                    <Select
+                      label="Esito FFR-TC"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="&mdash;"
+                      selectedKeys={tc.ffrCtEsito ? [tc.ffrCtEsito] : []}
+                      onSelectionChange={(keys) =>
+                        handleBloccoChange(
+                          "tcCoronarica",
+                          "ffrCtEsito",
+                          (Array.from(keys)[0] as string) ?? "",
+                        )
+                      }
+                    >
+                      {ESITI_FFR_CT.map((o) => (
+                        <SelectItem key={o.chiave}>{o.label}</SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+
                   <RefertoTextarea
                     value={visitaData.tcCoronarica.referto ?? ""}
                     onValueChange={(value) =>
@@ -2688,7 +3589,7 @@ export default function AddVisit() {
                     minRows={4}
                     placeholder="Sintesi del referto radiologico, sedi delle placche, conclusioni..."
                   />
-                </div>
+                </ModuloCollassabile>
 
                 {/* Sezione 7: Test ergometrico */}
                 <ModuloCollassabile
@@ -3179,10 +4080,452 @@ export default function AddVisit() {
                   />
                 </ModuloCollassabile>
 
-                {/* Sezione 10: Accertamenti */}
+                {/* Sezione 10: Scompenso cardiaco */}
+                <ModuloCollassabile
+                  numero="10"
+                  titolo="Scompenso cardiaco"
+                  sottotitolo="non valutato"
+                  compilato={bloccoCompilato("scompenso")}
+                  azione={
+                    <TemplateSelector
+                      templates={allTemplates.filter(
+                        (t) =>
+                          t.category === "visita" && t.section === "scompenso",
+                      )}
+                      onSelect={(t) => applyBloccoTemplate("scompenso", t)}
+                    />
+                  }
+                >
+                  {/* Il fenotipo non è un campo: arriva dalla FE inserita
+                      nell'ecocardiogramma, e senza quella non c'è niente da
+                      dire invece di una casella vuota da riempire a mano. */}
+                  <div className="rounded-lg border border-default-200 bg-default-50/60 px-3 py-2">
+                    {fenotipo ? (
+                      <>
+                        <p className="text-xs text-default-500">
+                          Fenotipo per frazione di eiezione
+                        </p>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {fenotipo.label}{" "}
+                          <span className="font-normal text-default-500">
+                            ({fenotipo.intervallo})
+                          </span>
+                        </p>
+                        {fenotipo.avvertenza && (
+                          <p className="mt-1 text-xs text-default-500">
+                            {fenotipo.avvertenza}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-xs text-default-500">
+                        Il fenotipo (HFrEF / HFpEF) compare inserendo la
+                        frazione di eiezione nell&apos;ecocardiogramma.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <Select
+                      label="Classe NYHA"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="Non indicata"
+                      description={
+                        <PrecedenteTesto
+                          precedente={precedenti["scompenso.nyha"]}
+                          descrivi={(k) => `NYHA ${k}`}
+                        />
+                      }
+                      classNames={{ description: "m-0" }}
+                      selectedKeys={
+                        visitaData.scompenso.nyha ? [visitaData.scompenso.nyha] : []
+                      }
+                      onSelectionChange={(keys) =>
+                        handleBloccoChange(
+                          "scompenso",
+                          "nyha",
+                          (Array.from(keys)[0] as string) ?? "",
+                        )
+                      }
+                    >
+                      {CLASSI_NYHA.map((c) => (
+                        <SelectItem key={c}>{NYHA_LABELS[c]}</SelectItem>
+                      ))}
+                    </Select>
+                    <Input
+                      type="date"
+                      label="Data dosaggio"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      max={todayIsoDate()}
+                      value={visitaData.scompenso.dataBnp ?? ""}
+                      onValueChange={(v) =>
+                        handleBloccoChange("scompenso", "dataBnp", v)
+                      }
+                    />
+                    <MisuraInput
+                      label="NT-proBNP"
+                      unit="pg/mL"
+                      decimals={false}
+                      value={visitaData.scompenso.ntProBnp}
+                      onValueChange={(v) =>
+                        handleBloccoChange("scompenso", "ntProBnp", v)
+                      }
+                      draft={draftOf("sc.bnp")}
+                      onDraftChange={(d) => setDraft("sc.bnp", d)}
+                      {...misura("sc.bnp")}
+                    />
+                    {/* Il contesto non è un di più: con 125 pg/mL in
+                        ambulatorio e 300 in urgenza, lo stesso valore cade in
+                        due fasce diverse. Senza, il giudizio non compare. */}
+                    <Select
+                      label="Contesto del prelievo"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="Non indicato"
+                      selectedKeys={
+                        visitaData.scompenso.contestoBnp
+                          ? [visitaData.scompenso.contestoBnp]
+                          : []
+                      }
+                      onSelectionChange={(keys) =>
+                        handleBloccoChange(
+                          "scompenso",
+                          "contestoBnp",
+                          (Array.from(keys)[0] as string) ?? "",
+                        )
+                      }
+                    >
+                      {(Object.keys(CONTESTO_BNP_LABELS) as ContestoBnp[]).map(
+                        (k) => (
+                          <SelectItem key={k}>
+                            {CONTESTO_BNP_LABELS[k]}
+                          </SelectItem>
+                        ),
+                      )}
+                    </Select>
+                  </div>
+
+                  {visitaData.scompenso.ntProBnp != null && !esitoBnp && (
+                    <p className="text-xs text-warning-700">
+                      Indica il contesto del prelievo: le soglie di esclusione
+                      sono 125 pg/mL in ambulatorio e 300 pg/mL in urgenza, e
+                      senza saperlo il valore non &egrave; interpretabile.
+                    </p>
+                  )}
+
+                  {esitoBnp && (
+                    <div
+                      className={`rounded-lg border px-3 py-2 ${
+                        esitoBnp.livello === "conferma"
+                          ? "border-danger-200 bg-danger-50"
+                          : esitoBnp.livello === "indeterminato"
+                            ? "border-warning-200 bg-warning-50"
+                            : "border-success-200 bg-success-50"
+                      }`}
+                    >
+                      <p
+                        className={`text-sm font-semibold ${
+                          esitoBnp.livello === "conferma"
+                            ? "text-danger-700"
+                            : esitoBnp.livello === "indeterminato"
+                              ? "text-warning-700"
+                              : "text-success-700"
+                        }`}
+                      >
+                        {esitoBnp.titolo}
+                      </p>
+                      <p className="mt-0.5 text-xs text-default-600">
+                        {esitoBnp.nota}
+                      </p>
+                      {avvisiBnp.length > 0 && (
+                        <ul className="mt-1.5 space-y-0.5 border-t border-default-200/70 pt-1.5">
+                          {avvisiBnp.map((a) => (
+                            <li key={a} className="text-xs text-default-600">
+                              &middot; {a}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
+                  <RefertoTextarea
+                    value={visitaData.scompenso.referto ?? ""}
+                    onValueChange={(value) =>
+                      handleBloccoChange("scompenso", "referto", value)
+                    }
+                    variant="bordered"
+                    minRows={4}
+                    placeholder="Segni di congestione, tolleranza allo sforzo, terapia in atto e sua tolleranza..."
+                  />
+                </ModuloCollassabile>
+
+                {/* Sezione 11: Fibrillazione atriale */}
+                <ModuloCollassabile
+                  numero="11"
+                  titolo="Fibrillazione atriale"
+                  sottotitolo="non valutata"
+                  compilato={bloccoCompilato("fibrillazioneAtriale")}
+                  azione={
+                    <TemplateSelector
+                      templates={allTemplates.filter(
+                        (t) =>
+                          t.category === "visita" &&
+                          t.section === "fibrillazioneAtriale",
+                      )}
+                      onSelect={(t) =>
+                        applyBloccoTemplate("fibrillazioneAtriale", t)
+                      }
+                    />
+                  }
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Select
+                      label="Forma clinica"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="Non indicata"
+                      description={
+                        <PrecedenteTesto
+                          precedente={precedenti["fibrillazioneAtriale.tipo"]}
+                          descrivi={(k) =>
+                            TIPI_FA.find((o) => o.key === k)?.label ?? k
+                          }
+                        />
+                      }
+                      classNames={{ description: "m-0" }}
+                      selectedKeys={fa.tipo ? [fa.tipo] : []}
+                      onSelectionChange={(keys) =>
+                        handleBloccoChange(
+                          "fibrillazioneAtriale",
+                          "tipo",
+                          (Array.from(keys)[0] as string) ?? "",
+                        )
+                      }
+                    >
+                      {TIPI_FA.map((o) => (
+                        <SelectItem key={o.key}>{o.label}</SelectItem>
+                      ))}
+                    </Select>
+                    {/* Non è un dato accessorio: la voce "INR labile"
+                        dell'HAS-BLED vale solo in warfarin, e lasciarla
+                        spuntabile a un paziente in DOAC gonfierebbe il
+                        punteggio di un punto che non gli spetta. */}
+                    <Select
+                      label="Terapia anticoagulante in atto"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="Non indicata"
+                      selectedKeys={fa.anticoagulante ? [fa.anticoagulante] : []}
+                      onSelectionChange={(keys) =>
+                        handleBloccoChange(
+                          "fibrillazioneAtriale",
+                          "anticoagulante",
+                          (Array.from(keys)[0] as string) ?? "",
+                        )
+                      }
+                    >
+                      {ANTICOAGULANTI.map((o) => (
+                        <SelectItem key={o.key}>{o.label}</SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+
+                  {/* Età e sesso non sono caselle: i due punteggi li prendono
+                      dall'anagrafica, così non possono contraddire la scheda
+                      del paziente. */}
+                  <p className="text-xs text-default-500">
+                    Et&agrave; e sesso entrano nei punteggi dalla scheda del
+                    paziente
+                    {etaPaziente != null && sessoPaziente
+                      ? ` (${etaPaziente} anni, ${
+                          sessoPaziente === "F" ? "femmina" : "maschio"
+                        })`
+                      : ""}
+                    : non vanno spuntati qui.
+                  </p>
+
+                  {/* `items-stretch` + `mt-auto` sui riquadri: le due colonne
+                      hanno un numero diverso di fattori, e senza questo i due
+                      punteggi finiscono a quote diverse, che è proprio il
+                      confronto che il medico fa con l'occhio. */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+                    <div className="flex flex-col gap-2">
+                      <p className="text-sm font-semibold text-gray-700">
+                        CHA&#8322;DS&#8322;-VASc — rischio tromboembolico
+                      </p>
+                      <div className="space-y-1.5">
+                        {FATTORI_CHADSVASC.map((f) => {
+                          // Ipertensione e diabete arrivano dai fattori di
+                          // rischio: qui si mostrano in sola lettura, perche'
+                          // la tabella del punteggio resti leggibile per
+                          // intero senza poter essere contraddetta.
+                          if (f.origine === "fattoriRischio") {
+                            const attivo =
+                              fattoriRischio[
+                                f.chiave as keyof typeof fattoriRischio
+                              ] === true;
+                            return (
+                              <div key={f.chiave} className="flex gap-2">
+                                <span
+                                  className={`mt-0.5 text-sm ${
+                                    attivo ? "text-success-600" : "text-default-300"
+                                  }`}
+                                >
+                                  {attivo ? "✓" : "—"}
+                                </span>
+                                <div>
+                                  <span className="text-sm text-default-500">
+                                    {f.label}
+                                    <span className="ml-1 text-default-400">
+                                      (+{f.punti})
+                                    </span>
+                                  </span>
+                                  <p className="text-xs text-default-400">
+                                    Dai fattori di rischio, nella colonna dei
+                                    parametri.
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          }
+                          const campo =
+                            CAMPO_CHADSVASC[
+                              f.chiave as keyof typeof CAMPO_CHADSVASC
+                            ];
+                          return (
+                            <div key={f.chiave}>
+                              <Checkbox
+                                size="sm"
+                                isSelected={fa[campo as keyof typeof fa] === true}
+                                onValueChange={(c) =>
+                                  handleBloccoChange(
+                                    "fibrillazioneAtriale",
+                                    campo,
+                                    c ? true : undefined,
+                                  )
+                                }
+                              >
+                                <span className="text-sm text-gray-700">
+                                  {f.label}
+                                  <span className="ml-1 text-default-400">
+                                    (+{f.punti})
+                                  </span>
+                                </span>
+                              </Checkbox>
+                              <p className="ml-7 text-xs text-default-500">
+                                {f.nota}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <RiquadroPunteggio
+                        titolo="CHA₂DS₂-VASc"
+                        esito={chadsVascCalc}
+                        inFondo
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <p className="text-sm font-semibold text-gray-700">
+                        HAS-BLED — rischio emorragico
+                      </p>
+                      <div className="space-y-1.5">
+                        {FATTORI_HASBLED.map((f) => {
+                          const inWarfarin = fa.anticoagulante === "warfarin";
+                          const disabilitato = !!f.soloWarfarin && !inWarfarin;
+                          return (
+                            <div key={f.chiave}>
+                              <Checkbox
+                                size="sm"
+                                isDisabled={disabilitato}
+                                isSelected={
+                                  !disabilitato &&
+                                  fa[
+                                    CAMPO_HASBLED[
+                                      f.chiave
+                                    ] as keyof typeof fa
+                                  ] === true
+                                }
+                                onValueChange={(c) =>
+                                  handleBloccoChange(
+                                    "fibrillazioneAtriale",
+                                    CAMPO_HASBLED[f.chiave],
+                                    c ? true : undefined,
+                                  )
+                                }
+                              >
+                                <span
+                                  className={`text-sm ${
+                                    disabilitato
+                                      ? "text-default-400"
+                                      : "text-gray-700"
+                                  }`}
+                                >
+                                  {f.label}
+                                  <span className="ml-1 text-default-400">
+                                    (+1)
+                                  </span>
+                                </span>
+                              </Checkbox>
+                              <p className="ml-7 text-xs text-default-500">
+                                {f.nota}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <RiquadroPunteggio
+                        titolo="HAS-BLED"
+                        esito={hasBledCalc}
+                        allarme={hasBledCalc.ok && hasBledCalc.esito.alto}
+                        inFondo
+                      >
+                        {hasBledCalc.ok &&
+                          hasBledCalc.esito.modificabili.length > 0 && (
+                            <div className="mt-1.5 border-t border-default-200/70 pt-1.5">
+                              <p className="text-xs font-semibold text-gray-700">
+                                Fattori su cui si pu&ograve; intervenire
+                              </p>
+                              <ul className="mt-0.5 space-y-0.5">
+                                {hasBledCalc.esito.modificabili.map((m) => (
+                                  <li
+                                    key={m}
+                                    className="text-xs text-default-600"
+                                  >
+                                    &middot; {m}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                      </RiquadroPunteggio>
+                    </div>
+                  </div>
+
+                  <RefertoTextarea
+                    value={fa.referto ?? ""}
+                    onValueChange={(value) =>
+                      handleBloccoChange("fibrillazioneAtriale", "referto", value)
+                    }
+                    variant="bordered"
+                    minRows={4}
+                    placeholder="Data di riscontro, sintomi, strategia di controllo del ritmo o della frequenza, terapia in atto..."
+                  />
+                </ModuloCollassabile>
+
+                {/* Sezione 12: Accertamenti */}
                 <div className="space-y-2 relative group">
                   <label className="text-sm font-bold text-gray-700 block mb-1">
-                    10. Accertamenti
+                    12. Accertamenti
                   </label>
                   <RefertoTextarea
                     value={visitaData.accertamenti}
@@ -3195,11 +4538,11 @@ export default function AddVisit() {
                   />
                 </div>
 
-                {/* Sezione 11: Conclusioni e terapia */}
+                {/* Sezione 13: Conclusioni e terapia */}
                 <div className="space-y-2 relative group">
                   <div className="flex justify-between items-end mb-1">
                     <label className="text-sm font-bold text-gray-700">
-                      11. Conclusioni e Terapia
+                      13. Conclusioni e Terapia
                     </label>
                     <TemplateSelector
                       templates={allTemplates.filter(
@@ -3383,6 +4726,14 @@ export default function AddVisit() {
           </ModalFooter>
         </ModalContent>
       </AppModal>
+
+      <ProntuarioModal
+        isOpen={isProntuarioOpen}
+        onClose={() => setIsProntuarioOpen(false)}
+        fe={visitaData.ecocardiogramma.fe}
+        trigliceridi={visitaData.laboratorio.trigliceridi}
+        categoriaRischio={visitaData.categoriaRischioCv}
+      />
 
       {doctorProfileIncompleteModal}
     </div>

@@ -39,7 +39,7 @@ const vuota = {
 } as NonNullable<Visit["visita"]>;
 
 describe("mappa dei valori precedenti", () => {
-  it("prende il valore piu' recente fra quelli disponibili", () => {
+  it("prende il valore più recente fra quelli disponibili", () => {
     const visite = [
       visita("v3", "2026-06-01", { ...vuota, ecocardiogramma: { fe: 55 } }),
       visita("v2", "2025-06-01", { ...vuota, ecocardiogramma: { fe: 60 } }),
@@ -232,7 +232,7 @@ describe("formattazione delle date del confronto", () => {
 });
 
 describe("serie storica per l'andamento nel tempo", () => {
-  it("raccoglie tutte le rilevazioni, dalla piu' vecchia alla piu' recente", () => {
+  it("raccoglie tutte le rilevazioni, dalla più vecchia alla più recente", () => {
     const visite = [
       visita("v3", "2026-06-01", { ...vuota, laboratorio: { apoB: 78 } }),
       visita("v2", "2025-06-01", { ...vuota, laboratorio: { apoB: 96 } }),
@@ -247,7 +247,7 @@ describe("serie storica per l'andamento nel tempo", () => {
     ]);
   });
 
-  it("data ogni punto con la data del prelievo quando c'e'", () => {
+  it("data ogni punto con la data del prelievo quando c'è", () => {
     const visite = [
       visita("v2", "2026-06-01", {
         ...vuota,
@@ -271,7 +271,7 @@ describe("serie storica per l'andamento nel tempo", () => {
     expect(serie.map((p) => p.visitaId)).toEqual(["vecchia", "recente"]);
   });
 
-  it("esclude la visita in modifica, che non e' ancora storia", () => {
+  it("esclude la visita in modifica, che non è ancora storia", () => {
     const visite = [
       visita("in-corso", "2026-06-01", { ...vuota, laboratorio: { apoB: 70 } }),
       visita("v1", "2025-06-01", { ...vuota, laboratorio: { apoB: 110 } }),

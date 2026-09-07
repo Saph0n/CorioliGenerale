@@ -3,7 +3,7 @@ export const MedicalTemplates = {
     prestazione: [
       {
         label: "Anamnesi cardiologica standard",
-        text: "Nega precedenti eventi cardiovascolari maggiori.\nNega angina da sforzo, dispnea, cardiopalmo, sincopi o lipotimie.\nNega ipertensione arteriosa nota, diabete mellito, dislipidemia.\nNega familiarita' per cardiopatia ischemica precoce.\nNega fumo e abuso alcolico. Attivita' fisica regolare.\nNon terapie in corso."
+        text: "Nega precedenti eventi cardiovascolari maggiori.\nNega angina da sforzo, dispnea, cardiopalmo, sincopi o lipotimie.\nNega ipertensione arteriosa nota, diabete mellito, dislipidemia.\nNega familiarità per cardiopatia ischemica precoce.\nNega fumo e abuso alcolico. Attività fisica regolare.\nNon terapie in corso."
       },
       {
         label: "Paziente iperteso in terapia",
@@ -19,17 +19,17 @@ export const MedicalTemplates = {
       },
       {
         label: "Primo accesso — inquadramento del rischio",
-        text: "Paziente al primo accesso, inviato dal Medico di Medicina Generale per ___.\nFattori di rischio cardiovascolare: fumo ___, ipertensione ___, dislipidemia ___, diabete ___, familiarita' ___.\nSintomatologia insorta da ___, con andamento ___.\nPorta in visione: ___."
+        text: "Paziente al primo accesso, inviato dal Medico di Medicina Generale per ___.\nFattori di rischio cardiovascolare: fumo ___, ipertensione ___, dislipidemia ___, diabete ___, familiarità ___.\nSintomatologia insorta da ___, con andamento ___.\nPorta in visione: ___."
       }
     ],
     esameObiettivo: [
       {
         label: "Esame obiettivo cardiovascolare nella norma",
-        text: "Paziente in condizioni generali buone, eupnoico a riposo.\nItto della punta in sede. Attivita' cardiaca ritmica, toni validi, pause libere; non soffi ne' sfregamenti.\nPolsi periferici presenti, simmetrici e sincroni ai quattro arti.\nNon turgore giugulare, non reflusso epatogiugulare.\nTorace: murmure vescicolare presente su tutto l'ambito, non rumori patologici aggiunti.\nAddome trattabile, fegato non debordante. Non edemi declivi.\nNon segni clinici di trombosi venosa profonda agli arti inferiori."
+        text: "Paziente in condizioni generali buone, eupnoico a riposo.\nItto della punta in sede. Attività cardiaca ritmica, toni validi, pause libere; non soffi né sfregamenti.\nPolsi periferici presenti, simmetrici e sincroni ai quattro arti.\nNon turgore giugulare, non reflusso epatogiugulare.\nTorace: murmure vescicolare presente su tutto l'ambito, non rumori patologici aggiunti.\nAddome trattabile, fegato non debordante. Non edemi declivi.\nNon segni clinici di trombosi venosa profonda agli arti inferiori."
       },
       {
         label: "Soffio sistolico",
-        text: "Attivita' cardiaca ritmica. Soffio sistolico ___/6 sul focolaio ___ (aortico / mitralico / polmonare / tricuspidale), irradiato ___.\nToni validi, non sfregamenti pericardici.\nPolsi periferici ___. Non turgore giugulare.\nSi programma approfondimento ecocardiografico."
+        text: "Attività cardiaca ritmica. Soffio sistolico ___/6 sul focolaio ___ (aortico / mitralico / polmonare / tricuspidale), irradiato ___.\nToni validi, non sfregamenti pericardici.\nPolsi periferici ___. Non turgore giugulare.\nSi programma approfondimento ecocardiografico."
       },
       {
         label: "Segni di scompenso",
@@ -64,8 +64,12 @@ export const MedicalTemplates = {
     ],
     ecocardiogramma: [
       {
+        label: "Ecocardiogramma normale (referto discorsivo)",
+        text: "Ventricolo sinistro di normali dimensioni e volumi, con pareti di normale spessore. Funzione sistolica globale conservata, normale la cinesi distrettuale.\nAtrio sinistro e sezioni destre nei limiti.\nMitrale con lembi mobili, fibrotici; al color Doppler rigurgito di grado lieve.\nAorta tricuspide con lembi fibrotici; al color Doppler non gradienti né flussi patologici.\nPAPs derivata nei limiti, insufficienza tricuspidale di grado lieve.\nVena cava di normali dimensioni e collassabilità.\nNon versamento pericardico. Normale rilasciamento diastolico del ventricolo sinistro."
+      },
+      {
         label: "Ecocardiogramma nella norma",
-        text: "Ventricolo sinistro di normali dimensioni e spessori parietali, con cinesi segmentaria e globale conservata. Frazione di eiezione ___% (Simpson biplano).\nFunzione diastolica nei limiti per l'eta'.\nAtrio sinistro di normali dimensioni.\nValvola mitrale e valvola aortica morfologicamente normali, normofunzionanti.\nSezioni destre nei limiti; TAPSE ___ mm. PAPs stimata ___ mmHg.\nRadice aortica e aorta ascendente di normali dimensioni.\nNon versamento pericardico."
+        text: "Ventricolo sinistro di normali dimensioni e spessori parietali, con cinesi segmentaria e globale conservata. Frazione di eiezione ___% (Simpson biplano).\nFunzione diastolica nei limiti per l'età.\nAtrio sinistro di normali dimensioni.\nValvola mitrale e valvola aortica morfologicamente normali, normofunzionanti.\nSezioni destre nei limiti; TAPSE ___ mm. PAPs stimata ___ mmHg.\nRadice aortica e aorta ascendente di normali dimensioni.\nNon versamento pericardico."
       },
       {
         label: "Disfunzione sistolica",
@@ -93,7 +97,7 @@ export const MedicalTemplates = {
     testErgometrico: [
       {
         label: "Test massimale negativo",
-        text: "Test ergometrico al ___ (cicloergometro / treadmill) secondo protocollo ___.\nInterrotto per esaurimento muscolare al carico di ___ (___ METs), dopo ___ minuti.\nFC massima raggiunta ___ bpm, pari al ___% della teorica per l'eta'.\nComportamento pressorio ___ (fisiologico / ipertensivo), PA massima ___ mmHg.\nNon sintomi durante lo sforzo e nel recupero.\nNon alterazioni significative del tratto ST ne' aritmie da sforzo.\nTest massimale, negativo per ischemia miocardica inducibile."
+        text: "Test ergometrico al ___ (cicloergometro / treadmill) secondo protocollo ___.\nInterrotto per esaurimento muscolare al carico di ___ (___ METs), dopo ___ minuti.\nFC massima raggiunta ___ bpm, pari al ___% della teorica per l'età.\nComportamento pressorio ___ (fisiologico / ipertensivo), PA massima ___ mmHg.\nNon sintomi durante lo sforzo e nel recupero.\nNon alterazioni significative del tratto ST né aritmie da sforzo.\nTest massimale, negativo per ischemia miocardica inducibile."
       },
       {
         label: "Test submassimale",
@@ -107,7 +111,7 @@ export const MedicalTemplates = {
     holterEcg: [
       {
         label: "Holter nella norma",
-        text: "Registrazione ECG dinamica della durata di ___ ore, di buona qualita' tecnica.\nRitmo sinusale per tutta la durata della registrazione.\nFC media ___ bpm (minima ___ bpm alle ore ___, massima ___ bpm alle ore ___).\nRari battiti ectopici sopraventricolari (___ nelle 24 ore) e ventricolari (___ nelle 24 ore), isolati.\nNon pause significative. Non alterazioni della conduzione atrioventricolare.\nNon episodi sintomatici segnalati sul diario."
+        text: "Registrazione ECG dinamica della durata di ___ ore, di buona qualità tecnica.\nRitmo sinusale per tutta la durata della registrazione.\nFC media ___ bpm (minima ___ bpm alle ore ___, massima ___ bpm alle ore ___).\nRari battiti ectopici sopraventricolari (___ nelle 24 ore) e ventricolari (___ nelle 24 ore), isolati.\nNon pause significative. Non alterazioni della conduzione atrioventricolare.\nNon episodi sintomatici segnalati sul diario."
       },
       {
         label: "Extrasistolia ventricolare",
@@ -115,7 +119,7 @@ export const MedicalTemplates = {
       },
       {
         label: "Fibrillazione atriale",
-        text: "Registrazione ECG dinamica della durata di ___ ore.\nRitmo da fibrillazione atriale ___ (permanente / con episodi parossistici, il piu' lungo di ___).\nFC media ___ bpm (minima ___ bpm, massima ___ bpm).\nPausa massima di ___ secondi alle ore ___.\nControllo della frequenza ___ (adeguato / non adeguato) con la terapia in atto.\nSintomi riferiti sul diario: ___."
+        text: "Registrazione ECG dinamica della durata di ___ ore.\nRitmo da fibrillazione atriale ___ (permanente / con episodi parossistici, il più lungo di ___).\nFC media ___ bpm (minima ___ bpm, massima ___ bpm).\nPausa massima di ___ secondi alle ore ___.\nControllo della frequenza ___ (adeguato / non adeguato) con la terapia in atto.\nSintomi riferiti sul diario: ___."
       }
     ],
     holterPressorio: [
@@ -131,7 +135,7 @@ export const MedicalTemplates = {
     conclusioni: [
       {
         label: "Quadro nella norma — controllo periodico",
-        text: "Conclusioni: quadro cardiologico clinico e strumentale nei limiti di norma.\nSi consiglia controllo cardiologico a distanza di 12 mesi o prima in caso di comparsa di sintomi.\nSi raccomanda il mantenimento di uno stile di vita corretto: attivita' fisica aerobica regolare, dieta iposodica e mediterranea, astensione dal fumo, controllo del peso corporeo."
+        text: "Conclusioni: quadro cardiologico clinico e strumentale nei limiti di norma.\nSi consiglia controllo cardiologico a distanza di 12 mesi o prima in caso di comparsa di sintomi.\nSi raccomanda il mantenimento di uno stile di vita corretto: attività fisica aerobica regolare, dieta iposodica e mediterranea, astensione dal fumo, controllo del peso corporeo."
       },
       {
         label: "Prosecuzione della terapia in atto",
@@ -143,7 +147,7 @@ export const MedicalTemplates = {
       },
       {
         label: "Approfondimento di secondo livello",
-        text: "Conclusioni: il quadro clinico rende opportuno un approfondimento diagnostico.\nSi richiede ___ (test ergometrico / ECG dinamico secondo Holter / monitoraggio pressorio delle 24 ore / TC coronarica).\nSi rivalutera' il paziente alla luce dei referti; si raccomanda di riportare tutta la documentazione al controllo."
+        text: "Conclusioni: il quadro clinico rende opportuno un approfondimento diagnostico.\nSi richiede ___ (test ergometrico / ECG dinamico secondo Holter / monitoraggio pressorio delle 24 ore / TC coronarica).\nSi rivaluterà il paziente alla luce dei referti; si raccomanda di riportare tutta la documentazione al controllo."
       },
       {
         label: "Stratificazione del rischio cardiovascolare",
@@ -152,9 +156,35 @@ export const MedicalTemplates = {
     ]
   },
   terapie: [
+    // ── Schemi dietetico-nutrizionali ──────────────────────────────────────
+    // Stanno fra i modelli di terapia e non in un documento a se' perche' e'
+    // qui che il referto cardiologico mette i consigli sullo stile di vita:
+    // il paziente se li porta a casa insieme al resto.
+    // Sono indicazioni qualitative di impostazione alimentare, non piani
+    // dietetici con grammature: quelli sono competenza del nutrizionista.
+    {
+      label: "Dieta mediterranea — impostazione generale",
+      text: "IMPOSTAZIONE ALIMENTARE CONSIGLIATA\n\n- Verdura a ogni pasto principale e 2-3 porzioni di frutta al giorno.\n- Cereali preferibilmente integrali: pane, pasta, riso, orzo, farro.\n- Legumi almeno 3-4 volte a settimana, anche in sostituzione del secondo piatto.\n- Pesce 2-3 volte a settimana, privilegiando quello azzurro.\n- Carni bianche con moderazione; carni rosse non più di una volta a settimana e salumi solo occasionalmente.\n- Olio extravergine di oliva come condimento principale, a crudo.\n- Frutta secca non salata, una piccola porzione quasi tutti i giorni.\n- Formaggi con moderazione; latte e yogurt preferibilmente a ridotto contenuto di grassi.\n- Acqua come bevanda abituale; limitare bevande zuccherate e succhi di frutta.\n\nATTIVITÀ FISICA\nAlmeno 150 minuti a settimana di attività aerobica di intensità moderata (camminata veloce, bicicletta, nuoto), distribuiti su più giorni."
+    },
+    {
+      label: "Dieta iposodica — ipertensione e scompenso",
+      text: "RIDUZIONE DEL SALE\n\n- Non aggiungere sale a tavola e ridurlo progressivamente in cucina: il gusto si riadatta in poche settimane.\n- Insaporire con erbe aromatiche, spezie, aglio, cipolla, succo di limone e aceto.\n- Limitare gli alimenti conservati sotto sale: salumi, formaggi stagionati, cibi in scatola, dadi ed estratti per brodo, salse pronte, snack salati.\n- Leggere le etichette: il sodio è presente anche in prodotti che non sembrano salati, come pane, cereali da prima colazione e prodotti da forno.\n- Preferire pane senza sale dove disponibile.\n- Scolare e sciacquare i legumi in scatola prima dell'uso.\n\nNOTA\nGran parte del sale che assumiamo non viene dalla saliera ma dagli alimenti già pronti: è lì che si ottiene la riduzione maggiore."
+    },
+    {
+      label: "Alimentazione per ipercolesterolemia",
+      text: "INDICAZIONI ALIMENTARI\n\n- Ridurre i grassi saturi: burro, panna, lardo, strutto, carni grasse, salumi, formaggi stagionati, prodotti da forno industriali.\n- Evitare i grassi idrogenati e gli alimenti che riportano in etichetta grassi vegetali parzialmente idrogenati.\n- Preferire olio extravergine di oliva a crudo come condimento.\n- Aumentare le fibre solubili: avena, orzo, legumi, mele, agrumi, verdura.\n- Pesce 2-3 volte a settimana, soprattutto azzurro.\n- Frutta secca non salata in piccole porzioni quotidiane.\n- Limitare le uova secondo indicazione medica e preferire cotture senza grassi aggiunti.\n- Privilegiare cotture al vapore, al forno, alla griglia o in umido rispetto alla frittura.\n\nNOTA\nL'alimentazione da sola può non bastare a raggiungere l'obiettivo di colesterolo LDL indicato: va mantenuta anche quando è in corso una terapia farmacologica."
+    },
+    {
+      label: "Alimentazione per ipertrigliceridemia",
+      text: "INDICAZIONI ALIMENTARI\n\n- Ridurre gli zuccheri semplici: bevande zuccherate, succhi di frutta, dolci, miele, sciroppi, snack industriali.\n- Attenzione al fruttosio aggiunto e agli alimenti che lo contengono come dolcificante.\n- Limitare fortemente l'alcol: sui trigliceridi ha un effetto diretto e spesso è la causa principale del valore elevato.\n- Preferire cereali integrali a quelli raffinati.\n- Pesce azzurro 2-3 volte a settimana.\n- Ridurre le porzioni e la frequenza dei prodotti da forno dolci e salati.\n- Ridurre il peso corporeo dove indicato: anche un calo modesto abbassa i trigliceridi in modo apprezzabile.\n- Attività fisica aerobica regolare, almeno 150 minuti a settimana.\n\nNOTA\nI trigliceridi rispondono all'alimentazione più rapidamente del colesterolo: il controllo va ripetuto dopo un periodo adeguato di dieta."
+    },
+    {
+      label: "Scompenso cardiaco — liquidi, sale e peso",
+      text: "CONTROLLO DEL PESO\n- Pesarsi ogni mattina, dopo la minzione e prima di colazione, sempre con la stessa bilancia.\n- Annotare il peso e segnalare al medico un aumento di 2 kg o più in due-tre giorni: è un segno di ritenzione di liquidi.\n\nLIQUIDI\n- Attenersi alla quantità di liquidi indicata dal medico, contando anche brodo, minestre, tè, caffè, frutta molto acquosa e gelati.\n- In caso di sete intensa: sciacqui con acqua fredda, cubetti di ghiaccio, chewing gum senza zucchero.\n\nSALE\n- Seguire le indicazioni della dieta iposodica: è la misura alimentare che incide di più sulla congestione.\n\nSEGNALARE AL MEDICO\nAumento rapido del peso, gonfiore a caviglie o gambe, affanno che peggiora o compare da sdraiati, necessità di aggiungere cuscini per dormire."
+    },
     {
       label: "Controllo periodico",
-      text: "Si consiglia di proseguire i controlli cardiologici periodici e di mantenere uno stile di vita sano: attivita' fisica aerobica di intensita' moderata almeno 150 minuti a settimana, dieta iposodica e mediterranea, astensione dal fumo, consumo di alcol entro i limiti raccomandati."
+      text: "Si consiglia di proseguire i controlli cardiologici periodici e di mantenere uno stile di vita sano: attività fisica aerobica di intensità moderata almeno 150 minuti a settimana, dieta iposodica e mediterranea, astensione dal fumo, consumo di alcol entro i limiti raccomandati."
     },
     {
       label: "Automonitoraggio pressorio",
@@ -166,7 +196,7 @@ export const MedicalTemplates = {
     },
     {
       label: "Correzione dei fattori di rischio",
-      text: "Si raccomandano: riduzione dell'apporto di sodio, calo ponderale fino a un BMI inferiore a 25, attivita' fisica aerobica regolare, astensione completa dal fumo e correzione dell'assetto lipidico secondo il profilo di rischio complessivo."
+      text: "Si raccomandano: riduzione dell'apporto di sodio, calo ponderale fino a un BMI inferiore a 25, attività fisica aerobica regolare, astensione completa dal fumo e correzione dell'assetto lipidico secondo il profilo di rischio complessivo."
     },
     {
       label: "Quando rivolgersi al Pronto Soccorso",
@@ -236,44 +266,44 @@ export const MedicalTemplates = {
   ],
   certificati: [
     {
-      label: "Idoneita' all'attivita' sportiva non agonistica",
-      note: "Certificato per attivita' sportiva non agonistica (D.M. 24/04/2013).",
-      text: "Il/La sottoscritto/a Dott. ___ attesta che il/la paziente ___ (nato/a il ___, CF ___), sottoposto/a in data odierna a visita medica, esame obiettivo cardiovascolare ed elettrocardiogramma a riposo, non presenta controindicazioni in atto alla pratica di attivita' sportiva non agonistica.\n\nIl presente certificato ha validita' annuale a partire dalla data di rilascio, ai sensi del D.M. 24/04/2013 e successive modifiche."
+      label: "Idoneità all'attività sportiva non agonistica",
+      note: "Certificato per attività sportiva non agonistica (D.M. 24/04/2013).",
+      text: "Il/La sottoscritto/a Dott. ___ attesta che il/la paziente ___ (nato/a il ___, CF ___), sottoposto/a in data odierna a visita medica, esame obiettivo cardiovascolare ed elettrocardiogramma a riposo, non presenta controindicazioni in atto alla pratica di attività sportiva non agonistica.\n\nIl presente certificato ha validità annuale a partire dalla data di rilascio, ai sensi del D.M. 24/04/2013 e successive modifiche."
     },
     {
       label: "Assenza dal lavoro — visita specialistica",
       note: "Attestato di presenza per visita o procedura ambulatoriale.",
-      text: "Il/La sottoscritto/a Dott. ___ attesta che il/la paziente ___ (nato/a il ___, CF ___) e' stato/a visitato/a in data odierna presso questo ambulatorio ed ha eseguito ___ (visita cardiologica / elettrocardiogramma / ecocardiogramma). Per tale motivo il/la paziente si e' assentato/a dal lavoro in data odierna.\n\nSi rilascia il presente certificato per gli usi consentiti dalla legge."
+      text: "Il/La sottoscritto/a Dott. ___ attesta che il/la paziente ___ (nato/a il ___, CF ___) è stato/a visitato/a in data odierna presso questo ambulatorio ed ha eseguito ___ (visita cardiologica / elettrocardiogramma / ecocardiogramma). Per tale motivo il/la paziente si è assentato/a dal lavoro in data odierna.\n\nSi rilascia il presente certificato per gli usi consentiti dalla legge."
     },
     {
       label: "Attestato di presenza alla visita",
       note: "Generico attestato di presenza.",
-      text: "Il/La sottoscritto/a Dott. ___ attesta che il/la paziente ___ (nato/a il ___) si e' presentato/a in data odierna presso questo ambulatorio per visita cardiologica.\n\nSi rilascia il presente attestato per gli usi consentiti dalla legge."
+      text: "Il/La sottoscritto/a Dott. ___ attesta che il/la paziente ___ (nato/a il ___) si è presentato/a in data odierna presso questo ambulatorio per visita cardiologica.\n\nSi rilascia il presente attestato per gli usi consentiti dalla legge."
     },
     {
-      label: "Idoneita' alla mansione lavorativa",
-      note: "Attestazione di idoneita' o di limitazione alla mansione.",
-      text: "Il/La sottoscritto/a Dott. ___ attesta che il/la paziente ___ (nato/a il ___, CF ___) e' stato/a visitato/a in data odierna. In base al quadro cardiologico rilevato, il/la paziente risulta idoneo/a allo svolgimento della propria attivita' lavorativa / risulta temporaneamente non idoneo/a alle seguenti mansioni: ___ (barrare il non necessario).\n\nSi rilascia il presente certificato per gli usi consentiti dalla legge."
+      label: "Idoneità alla mansione lavorativa",
+      note: "Attestazione di idoneità o di limitazione alla mansione.",
+      text: "Il/La sottoscritto/a Dott. ___ attesta che il/la paziente ___ (nato/a il ___, CF ___) è stato/a visitato/a in data odierna. In base al quadro cardiologico rilevato, il/la paziente risulta idoneo/a allo svolgimento della propria attività lavorativa / risulta temporaneamente non idoneo/a alle seguenti mansioni: ___ (barrare il non necessario).\n\nSi rilascia il presente certificato per gli usi consentiti dalla legge."
     },
     {
       label: "Convalescenza post-procedura",
       note: "Dopo una procedura cardiologica, con periodo di riposo.",
-      text: "Il/La sottoscritto/a Dott. ___ attesta che il/la paziente ___ (nato/a il ___) e' stato/a sottoposto/a a ___ in data ___. Il/La paziente e' in periodo di convalescenza e necessita di astensione dall'attivita' lavorativa per ___ giorni, dal ___ al ___.\n\nSi rilascia il presente certificato per gli usi consentiti dalla legge."
+      text: "Il/La sottoscritto/a Dott. ___ attesta che il/la paziente ___ (nato/a il ___) è stato/a sottoposto/a a ___ in data ___. Il/La paziente è in periodo di convalescenza e necessita di astensione dall'attività lavorativa per ___ giorni, dal ___ al ___.\n\nSi rilascia il presente certificato per gli usi consentiti dalla legge."
     },
     {
       label: "Portatore di dispositivo cardiaco impiantabile",
       note: "Per viaggi, controlli aeroportuali e pratiche amministrative.",
-      text: "Il/La sottoscritto/a Dott. ___ attesta che il/la paziente ___ (nato/a il ___, CF ___) e' portatore/portatrice di ___ (pacemaker / defibrillatore impiantabile) modello ___, impiantato in data ___ presso ___.\n\nSi rilascia il presente certificato per gli usi consentiti dalla legge, ivi compresi i controlli di sicurezza aeroportuali."
+      text: "Il/La sottoscritto/a Dott. ___ attesta che il/la paziente ___ (nato/a il ___, CF ___) è portatore/portatrice di ___ (pacemaker / defibrillatore impiantabile) modello ___, impiantato in data ___ presso ___.\n\nSi rilascia il presente certificato per gli usi consentiti dalla legge, ivi compresi i controlli di sicurezza aeroportuali."
     },
     {
       label: "Patologia cronica in atto — uso amministrativo",
       note: "Attestazione della patologia per pratiche amministrative o assicurative.",
-      text: "Il/La sottoscritto/a Dott. ___ attesta che il/la paziente ___ (nato/a il ___, CF ___) e' affetto/a da ___, patologia in atto documentata e attualmente in trattamento con ___.\n\nSi rilascia il presente certificato per le pratiche amministrative richieste dall'interessato."
+      text: "Il/La sottoscritto/a Dott. ___ attesta che il/la paziente ___ (nato/a il ___, CF ___) è affetto/a da ___, patologia in atto documentata e attualmente in trattamento con ___.\n\nSi rilascia il presente certificato per le pratiche amministrative richieste dall'interessato."
     },
     {
       label: "Lettera per il Medico di Medicina Generale",
       note: "Comunicazione dell'esito della valutazione al MMG.",
-      text: "Lettera di comunicazione per il Medico di Medicina Generale.\n\nPaziente: ___ (nato/a il ___).\n\nIn data odierna il/la paziente e' stato/a valutato/a presso questo ambulatorio per ___. Quadro clinico rilevato: ___. Esami strumentali eseguiti: ___. Terapia consigliata: ___. Controllo programmato: ___.\n\nSi invia comunicazione per continuita' assistenziale, restando a disposizione per ogni chiarimento.\n\nDistinti saluti."
+      text: "Lettera di comunicazione per il Medico di Medicina Generale.\n\nPaziente: ___ (nato/a il ___).\n\nIn data odierna il/la paziente è stato/a valutato/a presso questo ambulatorio per ___. Quadro clinico rilevato: ___. Esami strumentali eseguiti: ___. Terapia consigliata: ___. Controllo programmato: ___.\n\nSi invia comunicazione per continuità assistenziale, restando a disposizione per ogni chiarimento.\n\nDistinti saluti."
     }
   ]
 };

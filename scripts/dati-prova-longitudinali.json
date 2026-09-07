@@ -1,0 +1,1558 @@
+{
+  "schemaVersion": 1,
+  "appVersion": "dati-di-prova-longitudinali",
+  "exportedAt": "2026-09-07T14:01:47.588Z",
+  "patients": [
+    {
+      "id": "prova-lipidi",
+      "codiceFiscale": "PRVMRC68D12G702A",
+      "nome": "Marco",
+      "cognome": "Prova Lipidi",
+      "dataNascita": "1968-04-12",
+      "luogoNascita": "Pisa",
+      "sesso": "M",
+      "email": "prova-lipidi@prova.test",
+      "altezza": 176,
+      "peso": 84,
+      "notaBene": "DATI DI PROVA — Cinque visite in quattro anni con ApoB e LDL in calo sotto terapia: e' il caso per i grafici di andamento. Gli intervalli sono volutamente diseguali, l'asse del tempo deve rispettarli.",
+      "gruppiRicerca": [
+        {
+          "nome": "Progetto lipidi 2026",
+          "dal": "2024-05-18"
+        }
+      ],
+      "createdAt": "2026-09-07T14:01:47.588Z",
+      "updatedAt": "2026-09-07T14:01:47.588Z"
+    },
+    {
+      "id": "prova-progressione",
+      "codiceFiscale": "PRVGLI62D52G702B",
+      "nome": "Giulia",
+      "cognome": "Prova Progressione",
+      "dataNascita": "1962-04-12",
+      "luogoNascita": "Pisa",
+      "sesso": "F",
+      "email": "prova-progressione@prova.test",
+      "altezza": 162,
+      "peso": 76,
+      "notaBene": "DATI DI PROVA — Quattro visite con quadro in peggioramento: la frazione di eiezione scende, il calcium score sale, il filtrato cala di stadio. Serve a vedere i semafori cambiare colore nel tempo.",
+      "gruppiRicerca": [
+        {
+          "nome": "Registro scompenso",
+          "dal": "2023-09-11"
+        }
+      ],
+      "createdAt": "2026-09-07T14:01:47.588Z",
+      "updatedAt": "2026-09-07T14:01:47.588Z"
+    },
+    {
+      "id": "prova-rapporti",
+      "codiceFiscale": "PRVNNA74D52G702C",
+      "nome": "Anna",
+      "cognome": "Prova Rapporti",
+      "dataNascita": "1974-04-12",
+      "luogoNascita": "Pisa",
+      "sesso": "F",
+      "email": "prova-rapporti@prova.test",
+      "altezza": 165,
+      "peso": 71,
+      "notaBene": "DATI DI PROVA — Tre visite che attraversano tutte e tre le fasce di CT/HDL e TG/HDL: ottimale, borderline e a rischio. Serve a controllare che il colore e la parola della fascia cambino alle soglie giuste.",
+      "gruppiRicerca": [
+        {
+          "nome": "Progetto lipidi 2026",
+          "dal": "2025-03-04"
+        }
+      ],
+      "createdAt": "2026-09-07T14:01:47.588Z",
+      "updatedAt": "2026-09-07T14:01:47.588Z"
+    },
+    {
+      "id": "prova-dinamici",
+      "codiceFiscale": "PRVPLA65D12G702D",
+      "nome": "Paolo",
+      "cognome": "Prova Dinamici",
+      "dataNascita": "1965-04-12",
+      "luogoNascita": "Pisa",
+      "sesso": "M",
+      "email": "prova-dinamici@prova.test",
+      "altezza": 178,
+      "peso": 86,
+      "notaBene": "DATI DI PROVA — Test ergometrico, Holter ECG e Holter pressorio compilati: i tre moduli nuovi devono aprirsi gia' espansi, comparire in stampa e mostrare i calcoli (percentuale della FC teorica e calo notturno).",
+      "gruppiRicerca": [
+        {
+          "nome": "Registro scompenso",
+          "dal": "2025-01-15"
+        }
+      ],
+      "createdAt": "2026-09-07T14:01:47.588Z",
+      "updatedAt": "2026-09-07T14:01:47.588Z"
+    },
+    {
+      "id": "prova-metabolico",
+      "codiceFiscale": "PRVRSO69D52G702E",
+      "nome": "Rosa",
+      "cognome": "Prova Metabolico",
+      "dataNascita": "1969-04-12",
+      "luogoNascita": "Pisa",
+      "sesso": "F",
+      "email": "prova-metabolico@prova.test",
+      "altezza": 158,
+      "peso": 81,
+      "notaBene": "DATI DI PROVA — Pannello metabolico esteso tutto fuori range: transaminasi, uricemia, TSH, HbA1c, HOMA-IR alto e Lp(a) sopra la soglia di rischio molto elevato.",
+      "createdAt": "2026-09-07T14:01:47.588Z",
+      "updatedAt": "2026-09-07T14:01:47.588Z"
+    },
+    {
+      "id": "prova-score2-uomo",
+      "codiceFiscale": "PRVNZE71D12G702F",
+      "nome": "Enzo",
+      "cognome": "Prova Score Uomo",
+      "dataNascita": "1971-04-12",
+      "luogoNascita": "Pisa",
+      "sesso": "M",
+      "email": "prova-score2-uomo@prova.test",
+      "altezza": 175,
+      "peso": 84,
+      "notaBene": "DATI DI PROVA — Dentro la finestra SCORE2 (40-69) con tutti gli input presenti: eta', sesso, fumo, sistolica, colesterolo e HDL. Il punteggio e la fascia di rischio devono comparire.",
+      "createdAt": "2026-09-07T14:01:47.588Z",
+      "updatedAt": "2026-09-07T14:01:47.588Z"
+    },
+    {
+      "id": "prova-score2-donna",
+      "codiceFiscale": "PRVLRA64D52G702G",
+      "nome": "Laura",
+      "cognome": "Prova Score Donna",
+      "dataNascita": "1964-04-12",
+      "luogoNascita": "Pisa",
+      "sesso": "F",
+      "email": "prova-score2-donna@prova.test",
+      "altezza": 164,
+      "peso": 67,
+      "notaBene": "DATI DI PROVA — Percorso femminile di SCORE2 in regione a rischio moderato: e' il caso in cui una ricalibrazione sbagliata sovrastimava il rischio. Confronta il punteggio con quello atteso qui sotto.",
+      "createdAt": "2026-09-07T14:01:47.588Z",
+      "updatedAt": "2026-09-07T14:01:47.588Z"
+    },
+    {
+      "id": "prova-limiti",
+      "codiceFiscale": "PRVVTR52D12G702H",
+      "nome": "Vittorio",
+      "cognome": "Prova Limiti",
+      "dataNascita": "1952-04-12",
+      "luogoNascita": "Pisa",
+      "sesso": "M",
+      "email": "prova-limiti@prova.test",
+      "altezza": 170,
+      "peso": 82,
+      "notaBene": "DATI DI PROVA — Casi di rifiuto, con una sola visita. Oltre i 69 anni SCORE2 deve rimandare a SCORE2-OP; con trigliceridi oltre 400 Friedewald non deve calcolare mentre il non-HDL si'. Nessun grafico di andamento deve comparire: manca il secondo punto.",
+      "createdAt": "2026-09-07T14:01:47.588Z",
+      "updatedAt": "2026-09-07T14:01:47.588Z"
+    },
+    {
+      "id": "prova-fa",
+      "codiceFiscale": "PRVNNA49E52G702C",
+      "nome": "Anna",
+      "cognome": "Prova Fibrillazione",
+      "dataNascita": "1949-04-12",
+      "luogoNascita": "Pisa",
+      "sesso": "F",
+      "email": "prova-fa@prova.test",
+      "altezza": 158,
+      "peso": 67,
+      "notaBene": "DATI DI PROVA — Fibrillazione atriale in donna di 77 anni: collauda CHA2DS2-VASc e HAS-BLED. Ipertensione e diabete stanno nei fattori di rischio, non nel modulo FA, e da li' entrano nel punteggio. In warfarin, cosi' la voce INR labile e' selezionabile: in DOAC resterebbe grigia.",
+      "createdAt": "2026-09-07T14:01:47.588Z",
+      "updatedAt": "2026-09-07T14:01:47.588Z"
+    },
+    {
+      "id": "prova-hfimpef",
+      "codiceFiscale": "PRVLGU61C12G702D",
+      "nome": "Luigi",
+      "cognome": "Prova Scompenso",
+      "dataNascita": "1961-04-12",
+      "luogoNascita": "Pisa",
+      "sesso": "M",
+      "email": "prova-hfimpef@prova.test",
+      "altezza": 172,
+      "peso": 82,
+      "notaBene": "DATI DI PROVA — Frazione di eiezione che scende e poi risale: 30% nel 2023, 44% nel 2024, 52% nel 2026. Serve a vedere l'HFimpEF, che nasce dal confronto fra due misure e non dalla FE di oggi. Nota: con ESC 2026 il 44% e' HFrEF, non piu' HFmrEF.",
+      "gruppiRicerca": [
+        {
+          "nome": "Registro scompenso",
+          "dal": "2023-02-14"
+        }
+      ],
+      "createdAt": "2026-09-07T14:01:47.588Z",
+      "updatedAt": "2026-09-07T14:01:47.588Z"
+    },
+    {
+      "id": "prova-coronarie",
+      "codiceFiscale": "PRVSRG66A12G702E",
+      "nome": "Sergio",
+      "cognome": "Prova Coronarie",
+      "dataNascita": "1966-04-12",
+      "luogoNascita": "Pisa",
+      "sesso": "M",
+      "email": "prova-coronarie@prova.test",
+      "altezza": 178,
+      "peso": 87,
+      "notaBene": "DATI DI PROVA — Tre TC coronariche in quattro anni: collauda la progressione del calcium score (100 → 180 → 320, senza valori inventati fra un esame e l'altro) e l'angio-TC estesa con burden, segmenti, componenti di placca e FFR-TC. L'ultima TC supera 300 ma non 400: e' il caso per provare la soglia configurabile in Impostazioni.",
+      "createdAt": "2026-09-07T14:01:47.588Z",
+      "updatedAt": "2026-09-07T14:01:47.588Z"
+    },
+    {
+      "id": "prova-score2op",
+      "codiceFiscale": "PRVTRS44H52G702F",
+      "nome": "Teresa",
+      "cognome": "Prova Anziana",
+      "dataNascita": "1944-04-12",
+      "luogoNascita": "Pisa",
+      "sesso": "F",
+      "email": "prova-score2op@prova.test",
+      "altezza": 154,
+      "peso": 62,
+      "notaBene": "DATI DI PROVA — 82 anni: SCORE2 passa la mano a SCORE2-OP, che resta spento finche' non si inseriscono i coefficienti. Serve a controllare che l'app dica perche' il numero manca invece di limitarsi a non mostrarlo.",
+      "createdAt": "2026-09-07T14:01:47.588Z",
+      "updatedAt": "2026-09-07T14:01:47.588Z"
+    }
+  ],
+  "visits": [
+    {
+      "id": "prova-lipidi-v1",
+      "patientId": "prova-lipidi",
+      "dataVisita": "2022-03-14",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 1 di 5. Cinque visite in quattro anni con ApoB e LDL in calo sotto terapia: e' il caso per i grafici di andamento. Gli intervalli sono volutamente diseguali, l'asse del tempo deve rispettarli.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 92,
+        "pressioneArteriosa": "152/94",
+        "frequenzaCardiaca": "78",
+        "fumatore": "si",
+        "ecocardiogramma": {
+          "ddvs": 52,
+          "siv": 11,
+          "fe": 58,
+          "atrioSinistro": 39,
+          "tapse": 22,
+          "paps": 28
+        },
+        "laboratorio": {
+          "dataPrelievo": "2022-02-28",
+          "colesteroloTotale": 268,
+          "hdl": 42,
+          "trigliceridi": 210,
+          "apoB": 142,
+          "lpa": 42,
+          "glicemia": 104,
+          "creatinina": 1
+        }
+      },
+      "createdAt": "2022-03-14T09:00:00.000Z",
+      "updatedAt": "2022-03-14T09:00:00.000Z"
+    },
+    {
+      "id": "prova-lipidi-v2",
+      "patientId": "prova-lipidi",
+      "dataVisita": "2023-04-20",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 2 di 5. Cinque visite in quattro anni con ApoB e LDL in calo sotto terapia: e' il caso per i grafici di andamento. Gli intervalli sono volutamente diseguali, l'asse del tempo deve rispettarli.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 89,
+        "pressioneArteriosa": "146/90",
+        "frequenzaCardiaca": "74",
+        "fumatore": "si",
+        "laboratorio": {
+          "dataPrelievo": "2023-04-03",
+          "colesteroloTotale": 232,
+          "hdl": 44,
+          "trigliceridi": 180,
+          "apoB": 118,
+          "glicemia": 101,
+          "creatinina": 1
+        }
+      },
+      "createdAt": "2023-04-20T09:00:00.000Z",
+      "updatedAt": "2023-04-20T09:00:00.000Z"
+    },
+    {
+      "id": "prova-lipidi-v3",
+      "patientId": "prova-lipidi",
+      "dataVisita": "2024-05-18",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 3 di 5. Cinque visite in quattro anni con ApoB e LDL in calo sotto terapia: e' il caso per i grafici di andamento. Gli intervalli sono volutamente diseguali, l'asse del tempo deve rispettarli.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 87,
+        "pressioneArteriosa": "138/86",
+        "frequenzaCardiaca": "72",
+        "fumatore": "no",
+        "ecocardiogramma": {
+          "ddvs": 51,
+          "siv": 11,
+          "fe": 60,
+          "atrioSinistro": 38,
+          "tapse": 23,
+          "paps": 26
+        },
+        "laboratorio": {
+          "dataPrelievo": "2024-04-29",
+          "colesteroloTotale": 198,
+          "hdl": 46,
+          "trigliceridi": 160,
+          "apoB": 96,
+          "lpa": 40,
+          "glicemia": 98,
+          "creatinina": 1.05
+        }
+      },
+      "createdAt": "2024-05-18T09:00:00.000Z",
+      "updatedAt": "2024-05-18T09:00:00.000Z"
+    },
+    {
+      "id": "prova-lipidi-v4",
+      "patientId": "prova-lipidi",
+      "dataVisita": "2025-06-07",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 4 di 5. Cinque visite in quattro anni con ApoB e LDL in calo sotto terapia: e' il caso per i grafici di andamento. Gli intervalli sono volutamente diseguali, l'asse del tempo deve rispettarli.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 85,
+        "pressioneArteriosa": "132/82",
+        "frequenzaCardiaca": "70",
+        "fumatore": "no",
+        "laboratorio": {
+          "dataPrelievo": "2025-05-21",
+          "colesteroloTotale": 172,
+          "hdl": 48,
+          "trigliceridi": 140,
+          "apoB": 78,
+          "glicemia": 96,
+          "creatinina": 1
+        }
+      },
+      "createdAt": "2025-06-07T09:00:00.000Z",
+      "updatedAt": "2025-06-07T09:00:00.000Z"
+    },
+    {
+      "id": "prova-lipidi-v5",
+      "patientId": "prova-lipidi",
+      "dataVisita": "2026-02-21",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 5 di 5. Cinque visite in quattro anni con ApoB e LDL in calo sotto terapia: e' il caso per i grafici di andamento. Gli intervalli sono volutamente diseguali, l'asse del tempo deve rispettarli.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 84,
+        "pressioneArteriosa": "128/78",
+        "frequenzaCardiaca": "68",
+        "fumatore": "no",
+        "ecocardiogramma": {
+          "ddvs": 50,
+          "siv": 10,
+          "fe": 61,
+          "atrioSinistro": 37,
+          "tapse": 24,
+          "paps": 25
+        },
+        "laboratorio": {
+          "dataPrelievo": "2026-02-04",
+          "colesteroloTotale": 148,
+          "hdl": 50,
+          "trigliceridi": 120,
+          "apoB": 62,
+          "lpa": 38,
+          "glicemia": 94,
+          "creatinina": 0.98
+        }
+      },
+      "createdAt": "2026-02-21T09:00:00.000Z",
+      "updatedAt": "2026-02-21T09:00:00.000Z"
+    },
+    {
+      "id": "prova-progressione-v1",
+      "patientId": "prova-progressione",
+      "dataVisita": "2023-09-11",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 1 di 4. Quattro visite con quadro in peggioramento: la frazione di eiezione scende, il calcium score sale, il filtrato cala di stadio. Serve a vedere i semafori cambiare colore nel tempo.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 71,
+        "pressioneArteriosa": "134/84",
+        "frequenzaCardiaca": "76",
+        "fumatore": "no",
+        "ecocardiogramma": {
+          "ddvs": 48,
+          "siv": 10,
+          "pp": 9,
+          "fe": 62,
+          "atrioSinistro": 38,
+          "tapse": 21,
+          "paps": 28,
+          "rapportoEA": 0.9,
+          "rapportoEe": 9
+        },
+        "laboratorio": {
+          "dataPrelievo": "2023-08-30",
+          "colesteroloTotale": 214,
+          "hdl": 54,
+          "trigliceridi": 132,
+          "creatinina": 0.9,
+          "albuminuria": 12,
+          "emoglobina": 13.4
+        },
+        "tcCoronarica": {
+          "dataEsame": "2023-08-20",
+          "struttura": "Radiologia di prova",
+          "cacScore": 40,
+          "cadRads": "1"
+        }
+      },
+      "createdAt": "2023-09-11T09:00:00.000Z",
+      "updatedAt": "2023-09-11T09:00:00.000Z"
+    },
+    {
+      "id": "prova-progressione-v2",
+      "patientId": "prova-progressione",
+      "dataVisita": "2024-10-02",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 2 di 4. Quattro visite con quadro in peggioramento: la frazione di eiezione scende, il calcium score sale, il filtrato cala di stadio. Serve a vedere i semafori cambiare colore nel tempo.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 73,
+        "pressioneArteriosa": "142/88",
+        "frequenzaCardiaca": "78",
+        "fumatore": "no",
+        "ecocardiogramma": {
+          "ddvs": 50,
+          "siv": 11,
+          "pp": 10,
+          "fe": 58,
+          "atrioSinistro": 41,
+          "tapse": 20,
+          "paps": 32,
+          "rapportoEA": 0.8,
+          "rapportoEe": 11
+        },
+        "laboratorio": {
+          "dataPrelievo": "2024-09-18",
+          "colesteroloTotale": 222,
+          "hdl": 51,
+          "trigliceridi": 158,
+          "creatinina": 1.1,
+          "albuminuria": 45,
+          "emoglobina": 13
+        }
+      },
+      "createdAt": "2024-10-02T09:00:00.000Z",
+      "updatedAt": "2024-10-02T09:00:00.000Z"
+    },
+    {
+      "id": "prova-progressione-v3",
+      "patientId": "prova-progressione",
+      "dataVisita": "2025-11-14",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 3 di 4. Quattro visite con quadro in peggioramento: la frazione di eiezione scende, il calcium score sale, il filtrato cala di stadio. Serve a vedere i semafori cambiare colore nel tempo.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 75,
+        "pressioneArteriosa": "148/90",
+        "frequenzaCardiaca": "82",
+        "fumatore": "no",
+        "ecocardiogramma": {
+          "ddvs": 54,
+          "siv": 12,
+          "pp": 11,
+          "fe": 51,
+          "atrioSinistro": 44,
+          "tapse": 18,
+          "paps": 40,
+          "rapportoEA": 0.7,
+          "rapportoEe": 14
+        },
+        "laboratorio": {
+          "dataPrelievo": "2025-10-30",
+          "colesteroloTotale": 228,
+          "hdl": 48,
+          "trigliceridi": 178,
+          "creatinina": 1.4,
+          "albuminuria": 120,
+          "emoglobina": 12.2
+        },
+        "tcCoronarica": {
+          "dataEsame": "2025-10-22",
+          "struttura": "Radiologia di prova",
+          "cacScore": 280,
+          "cadRads": "3"
+        }
+      },
+      "createdAt": "2025-11-14T09:00:00.000Z",
+      "updatedAt": "2025-11-14T09:00:00.000Z"
+    },
+    {
+      "id": "prova-progressione-v4",
+      "patientId": "prova-progressione",
+      "dataVisita": "2026-08-19",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 4 di 4. Quattro visite con quadro in peggioramento: la frazione di eiezione scende, il calcium score sale, il filtrato cala di stadio. Serve a vedere i semafori cambiare colore nel tempo.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 76,
+        "pressioneArteriosa": "152/92",
+        "frequenzaCardiaca": "86",
+        "fumatore": "no",
+        "ecocardiogramma": {
+          "ddvs": 58,
+          "siv": 12,
+          "pp": 12,
+          "fe": 44,
+          "atrioSinistro": 47,
+          "tapse": 16,
+          "paps": 52,
+          "rapportoEA": 0.6,
+          "rapportoEe": 17
+        },
+        "laboratorio": {
+          "dataPrelievo": "2026-08-05",
+          "colesteroloTotale": 235,
+          "hdl": 45,
+          "trigliceridi": 196,
+          "creatinina": 1.8,
+          "albuminuria": 380,
+          "emoglobina": 11.4
+        },
+        "tcCoronarica": {
+          "dataEsame": "2026-07-30",
+          "struttura": "Radiologia di prova",
+          "cacScore": 460,
+          "cadRads": "4A"
+        }
+      },
+      "createdAt": "2026-08-19T09:00:00.000Z",
+      "updatedAt": "2026-08-19T09:00:00.000Z"
+    },
+    {
+      "id": "prova-rapporti-v1",
+      "patientId": "prova-rapporti",
+      "dataVisita": "2024-02-19",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 1 di 3. Tre visite che attraversano tutte e tre le fasce di CT/HDL e TG/HDL: ottimale, borderline e a rischio. Serve a controllare che il colore e la parola della fascia cambino alle soglie giuste.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 60,
+        "pressioneArteriosa": "118/74",
+        "frequenzaCardiaca": "66",
+        "fumatore": "no",
+        "laboratorio": {
+          "dataPrelievo": "2024-02-05",
+          "colesteroloTotale": 180,
+          "hdl": 62,
+          "trigliceridi": 90,
+          "apoB": 78,
+          "glicemia": 88,
+          "insulina": 6,
+          "creatinina": 0.72
+        }
+      },
+      "createdAt": "2024-02-19T09:00:00.000Z",
+      "updatedAt": "2024-02-19T09:00:00.000Z"
+    },
+    {
+      "id": "prova-rapporti-v2",
+      "patientId": "prova-rapporti",
+      "dataVisita": "2025-03-04",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 2 di 3. Tre visite che attraversano tutte e tre le fasce di CT/HDL e TG/HDL: ottimale, borderline e a rischio. Serve a controllare che il colore e la parola della fascia cambino alle soglie giuste.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 65,
+        "pressioneArteriosa": "128/80",
+        "frequenzaCardiaca": "72",
+        "fumatore": "no",
+        "laboratorio": {
+          "dataPrelievo": "2025-02-18",
+          "colesteroloTotale": 220,
+          "hdl": 50,
+          "trigliceridi": 140,
+          "apoB": 102,
+          "glicemia": 99,
+          "insulina": 11,
+          "creatinina": 0.75
+        }
+      },
+      "createdAt": "2025-03-04T09:00:00.000Z",
+      "updatedAt": "2025-03-04T09:00:00.000Z"
+    },
+    {
+      "id": "prova-rapporti-v3",
+      "patientId": "prova-rapporti",
+      "dataVisita": "2026-04-08",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 3 di 3. Tre visite che attraversano tutte e tre le fasce di CT/HDL e TG/HDL: ottimale, borderline e a rischio. Serve a controllare che il colore e la parola della fascia cambino alle soglie giuste.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 71,
+        "pressioneArteriosa": "136/86",
+        "frequenzaCardiaca": "78",
+        "fumatore": "no",
+        "laboratorio": {
+          "dataPrelievo": "2026-03-25",
+          "colesteroloTotale": 265,
+          "hdl": 41,
+          "trigliceridi": 260,
+          "apoB": 136,
+          "glicemia": 112,
+          "insulina": 18,
+          "creatinina": 0.78
+        }
+      },
+      "createdAt": "2026-04-08T09:00:00.000Z",
+      "updatedAt": "2026-04-08T09:00:00.000Z"
+    },
+    {
+      "id": "prova-dinamici-v1",
+      "patientId": "prova-dinamici",
+      "dataVisita": "2025-01-15",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 1 di 3. Test ergometrico, Holter ECG e Holter pressorio compilati: i tre moduli nuovi devono aprirsi gia' espansi, comparire in stampa e mostrare i calcoli (percentuale della FC teorica e calo notturno).",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 88,
+        "pressioneArteriosa": "140/88",
+        "frequenzaCardiaca": "74",
+        "fumatore": "no",
+        "laboratorio": {
+          "dataPrelievo": "2025-01-08",
+          "colesteroloTotale": 205,
+          "hdl": 47,
+          "trigliceridi": 150,
+          "creatinina": 1.05
+        },
+        "testErgometrico": {
+          "dataEsame": "2025-01-10",
+          "protocollo": "Bruce",
+          "durataMin": 9,
+          "caricoWatt": 150,
+          "mets": 10.2,
+          "fcMax": 148,
+          "paMax": "190/95",
+          "motivoInterruzione": "Esaurimento muscolare",
+          "esito": "negativo"
+        }
+      },
+      "createdAt": "2025-01-15T09:00:00.000Z",
+      "updatedAt": "2025-01-15T09:00:00.000Z"
+    },
+    {
+      "id": "prova-dinamici-v2",
+      "patientId": "prova-dinamici",
+      "dataVisita": "2025-09-23",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 2 di 3. Test ergometrico, Holter ECG e Holter pressorio compilati: i tre moduli nuovi devono aprirsi gia' espansi, comparire in stampa e mostrare i calcoli (percentuale della FC teorica e calo notturno).",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 87,
+        "pressioneArteriosa": "138/86",
+        "frequenzaCardiaca": "72",
+        "fumatore": "no",
+        "laboratorio": {
+          "dataPrelievo": "2025-09-10",
+          "colesteroloTotale": 198,
+          "hdl": 49,
+          "trigliceridi": 140,
+          "creatinina": 1.02
+        },
+        "holterEcg": {
+          "dataEsame": "2025-09-15",
+          "durataOre": 24,
+          "fcMedia": 68,
+          "fcMin": 44,
+          "fcMax": 132,
+          "besv": 320,
+          "bev": 1450,
+          "pausaMaxSec": 2.4,
+          "ritmoPrevalente": "sinusale"
+        }
+      },
+      "createdAt": "2025-09-23T09:00:00.000Z",
+      "updatedAt": "2025-09-23T09:00:00.000Z"
+    },
+    {
+      "id": "prova-dinamici-v3",
+      "patientId": "prova-dinamici",
+      "dataVisita": "2026-06-11",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 3 di 3. Test ergometrico, Holter ECG e Holter pressorio compilati: i tre moduli nuovi devono aprirsi gia' espansi, comparire in stampa e mostrare i calcoli (percentuale della FC teorica e calo notturno).",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 86,
+        "pressioneArteriosa": "136/84",
+        "frequenzaCardiaca": "70",
+        "fumatore": "no",
+        "laboratorio": {
+          "dataPrelievo": "2026-05-28",
+          "colesteroloTotale": 190,
+          "hdl": 51,
+          "trigliceridi": 132,
+          "creatinina": 1
+        },
+        "holterPressorio": {
+          "dataEsame": "2026-06-02",
+          "media24Sist": 138,
+          "media24Diast": 84,
+          "mediaDiurnaSist": 142,
+          "mediaDiurnaDiast": 88,
+          "mediaNotturnaSist": 130,
+          "mediaNotturnaDiast": 76,
+          "caricoPressorioPct": 42
+        }
+      },
+      "createdAt": "2026-06-11T09:00:00.000Z",
+      "updatedAt": "2026-06-11T09:00:00.000Z"
+    },
+    {
+      "id": "prova-metabolico-v1",
+      "patientId": "prova-metabolico",
+      "dataVisita": "2025-05-06",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 1 di 2. Pannello metabolico esteso tutto fuori range: transaminasi, uricemia, TSH, HbA1c, HOMA-IR alto e Lp(a) sopra la soglia di rischio molto elevato.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 78,
+        "pressioneArteriosa": "144/88",
+        "frequenzaCardiaca": "80",
+        "fumatore": "si",
+        "laboratorio": {
+          "dataPrelievo": "2025-04-22",
+          "colesteroloTotale": 248,
+          "hdl": 43,
+          "trigliceridi": 230,
+          "apoB": 128,
+          "lpa": 190,
+          "glicemia": 124,
+          "insulina": 19,
+          "hba1c": 6.3,
+          "creatinina": 0.95,
+          "ast": 55,
+          "alt": 68,
+          "uricemia": 6.8,
+          "tsh": 5.4,
+          "emoglobina": 12.6
+        }
+      },
+      "createdAt": "2025-05-06T09:00:00.000Z",
+      "updatedAt": "2025-05-06T09:00:00.000Z"
+    },
+    {
+      "id": "prova-metabolico-v2",
+      "patientId": "prova-metabolico",
+      "dataVisita": "2026-05-19",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 2 di 2. Pannello metabolico esteso tutto fuori range: transaminasi, uricemia, TSH, HbA1c, HOMA-IR alto e Lp(a) sopra la soglia di rischio molto elevato.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 81,
+        "pressioneArteriosa": "150/92",
+        "frequenzaCardiaca": "84",
+        "fumatore": "si",
+        "laboratorio": {
+          "dataPrelievo": "2026-05-05",
+          "colesteroloTotale": 256,
+          "hdl": 40,
+          "trigliceridi": 268,
+          "apoB": 138,
+          "lpa": 210,
+          "glicemia": 132,
+          "insulina": 22,
+          "hba1c": 6.9,
+          "creatinina": 1,
+          "ast": 62,
+          "alt": 78,
+          "uricemia": 7.1,
+          "tsh": 6.2,
+          "emoglobina": 12.1
+        }
+      },
+      "createdAt": "2026-05-19T09:00:00.000Z",
+      "updatedAt": "2026-05-19T09:00:00.000Z"
+    },
+    {
+      "id": "prova-score2-uomo-v1",
+      "patientId": "prova-score2-uomo",
+      "dataVisita": "2025-07-02",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 1 di 2. Dentro la finestra SCORE2 (40-69) con tutti gli input presenti: eta', sesso, fumo, sistolica, colesterolo e HDL. Il punteggio e la fascia di rischio devono comparire.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 86,
+        "pressioneArteriosa": "150/92",
+        "frequenzaCardiaca": "76",
+        "fumatore": "si",
+        "laboratorio": {
+          "dataPrelievo": "2025-06-18",
+          "colesteroloTotale": 252,
+          "hdl": 38,
+          "trigliceridi": 190,
+          "apoB": 130,
+          "creatinina": 1.1
+        }
+      },
+      "createdAt": "2025-07-02T09:00:00.000Z",
+      "updatedAt": "2025-07-02T09:00:00.000Z"
+    },
+    {
+      "id": "prova-score2-uomo-v2",
+      "patientId": "prova-score2-uomo",
+      "dataVisita": "2026-07-15",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 2 di 2. Dentro la finestra SCORE2 (40-69) con tutti gli input presenti: eta', sesso, fumo, sistolica, colesterolo e HDL. Il punteggio e la fascia di rischio devono comparire.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 84,
+        "pressioneArteriosa": "154/94",
+        "frequenzaCardiaca": "78",
+        "fumatore": "si",
+        "laboratorio": {
+          "dataPrelievo": "2026-07-01",
+          "colesteroloTotale": 245,
+          "hdl": 38,
+          "trigliceridi": 200,
+          "apoB": 126,
+          "creatinina": 1.12
+        }
+      },
+      "createdAt": "2026-07-15T09:00:00.000Z",
+      "updatedAt": "2026-07-15T09:00:00.000Z"
+    },
+    {
+      "id": "prova-score2-donna-v1",
+      "patientId": "prova-score2-donna",
+      "dataVisita": "2025-10-09",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 1 di 2. Percorso femminile di SCORE2 in regione a rischio moderato: e' il caso in cui una ricalibrazione sbagliata sovrastimava il rischio. Confronta il punteggio con quello atteso qui sotto.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 66,
+        "pressioneArteriosa": "138/84",
+        "frequenzaCardiaca": "70",
+        "fumatore": "no",
+        "laboratorio": {
+          "dataPrelievo": "2025-09-25",
+          "colesteroloTotale": 215,
+          "hdl": 58,
+          "trigliceridi": 120,
+          "creatinina": 0.8
+        }
+      },
+      "createdAt": "2025-10-09T09:00:00.000Z",
+      "updatedAt": "2025-10-09T09:00:00.000Z"
+    },
+    {
+      "id": "prova-score2-donna-v2",
+      "patientId": "prova-score2-donna",
+      "dataVisita": "2026-10-20",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 2 di 2. Percorso femminile di SCORE2 in regione a rischio moderato: e' il caso in cui una ricalibrazione sbagliata sovrastimava il rischio. Confronta il punteggio con quello atteso qui sotto.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 67,
+        "pressioneArteriosa": "140/86",
+        "frequenzaCardiaca": "72",
+        "fumatore": "no",
+        "laboratorio": {
+          "dataPrelievo": "2026-10-06",
+          "colesteroloTotale": 220,
+          "hdl": 56,
+          "trigliceridi": 130,
+          "creatinina": 0.82
+        }
+      },
+      "createdAt": "2026-10-20T09:00:00.000Z",
+      "updatedAt": "2026-10-20T09:00:00.000Z"
+    },
+    {
+      "id": "prova-limiti-v1",
+      "patientId": "prova-limiti",
+      "dataVisita": "2026-01-28",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 1 di 1. Casi di rifiuto, con una sola visita. Oltre i 69 anni SCORE2 deve rimandare a SCORE2-OP; con trigliceridi oltre 400 Friedewald non deve calcolare mentre il non-HDL si'. Nessun grafico di andamento deve comparire: manca il secondo punto.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 82,
+        "pressioneArteriosa": "158/90",
+        "frequenzaCardiaca": "64",
+        "fumatore": "no",
+        "ecg": {
+          "ritmo": "fibrillazione atriale",
+          "qrs": 118,
+          "qt": 430,
+          "asse": -20
+        },
+        "laboratorio": {
+          "dataPrelievo": "2026-01-14",
+          "colesteroloTotale": 290,
+          "hdl": 36,
+          "trigliceridi": 460,
+          "apoB": 145,
+          "glicemia": 118,
+          "creatinina": 1.5,
+          "albuminuria": 90
+        }
+      },
+      "createdAt": "2026-01-28T09:00:00.000Z",
+      "updatedAt": "2026-01-28T09:00:00.000Z"
+    },
+    {
+      "id": "prova-fa-v1",
+      "patientId": "prova-fa",
+      "dataVisita": "2025-03-12",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 1 di 2. Fibrillazione atriale in donna di 77 anni: collauda CHA2DS2-VASc e HAS-BLED. Ipertensione e diabete stanno nei fattori di rischio, non nel modulo FA, e da li' entrano nel punteggio. In warfarin, cosi' la voce INR labile e' selezionabile: in DOAC resterebbe grigia.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 68,
+        "pressioneArteriosa": "148/88",
+        "frequenzaCardiaca": "88",
+        "fumatore": "no",
+        "ecg": {
+          "ritmo": "Fibrillazione atriale",
+          "qrs": 92,
+          "qt": 380
+        },
+        "ecocardiogramma": {
+          "fe": 55,
+          "atrioSinistro": 45,
+          "tapse": 20,
+          "paps": 34
+        },
+        "laboratorio": {
+          "dataPrelievo": "2025-03-01",
+          "colesteroloTotale": 212,
+          "hdl": 52,
+          "trigliceridi": 148,
+          "creatinina": 1.1
+        },
+        "fibrillazioneAtriale": {
+          "tipo": "parossistica",
+          "anticoagulante": "warfarin",
+          "cvIctus": true,
+          "hbIpertensioneNonControllata": true,
+          "hbInrLabile": true
+        },
+        "fattoriRischio": {
+          "ipertensione": true,
+          "diabete": true,
+          "dislipidemia": true
+        },
+        "categoriaRischioCv": "alto"
+      },
+      "createdAt": "2025-03-12T09:00:00.000Z",
+      "updatedAt": "2025-03-12T09:00:00.000Z"
+    },
+    {
+      "id": "prova-fa-v2",
+      "patientId": "prova-fa",
+      "dataVisita": "2026-04-08",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 2 di 2. Fibrillazione atriale in donna di 77 anni: collauda CHA2DS2-VASc e HAS-BLED. Ipertensione e diabete stanno nei fattori di rischio, non nel modulo FA, e da li' entrano nel punteggio. In warfarin, cosi' la voce INR labile e' selezionabile: in DOAC resterebbe grigia.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 67,
+        "pressioneArteriosa": "134/80",
+        "frequenzaCardiaca": "72",
+        "fumatore": "no",
+        "ecg": {
+          "ritmo": "Fibrillazione atriale",
+          "qrs": 94,
+          "qt": 386
+        },
+        "ecocardiogramma": {
+          "fe": 54,
+          "atrioSinistro": 46,
+          "tapse": 19,
+          "paps": 36
+        },
+        "laboratorio": {
+          "dataPrelievo": "2026-03-27",
+          "colesteroloTotale": 188,
+          "hdl": 55,
+          "trigliceridi": 130,
+          "creatinina": 1.15
+        },
+        "fibrillazioneAtriale": {
+          "tipo": "persistente",
+          "anticoagulante": "warfarin",
+          "cvIctus": true,
+          "cvVascolare": true,
+          "hbIpertensioneNonControllata": true,
+          "hbInrLabile": true,
+          "hbSanguinamento": true
+        },
+        "fattoriRischio": {
+          "ipertensione": true,
+          "diabete": true,
+          "dislipidemia": true
+        },
+        "categoriaRischioCv": "alto"
+      },
+      "createdAt": "2026-04-08T09:00:00.000Z",
+      "updatedAt": "2026-04-08T09:00:00.000Z"
+    },
+    {
+      "id": "prova-hfimpef-v1",
+      "patientId": "prova-hfimpef",
+      "dataVisita": "2023-02-14",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 1 di 3. Frazione di eiezione che scende e poi risale: 30% nel 2023, 44% nel 2024, 52% nel 2026. Serve a vedere l'HFimpEF, che nasce dal confronto fra due misure e non dalla FE di oggi. Nota: con ESC 2026 il 44% e' HFrEF, non piu' HFmrEF.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 88,
+        "pressioneArteriosa": "118/72",
+        "frequenzaCardiaca": "82",
+        "fumatore": "no",
+        "ecocardiogramma": {
+          "ddvs": 62,
+          "siv": 10,
+          "fe": 30,
+          "atrioSinistro": 46,
+          "tapse": 16,
+          "paps": 42
+        },
+        "laboratorio": {
+          "dataPrelievo": "2023-02-02",
+          "colesteroloTotale": 168,
+          "hdl": 40,
+          "trigliceridi": 190,
+          "creatinina": 1.2,
+          "emoglobina": 13.1
+        },
+        "scompenso": {
+          "nyha": "III",
+          "ntProBnp": 1850,
+          "contestoBnp": "ambulatoriale",
+          "dataBnp": "2023-02-02"
+        },
+        "fattoriRischio": {
+          "ipertensione": true,
+          "eventoCvPregresso": true,
+          "dislipidemia": true
+        },
+        "categoriaRischioCv": "molto-alto"
+      },
+      "createdAt": "2023-02-14T09:00:00.000Z",
+      "updatedAt": "2023-02-14T09:00:00.000Z"
+    },
+    {
+      "id": "prova-hfimpef-v2",
+      "patientId": "prova-hfimpef",
+      "dataVisita": "2024-06-20",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 2 di 3. Frazione di eiezione che scende e poi risale: 30% nel 2023, 44% nel 2024, 52% nel 2026. Serve a vedere l'HFimpEF, che nasce dal confronto fra due misure e non dalla FE di oggi. Nota: con ESC 2026 il 44% e' HFrEF, non piu' HFmrEF.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 84,
+        "pressioneArteriosa": "112/70",
+        "frequenzaCardiaca": "68",
+        "fumatore": "no",
+        "ecocardiogramma": {
+          "ddvs": 58,
+          "siv": 10,
+          "fe": 44,
+          "atrioSinistro": 43,
+          "tapse": 19,
+          "paps": 34
+        },
+        "laboratorio": {
+          "dataPrelievo": "2024-06-05",
+          "colesteroloTotale": 148,
+          "hdl": 44,
+          "trigliceridi": 160,
+          "creatinina": 1.15
+        },
+        "scompenso": {
+          "nyha": "II",
+          "ntProBnp": 620,
+          "contestoBnp": "ambulatoriale",
+          "dataBnp": "2024-06-05"
+        },
+        "fattoriRischio": {
+          "ipertensione": true,
+          "eventoCvPregresso": true,
+          "dislipidemia": true
+        },
+        "categoriaRischioCv": "molto-alto"
+      },
+      "createdAt": "2024-06-20T09:00:00.000Z",
+      "updatedAt": "2024-06-20T09:00:00.000Z"
+    },
+    {
+      "id": "prova-hfimpef-v3",
+      "patientId": "prova-hfimpef",
+      "dataVisita": "2026-01-15",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 3 di 3. Frazione di eiezione che scende e poi risale: 30% nel 2023, 44% nel 2024, 52% nel 2026. Serve a vedere l'HFimpEF, che nasce dal confronto fra due misure e non dalla FE di oggi. Nota: con ESC 2026 il 44% e' HFrEF, non piu' HFmrEF.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 82,
+        "pressioneArteriosa": "116/74",
+        "frequenzaCardiaca": "64",
+        "fumatore": "no",
+        "ecocardiogramma": {
+          "ddvs": 54,
+          "siv": 10,
+          "fe": 52,
+          "atrioSinistro": 41,
+          "tapse": 21,
+          "paps": 28
+        },
+        "laboratorio": {
+          "dataPrelievo": "2026-01-08",
+          "colesteroloTotale": 132,
+          "hdl": 48,
+          "trigliceridi": 140,
+          "creatinina": 1.1
+        },
+        "scompenso": {
+          "nyha": "I",
+          "ntProBnp": 210,
+          "contestoBnp": "ambulatoriale",
+          "dataBnp": "2026-01-08"
+        },
+        "fattoriRischio": {
+          "ipertensione": true,
+          "eventoCvPregresso": true,
+          "dislipidemia": true
+        },
+        "categoriaRischioCv": "molto-alto",
+        "sintesiRischio": "Frazione di eiezione risalita da 30% a 52% sotto terapia. Il fenotipo resta di scompenso: la terapia di fondo non si alleggerisce."
+      },
+      "createdAt": "2026-01-15T09:00:00.000Z",
+      "updatedAt": "2026-01-15T09:00:00.000Z"
+    },
+    {
+      "id": "prova-coronarie-v1",
+      "patientId": "prova-coronarie",
+      "dataVisita": "2022-05-10",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 1 di 3. Tre TC coronariche in quattro anni: collauda la progressione del calcium score (100 → 180 → 320, senza valori inventati fra un esame e l'altro) e l'angio-TC estesa con burden, segmenti, componenti di placca e FFR-TC. L'ultima TC supera 300 ma non 400: e' il caso per provare la soglia configurabile in Impostazioni.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 90,
+        "pressioneArteriosa": "142/88",
+        "frequenzaCardiaca": "74",
+        "fumatore": "si",
+        "laboratorio": {
+          "dataPrelievo": "2022-04-28",
+          "colesteroloTotale": 240,
+          "hdl": 41,
+          "trigliceridi": 220,
+          "apoB": 128,
+          "creatinina": 1
+        },
+        "tcCoronarica": {
+          "dataEsame": "2022-04-20",
+          "struttura": "Radiologia di prova",
+          "cacScore": 100,
+          "cadRads": "1",
+          "metodica": "TC 128 strati, protocollo dedicato"
+        },
+        "fattoriRischio": {
+          "ipertensione": true,
+          "dislipidemia": true,
+          "familiaritaCad": true
+        },
+        "categoriaRischioCv": "alto"
+      },
+      "createdAt": "2022-05-10T09:00:00.000Z",
+      "updatedAt": "2022-05-10T09:00:00.000Z"
+    },
+    {
+      "id": "prova-coronarie-v2",
+      "patientId": "prova-coronarie",
+      "dataVisita": "2024-05-22",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 2 di 3. Tre TC coronariche in quattro anni: collauda la progressione del calcium score (100 → 180 → 320, senza valori inventati fra un esame e l'altro) e l'angio-TC estesa con burden, segmenti, componenti di placca e FFR-TC. L'ultima TC supera 300 ma non 400: e' il caso per provare la soglia configurabile in Impostazioni.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 88,
+        "pressioneArteriosa": "136/84",
+        "frequenzaCardiaca": "72",
+        "fumatore": "si",
+        "laboratorio": {
+          "dataPrelievo": "2024-05-06",
+          "colesteroloTotale": 214,
+          "hdl": 43,
+          "trigliceridi": 205,
+          "apoB": 110,
+          "creatinina": 1.02
+        },
+        "tcCoronarica": {
+          "dataEsame": "2024-05-02",
+          "struttura": "Radiologia di prova",
+          "cacScore": 180,
+          "cadRads": "2",
+          "metodica": "TC 128 strati, protocollo dedicato",
+          "burdenPlacca": "P2",
+          "componenteCalcifica": 70,
+          "componenteNonCalcifica": 30,
+          "segmenti": [
+            1,
+            6
+          ],
+          "stenosiMassima": 40,
+          "stenosiMassimaSegmento": 6
+        },
+        "fattoriRischio": {
+          "ipertensione": true,
+          "dislipidemia": true,
+          "familiaritaCad": true
+        },
+        "categoriaRischioCv": "alto"
+      },
+      "createdAt": "2024-05-22T09:00:00.000Z",
+      "updatedAt": "2024-05-22T09:00:00.000Z"
+    },
+    {
+      "id": "prova-coronarie-v3",
+      "patientId": "prova-coronarie",
+      "dataVisita": "2026-06-18",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 3 di 3. Tre TC coronariche in quattro anni: collauda la progressione del calcium score (100 → 180 → 320, senza valori inventati fra un esame e l'altro) e l'angio-TC estesa con burden, segmenti, componenti di placca e FFR-TC. L'ultima TC supera 300 ma non 400: e' il caso per provare la soglia configurabile in Impostazioni.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 87,
+        "pressioneArteriosa": "132/82",
+        "frequenzaCardiaca": "70",
+        "fumatore": "no",
+        "laboratorio": {
+          "dataPrelievo": "2026-06-02",
+          "colesteroloTotale": 186,
+          "hdl": 46,
+          "trigliceridi": 198,
+          "apoB": 92,
+          "creatinina": 1.05
+        },
+        "tcCoronarica": {
+          "dataEsame": "2026-06-01",
+          "struttura": "Radiologia di prova",
+          "cacScore": 320,
+          "cadRads": "3",
+          "metodica": "TC 128 strati, protocollo dedicato",
+          "burdenPlacca": "P3",
+          "cadRadsModificatori": [
+            "HRP"
+          ],
+          "componenteCalcifica": 55,
+          "componenteNonCalcifica": 45,
+          "segmenti": [
+            1,
+            5,
+            6,
+            11
+          ],
+          "stenosiMassima": 65,
+          "stenosiMassimaSegmento": 6,
+          "ffrCt": 0.78,
+          "ffrCtEsito": "I+"
+        },
+        "fattoriRischio": {
+          "ipertensione": true,
+          "dislipidemia": true,
+          "familiaritaCad": true
+        },
+        "categoriaRischioCv": "molto-alto",
+        "sintesiRischio": "Rischio calcolato e reperti di imaging concordi verso l'alto: calcium score triplicato in quattro anni e stenosi moderata sulla discendente anteriore prossimale."
+      },
+      "createdAt": "2026-06-18T09:00:00.000Z",
+      "updatedAt": "2026-06-18T09:00:00.000Z"
+    },
+    {
+      "id": "prova-score2op-v1",
+      "patientId": "prova-score2op",
+      "dataVisita": "2026-05-04",
+      "descrizioneClinica": "",
+      "anamnesi": "",
+      "esamiObiettivo": "",
+      "conclusioniDiagnostiche": "",
+      "terapie": "",
+      "tipo": "generale",
+      "visita": {
+        "problemaClinico": "Visita di prova 1 di 1. 82 anni: SCORE2 passa la mano a SCORE2-OP, che resta spento finche' non si inseriscono i coefficienti. Serve a controllare che l'app dica perche' il numero manca invece di limitarsi a non mostrarlo.",
+        "prestazione": "Dati inventati a scopo di test, nessun valore clinico.",
+        "esameObiettivo": "",
+        "accertamenti": "",
+        "terapiaSpecifica": "",
+        "pesoCorporeo": 62,
+        "pressioneArteriosa": "156/86",
+        "frequenzaCardiaca": "76",
+        "fumatore": "no",
+        "ecocardiogramma": {
+          "fe": 60,
+          "atrioSinistro": 40,
+          "tapse": 21,
+          "paps": 30
+        },
+        "laboratorio": {
+          "dataPrelievo": "2026-04-22",
+          "colesteroloTotale": 226,
+          "hdl": 58,
+          "trigliceridi": 152,
+          "creatinina": 1,
+          "emoglobina": 12.6
+        },
+        "fattoriRischio": {
+          "ipertensione": true,
+          "dislipidemia": true,
+          "sedentarieta": true
+        },
+        "categoriaRischioCv": "alto"
+      },
+      "createdAt": "2026-05-04T09:00:00.000Z",
+      "updatedAt": "2026-05-04T09:00:00.000Z"
+    }
+  ],
+  "visitRevisions": [],
+  "richiesteEsami": [],
+  "certificatiPaziente": [],
+  "ricettePaziente": [],
+  "documents": [],
+  "templates": []
+}
