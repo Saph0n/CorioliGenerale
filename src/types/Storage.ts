@@ -151,7 +151,15 @@ export interface VisitRevision {
  * calcolato ma ricalcolato alla lettura, così resta coerente con QT e FC.
  */
 export interface EcgData {
-  /** Ritmo di base (sinusale, fibrillazione atriale, da pacemaker...). */
+  /**
+   * @deprecated Non più chiesto in maschera e non più stampato.
+   *
+   * Era una tendina con la diagnosi di ritmo (sinusale, fibrillazione, da
+   * pacemaker). Tolta su richiesta del cardiologo: la diagnosi la scrive lui
+   * nel referto testuale sotto, ed è più professionale che venga da una frase
+   * sua invece che da una voce di menu. Il campo resta per non perdere il dato
+   * delle visite già in archivio.
+   */
   ritmo?: string;
   /** Intervallo PR (ms). */
   pr?: number;
@@ -179,6 +187,15 @@ export interface EcocardiogrammaData {
   fe?: number;
   /** Diametro dell'atrio sinistro (mm). */
   atrioSinistro?: number;
+  /**
+   * Gradiente transvalvolare aortico medio (mmHg).
+   *
+   * La stenosi aortica è la patologia in cui tutto il resto dell'ecocardiogramma
+   * può leggersi normale: senza i gradienti il referto non la descrive.
+   */
+  gradienteAorticoMedio?: number;
+  /** Gradiente transvalvolare aortico massimo, di picco (mmHg). */
+  gradienteAorticoMassimo?: number;
   /** Radice aortica (mm). */
   radiceAortica?: number;
   /** Aorta ascendente (mm). */
@@ -353,7 +370,7 @@ export interface ScompensoData {
 
 /**
  * Fattori di rischio cardiovascolare, da spuntare per averli sott'occhio
- * accanto ai parametri.
+ * accanto alle variabili cliniche.
  *
  * Sono **anamnestici**: non cambiano da un controllo all'altro, e infatti alla
  * visita nuova arrivano già spuntati come nell'ultima (restano modificabili).
@@ -396,11 +413,30 @@ export interface FattoriRischioCvData {
  * visita, invece di scriverci dentro una decina di `false`.
  */
 export interface FibrillazioneAtrialeData {
-  /** Forma clinica dell'aritmia. */
+  /**
+   * Il medico ha deciso di valutare la fibrillazione atriale in questa visita.
+   *
+   * Senza questo interruttore il modulo si autoinvitava nel referto: i due
+   * punteggi si calcolano da età, sesso e fattori di rischio, quindi bastava
+   * aprire la sezione per ritrovarsi un "CHA₂DS₂-VASc 0 / 9" stampato su un
+   * paziente che non è mai stato fibrillante.
+   */
+  attivo?: boolean;
+
+  /**
+   * @deprecated Non più chiesta in maschera e non più stampata.
+   *
+   * Forma clinica dell'aritmia (parossistica, persistente, permanente).
+   * Tolta su richiesta del cardiologo: è una diagnosi e la formula lui nel
+   * referto. Resta per le visite già in archivio.
+   */
   tipo?: "parossistica" | "persistente" | "persistente-lunga" | "permanente";
   /**
-   * Terapia anticoagulante in atto. Non è un dato accessorio: la voce
-   * "INR labile" dell'HAS-BLED vale solo per chi è in warfarin.
+   * @deprecated Non più chiesta in maschera e non più stampata.
+   *
+   * Terapia anticoagulante in atto. Serviva a filtrare la voce "INR labile"
+   * dell'HAS-BLED, che vale solo in warfarin; ora quella voce si spunta a mano
+   * e la sua etichetta dice la condizione. Resta per le visite in archivio.
    */
   anticoagulante?: "nessuno" | "warfarin" | "doac";
 
@@ -475,6 +511,16 @@ export interface LaboratorioData {
   uricemia?: number;
   /** Ormone tireostimolante (mU/L). */
   tsh?: number;
+  /** Proteina C reattiva ad alta sensibilità (mg/L). */
+  hsPcr?: number;
+  /**
+   * LDL ossidate (U/L).
+   *
+   * Il dosaggio **non è standardizzato**: ogni laboratorio ha i suoi valori di
+   * riferimento e confrontare due referti di centri diversi non ha senso. Per
+   * questo il valore si salva e si stampa, ma non ha una soglia nell'app.
+   */
+  oxLdl?: number;
 }
 
 export interface Visit {
@@ -550,7 +596,7 @@ export interface Visit {
     scompenso?: ScompensoData;
     /** Fibrillazione atriale: fattori di CHA₂DS₂-VASc e HAS-BLED. */
     fibrillazioneAtriale?: FibrillazioneAtrialeData;
-    /** Fattori di rischio cardiovascolare spuntati accanto ai parametri. */
+    /** Fattori di rischio cardiovascolare spuntati accanto alle variabili cliniche. */
     fattoriRischio?: FattoriRischioCvData;
     /**
      * Sintesi del rischio cardiovascolare scritta dal medico.

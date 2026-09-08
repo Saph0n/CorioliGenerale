@@ -650,6 +650,43 @@ class LocalStorageFallbackService implements StorageService {
       await this.setPreference('templates_accenti_v1', '1');
     }
 
+    // Certificato non agonistico: riferimento normativo incompleto.
+    //
+    // Il modello seminato citava il solo D.M. 24/04/2013. Il decreto che detta
+    // le linee guida di quel certificato e' pero' il D.M. 8 agosto 2014, ed e'
+    // quello che va richiamato perche' il certificato regga.
+    //
+    // La firma di un predefinito e' `categoria|sezione|etichetta`: cambiando il
+    // solo testo, la correzione non raggiungerebbe mai chi ha gia' il modello
+    // in archivio. Si sostituisce percio' **la sola frase del riferimento**,
+    // lasciando intatto tutto il resto: se il medico ha riscritto il
+    // certificato a modo suo, si ritrova la citazione giusta dentro il proprio
+    // testo invece di vederselo sovrascritto. Il marcatore la fa girare una
+    // volta sola.
+    if (!(await this.getPreference('templates_certificato_dm2014_v1'))) {
+      const CITAZIONE_VECCHIA = 'D.M. 24/04/2013 e successive modifiche';
+      const CITAZIONE_NUOVA =
+        "D.M. 24 aprile 2013 e del D.M. 8 agosto 2014, recante le linee guida " +
+        "di indirizzo in materia di certificati medici per l'attività sportiva " +
+        'non agonistica';
+      let toccati = 0;
+      const aggiornati = templates.map((t) => {
+        if (t.category !== 'certificato') return t;
+        if (!t.text?.includes(CITAZIONE_VECCHIA)) return t;
+        toccati++;
+        return {
+          ...t,
+          text: t.text.replace(CITAZIONE_VECCHIA, CITAZIONE_NUOVA),
+        };
+      });
+      if (toccati > 0) {
+        templates.length = 0;
+        templates.push(...aggiornati);
+        await this.saveToStorage('templates', templates);
+      }
+      await this.setPreference('templates_certificato_dm2014_v1', '1');
+    }
+
     // For existing users: seed certificato if not yet present
     if (MedicalTemplates.certificati && !templates.some(t => t.category === 'certificato')) {
       const certDefaults: MedicalTemplate[] = MedicalTemplates.certificati.map(t => ({

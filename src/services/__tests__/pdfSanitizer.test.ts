@@ -41,3 +41,38 @@ describe("sanitizer del PDF", () => {
     );
   });
 });
+
+/**
+ * Un carattere fuori dalla codifica WinAnsi fa ripiegare jsPDF su UTF-16 per
+ * tutta la stringa: il testo esce illeggibile e, siccome la misura per andare
+ * a capo viene calcolata su un byte per carattere, la riga sborda oltre il
+ * margine destro del foglio. E' successo in ambulatorio sul calcium score.
+ */
+describe("simboli fuori dalla codifica del font", () => {
+  it("traduce il maggiore e minore uguale", () => {
+    expect(san("Agatston \u2265 300")).toBe("Agatston >= 300");
+    expect(san("FE \u2264 40%")).toBe("FE <= 40%");
+    expect(san("\u2260")).toBe("!=");
+  });
+
+  it("traduce i pedici del CHA2DS2-VASc", () => {
+    expect(san("CHA\u2082DS\u2082-VASc")).toBe("CHA2DS2-VASc");
+  });
+
+  it("lascia stare i caratteri che il font sa scrivere", () => {
+    // Stanno tutti nella fascia alta di WinAnsi: tradurli cambierebbe il testo
+    // senza motivo, e il trattino lungo separa le categorie CAD-RADS.
+    expect(san("CAD-RADS 2 \u2014 lieve")).toBe("CAD-RADS 2 \u2014 lieve");
+    expect(san("I\u00b1")).toBe("I\u00b1");
+    expect(san("100 \u00b7 severa")).toBe("100 \u00b7 severa");
+    expect(san("mL/min/1,73 m\u00b2")).toBe("mL/min/1,73 m\u00b2");
+  });
+
+  it("non lascia passare nulla che il font non sappia scrivere", () => {
+    // La rete di sicurezza: meglio un carattere sbagliato che una riga
+    // illeggibile fuori margine.
+    for (const carattere of san("soglia \u2265 300 \u2192 \u4e2d")) {
+      expect(carattere.charCodeAt(0)).toBeLessThanOrEqual(0xff);
+    }
+  });
+});

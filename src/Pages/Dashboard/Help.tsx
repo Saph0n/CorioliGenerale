@@ -452,12 +452,12 @@ export default function HelpAndFeedback() {
         {
           title: "Come creo una nuova visita?",
           content:
-            "Dalla scheda del paziente, clicca su '+ Nuova Visita'. Il referto è diviso in cinque sezioni: Descrizione del problema, Anamnesi, Esame obiettivo, Accertamenti e Conclusioni con terapia. Nella colonna di sinistra registri i parametri (pressione arteriosa, frequenza cardiaca, peso con calcolo del BMI) e alleghi eventuali immagini.",
+            "Dalla scheda del paziente, clicca su '+ Nuova Visita'. Il referto è diviso in sezioni: Anamnesi, Descrizione del problema, Esame obiettivo, i moduli strumentali (elettrocardiogramma, ecocardiogramma, TC coronarica, test ergometrico, Holter), scompenso, fibrillazione atriale, rischio cardiovascolare, Accertamenti e Conclusioni con terapia. Nella colonna di sinistra registri le variabili cliniche (pressione arteriosa, frequenza cardiaca, peso con calcolo del BMI), gli esami di laboratorio e alleghi eventuali immagini.",
         },
         {
           title: "Come funziona il calcolo del BMI?",
           content:
-            "Inserisci il peso corporeo nella sezione Parametri della visita: se la scheda del paziente contiene l'altezza, il BMI viene calcolato e mostrato accanto al peso e riportato nel referto. Se l'altezza manca, puoi inserirla direttamente dalla visita e viene salvata in anagrafica.",
+            "Inserisci il peso corporeo nella colonna Variabili cliniche della visita: se la scheda del paziente contiene l'altezza, il BMI viene calcolato e mostrato accanto al peso e riportato nel referto. Se l'altezza manca, puoi inserirla direttamente dalla visita e viene salvata in anagrafica.",
         },
         {
           title: "Come stampo o salvo il referto in PDF?",

@@ -967,6 +967,22 @@ export default function GruppiRicerca() {
               classNames={{ label: "text-xs text-default-500 shrink-0" }}
             />
 
+            {/* La scorciatoia che mancava: da qui il paziente si crea e
+                torna gia' arruolato, senza passare dall'elenco pazienti. */}
+            <Button
+              size="sm"
+              variant="flat"
+              className="self-start"
+              startContent={<Plus size={15} />}
+              onPress={() =>
+                navigate(
+                  `/add-patient?gruppo=${encodeURIComponent(gruppoTarget ?? "")}`,
+                )
+              }
+            >
+              Crea un paziente nuovo
+            </Button>
+
             {candidati.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-6 text-center">
                 <p className="text-sm text-default-500">

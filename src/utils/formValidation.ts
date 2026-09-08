@@ -138,11 +138,35 @@ export function validateBodyWeight(peso?: number): string | null {
   return null;
 }
 
+/**
+ * Pressione arteriosa scritta come la si scrive in ambulatorio.
+ *
+ * Il separatore accettato era la sola barra: chi digitava "120 80" o "120-80"
+ * si vedeva rifiutare il salvataggio della visita, che e' il tipo di attrito
+ * che fa chiudere il programma. Ora valgono barra, trattino, spazio e
+ * backslash — quest'ultimo perche' sulla tastiera italiana e' il tasto accanto
+ * — e il valore viene ricondotto alla forma "120/80" da
+ * `normalizzaPressioneArteriosa` prima di essere salvato.
+ */
+const SEPARATORE_PA = /^(\d{2,3})\s*[/\\\-\s]\s*(\d{2,3})$/;
+
+/**
+ * Riporta la pressione alla forma canonica "120/80".
+ *
+ * Restituisce il testo originale quando non riconosce le due misure: a dire
+ * che c'e' un errore ci pensa la validazione, questa funzione non inventa.
+ */
+export function normalizzaPressioneArteriosa(value?: string): string {
+  const t = (value ?? "").trim();
+  const m = SEPARATORE_PA.exec(t);
+  return m ? `${m[1]}/${m[2]}` : t;
+}
+
 /** Formato della pressione arteriosa: "120/80" (sistolica/diastolica). */
 export function validatePressioneArteriosa(value?: string): string | null {
   const t = (value ?? "").trim();
   if (t === "") return null;
-  const m = /^(\d{2,3})\s*\/\s*(\d{2,3})$/.exec(t);
+  const m = SEPARATORE_PA.exec(t);
   if (!m) return "Pressione arteriosa: usare il formato 120/80";
   const sys = parseInt(m[1], 10);
   const dia = parseInt(m[2], 10);

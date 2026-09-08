@@ -2038,6 +2038,15 @@ const SettingsScreen = () => {
                 <p className="text-sm font-medium text-gray-800">
                   Calcium score coronarico
                 </p>
+                {/* Qui non si inserisce nessun punteggio, e il malinteso e'
+                    costato una telefonata: il valore Agatston del paziente si
+                    scrive nel modulo TC coronarica della visita, questa e'
+                    solo la soglia con cui il referto lo chiama severo. */}
+                <p className="text-xs text-default-500">
+                  Il punteggio del singolo paziente si inserisce nel modulo
+                  &laquo;TC coronarica&raquo; della visita. Qui si sceglie solo
+                  la soglia con cui il referto lo definisce severo.
+                </p>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm text-default-700">
@@ -2045,7 +2054,8 @@ const SettingsScreen = () => {
                     </p>
                     <p className="text-xs text-default-500">
                       Agatston oltre il quale il referto parla di calcificazione
-                      severa. Le fasce 0, 1-99 e 100-299 non cambiano.
+                      severa. Le fasce sotto restano le stesse: 0 nessuna
+                      calcificazione, 1-99 lieve, 100-299 moderata.
                     </p>
                   </div>
                   <Select

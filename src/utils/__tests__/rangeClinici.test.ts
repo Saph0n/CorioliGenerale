@@ -293,3 +293,35 @@ describe("BMI", () => {
     expect(voci[0].valore).toBe("32,0");
   });
 });
+
+describe("hs-PCR", () => {
+  it("separa le tre fasce di rischio", () => {
+    expect(valutaMisura("lab.hsPcr", 0.6).etichetta).toBe("basso");
+    expect(valutaMisura("lab.hsPcr", 2).etichetta).toBe("intermedio");
+    expect(valutaMisura("lab.hsPcr", 4).etichetta).toBe("alto");
+  });
+
+  it("sopra 10 non parla piu' di rischio ma di flogosi", () => {
+    const s = valutaMisura("lab.hsPcr", 12);
+    expect(s.etichetta).toBe("flogosi");
+    expect(s.nota).toContain("ripetere");
+  });
+});
+
+describe("HOMA-IR", () => {
+  // Fasce indicate dal cardiologo: sono sei, e la borderline e la "probabile"
+  // si distinguono di mezzo punto.
+  it("segue le sei fasce indicate", () => {
+    expect(valutaMisura("lab.homa", 0.8).etichetta).toBe("ottimale");
+    expect(valutaMisura("lab.homa", 1.5).etichetta).toBe("nella norma");
+    expect(valutaMisura("lab.homa", 2.2).etichetta).toBe("borderline");
+    expect(valutaMisura("lab.homa", 2.7).etichetta).toBe("IR probabile");
+    expect(valutaMisura("lab.homa", 3.4).etichetta).toBe("IR verosimile");
+    expect(valutaMisura("lab.homa", 5.2).etichetta).toBe("marcatamente elevato");
+  });
+
+  it("le due fasce basse non accendono il semaforo", () => {
+    expect(valutaMisura("lab.homa", 1.5).livello).toBe("nella-norma");
+    expect(valutaMisura("lab.homa", 3).livello).toBe("alterato");
+  });
+});

@@ -86,6 +86,8 @@ export type ChiaveMisura =
   | "lab.alt"
   | "lab.uricemia"
   | "lab.tsh"
+  | "lab.hsPcr"
+  | "lab.homa"
   | "vitali.frequenzaCardiaca"
   | "vitali.bmi";
 
@@ -214,6 +216,51 @@ export function valutaMisura(
       }
       if (n >= 50) return attenzione("≥ 50 mg/dL: sopra il riferimento comune");
       return norma;
+
+    case "lab.hsPcr":
+      // Fasce AHA/CDC, quelle con cui la hs-PCR viene refertata: sotto 1
+      // rischio basso, 1-3 intermedio, oltre 3 alto. Sopra 10 il valore non si
+      // legge piu' come rischio cardiovascolare: e' una flogosi in atto, e va
+      // ridosato a distanza prima di trarne conclusioni.
+      if (n > 10) {
+        return alterato(
+          "> 10 mg/L: verosimile flogosi acuta, non interpretabile come rischio cardiovascolare — ripetere a distanza",
+          "flogosi",
+        );
+      }
+      if (n >= 3) return alterato("≥ 3 mg/L: fascia di rischio alto", "alto");
+      if (n >= 1) return attenzione("1-3 mg/L: fascia di rischio intermedio", "intermedio");
+      return nellaNorma("< 1 mg/L: fascia di rischio basso", "basso");
+
+    case "lab.homa":
+      // Fasce indicate dal cardiologo. Non sono universali: il valore di
+      // taglio dipende dal metodo di dosaggio dell'insulina, dalla popolazione
+      // e dal laboratorio, e in letteratura oscilla fra 2 e 2,9. Per questo
+      // l'indice si presenta con la fascia scritta accanto e non come un
+      // sì/no.
+      if (n >= 5) {
+        return alterato(
+          "≥ 5,0: valore marcatamente elevato, richiede un inquadramento clinico complessivo",
+          "marcatamente elevato",
+        );
+      }
+      if (n >= 3) {
+        return alterato(
+          "≥ 3,0: insulino-resistenza verosimile e clinicamente più rilevante",
+          "IR verosimile",
+        );
+      }
+      if (n >= 2.5) {
+        return attenzione("2,5-2,9: insulino-resistenza probabile", "IR probabile");
+      }
+      if (n >= 2) {
+        return attenzione(
+          "2,0-2,4: fascia borderline, possibile iniziale riduzione della sensibilità insulinica",
+          "borderline",
+        );
+      }
+      if (n >= 1) return nellaNorma("1,0-1,9: generalmente nella norma", "nella norma");
+      return nellaNorma("< 1,0: sensibilità insulinica molto buona", "ottimale");
 
     case "lab.trigliceridi":
       if (n >= 500) return alterato("≥ 500 mg/dL: ipertrigliceridemia severa");

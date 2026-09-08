@@ -197,3 +197,43 @@ describe("accenti nei modelli già in archivio", () => {
     expect(store.get("AppDottori_templates_accenti_v1")).toBe("1");
   });
 });
+
+describe("certificato non agonistico: riferimento normativo", () => {
+  it("corregge la citazione anche a chi ha gia' il modello in archivio", async () => {
+    // La firma di un predefinito e' categoria|sezione|etichetta: cambiando il
+    // solo testo la correzione non arriverebbe mai a chi lo ha gia'.
+    store.set(
+      "AppDottori_templates",
+      JSON.stringify([
+        {
+          id: "1",
+          category: "certificato",
+          section: "generale",
+          label: "Idoneità all'attività sportiva non agonistica",
+          text:
+            "Il/La sottoscritto/a attesta che ___ non presenta controindicazioni.\n\n" +
+            "Il presente certificato ha validità annuale a partire dalla data di " +
+            "rilascio, ai sensi del D.M. 24/04/2013 e successive modifiche.",
+          isDefault: true,
+        },
+      ]),
+    );
+
+    const t = await storageService.getTemplates();
+    const cert = t.find(
+      (x) => x.label === "Idoneità all'attività sportiva non agonistica",
+    );
+    expect(cert?.text).toContain("D.M. 8 agosto 2014");
+    // Solo la frase del riferimento: il resto del testo resta quello del medico.
+    expect(cert?.text).toContain("non presenta controindicazioni");
+    expect(cert?.text).not.toContain("24/04/2013");
+  });
+
+  it("porta la voce per l'attività ludico-motoria", async () => {
+    const t = await storageService.getTemplates();
+    const etichette = t
+      .filter((x) => x.category === "certificato")
+      .map((x) => x.label);
+    expect(etichette).toContain("Idoneità all'attività ludico-motoria");
+  });
+});

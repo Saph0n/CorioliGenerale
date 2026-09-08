@@ -21,16 +21,25 @@ Un solo tipo di visita, come in ambulatorio: il referto è diviso in otto sezion
    (familiare, fisiologica, patologica, chirurgica, farmacologica, allergica,
    abitudini di vita + sezioni personalizzate)
 3. Esame obiettivo
-4. **Elettrocardiogramma** — ritmo, PR, QRS, QT, asse, QTc calcolato, referto
-5. **Ecocardiogramma** — DTD/DTS, SIV, PP, FE, atrio sinistro, radice aortica,
-   aorta ascendente, TAPSE, PAPs, E/A, E/e', referto
+4. **Elettrocardiogramma** — PR, QRS, QT, asse, QTc calcolato, referto
+5. **Ecocardiogramma** — DTD/DTS, SIV, PP, FE, atrio sinistro, gradienti
+   transvalvolari aortici medio e massimo, radice aortica, aorta ascendente,
+   TAPSE, PAPs, E/A, E/e', referto
 6. **TC coronarica** — data, struttura, calcium score con fascia Agatston,
-   CAD-RADS, sintesi del referto radiologico
+   CAD-RADS, burden di placca, segmenti SCCT, sintesi del referto radiologico
 7. Accertamenti
-8. Conclusioni e terapia
+8. **Rischio cardiovascolare** — classe dichiarata dal medico, obiettivo
+   lipidico che ne discende e distanza del paziente da quell'obiettivo
+9. Conclusioni e terapia
 
-Colonna di sinistra: parametri vitali (P.A., F.C., fumo), peso con BMI,
-esami di laboratorio e indici calcolati, immagini allegabili al PDF.
+Colonna di sinistra (**variabili cliniche**: cambiano a ogni controllo, ed è
+il confronto con il valore precedente che si guarda): parametri vitali
+(P.A., F.C., fumo), peso con BMI, esami di laboratorio — compresi hs-PCR e
+LDL ossidate — indici calcolati e immagini allegabili al PDF.
+
+La pressione arteriosa si può scrivere con la barra, il trattino o lo spazio
+(`120/80`, `120-80`, `120 80`): viene ricondotta alla forma canonica al
+salvataggio. Il separatore che si digita non decide se la visita si salva.
 
 Nel PDF ogni modulo strumentale è reso come tabella a griglia (etichetta sopra,
 valore in grassetto sotto, righe a bande alterne) e le sezioni hanno
@@ -40,8 +49,136 @@ tabella degli esami ematochimici compaiono anche LDL secondo Friedewald (quando
 manca il dosaggio diretto) ed eGFR, etichettati come calcolati e accompagnati
 dalla nota che sono stime derivate, non risultati di laboratorio.
 
+ECG, ecocardiogramma, TC coronarica, test ergometrico e Holter stanno sotto
+un'unica barra **"Esami strumentali"**, con il nome del modulo come sottotitolo
+più leggero: sono tutti esami strumentali, e cinque barre di pari livello
+facevano sembrare il referto un elenco di blocchi scollegati. La barra del
+gruppo compare solo se almeno un modulo ha qualcosa da stampare.
+
+### Due caratteri, due voci
+
+Il racconto clinico — anamnesi, descrizione del problema, esame obiettivo,
+referti testuali dei moduli, conclusioni — è in **tondo con grazie** (Times,
+10,5 pt). Etichette, numeri e tabelle restano in **bastoni** (Helvetica).
+
+Prima era tutto Helvetica e il referto leggeva come la stampa di un modulo:
+dati e prosa avevano la stessa voce. Le grazie sono la lingua dei documenti,
+ed è con quelle che sono scritti i referti ospedalieri; i bastoni restano
+dove il dato si legge a colpo d'occhio invece che riga per riga.
+
+### Carta intestata
+
+In alto a sinistra chi firma (nome in Times bold, qualifica in maiuscoletto
+spaziato), a destra dove lo si trova (ambulatorio, indirizzo, telefono e
+e-mail secondo le preferenze di stampa). Sotto, un **filetto doppio** —
+0,7 mm e 0,15 mm a poco più di un millimetro di distanza — e poi il titolo
+del documento, centrato in maiuscoletto spaziato.
+
+I recapiti stavano nel piede in corpo 6,5: è il primo posto dove si cerca chi
+ha scritto il referto, non l'ultimo. Nel piede restano la numerazione di
+pagina e la firma dell'applicazione.
+
+L'anagrafica del paziente è una fascia di celle con l'etichetta piccola sopra
+e il valore in grassetto sotto — lo stesso linguaggio con cui il referto
+scrive tutti gli altri dati. Erano righe «Etichetta: valore» su due colonne,
+cioè la grafica di un modulo da compilare.
+
+### Gerarchia della pagina
+
+Tre livelli, un trattamento ciascuno, senza eccezioni:
+
+1. **Sezione** — maiuscoletto spaziato con un filetto pieno sotto, a tutta
+   larghezza. Vale per tutte: Anamnesi, Esame obiettivo, Esami strumentali,
+   Esami ematochimici, Conclusioni.
+2. **Modulo dentro una sezione** — grassetto piccolo sottolineato
+   (Elettrocardiogramma, TC coronarica).
+3. **Colonna dentro una griglia** — etichetta grigia piccola in maiuscolo
+   (Parametri vitali, Antropometria).
+
+Prima la barra grigia significava due cose — sezione del referto *e* colonna
+di una griglia — e le sezioni di prosa avevano un titolo tutto loro: in mezza
+pagina si contavano quattro trattamenti diversi per intestazioni dello stesso
+livello.
+
+Il foglio è **A4 dichiarato** (non sottinteso, così i visualizzatori sanno che
+scala applicare in stampa) con margini di **18 mm per lato**. I tre millimetri
+in più rispetto ai 15 di prima sono tolleranza: fra l'area non stampabile
+della macchina e il trascinamento del foglio, una stampa leggermente fuori
+centro con margini stretti mangia del testo; con 18 mangia solo bianco.
+
+**Nel referto non ci sono fondini: solo tipografia e filetti.** È la scelta che
+regge la stampa laser in bianco e nero, che è come il referto viene usato: un
+retino al 4-5% di nero a seconda della macchina sparisce o si sporca, un
+filetto stampa identico ovunque. È anche il modo in cui sono fatte le
+intestazioni nei referti ospedalieri.
+
+Le due tabelle (misure a griglia, valori lunghi a due colonne) restano due,
+perché servono a cose diverse, ma hanno la stessa etichetta e lo stesso filetto
+di riga. Quando una si spezza fra due pagine, la pagina nuova riapre con il
+nome del modulo seguito da *(segue)*: senza, si trovavano due righe di misure
+orfane senza sapere a quale esame appartenessero.
+
+
+Peso e BMI stanno **solo** fra le variabili cliniche. Comparivano anche nel
+blocco d'intestazione, venti millimetri più sopra: sono variabili della
+visita, non identità del paziente.
+
+### Pagine, identità e firma
+
+Il referto si stampa e viaggia: finisce dal medico curante, dai colleghi, in
+una cartella di carta. Da qui tre cose che i referti ospedalieri hanno sempre:
+
+- **«Pagina 2 di 3»** in fondo a destra. I piedi si disegnano in coda, a
+  documento chiuso, perché il totale prima non si conosce.
+- **Riga di identificazione** in testa alle pagine dopo la prima (cognome e
+  nome, data di nascita, data della visita): un foglio che si stacca dalla
+  graffetta o che viene fotocopiato da solo resta attribuibile.
+Il referto **non** porta il blocco firma in calce: si chiude sulle conclusioni.
+Luogo, data e riga per la firma erano stati aggiunti sull'esempio dei referti
+ospedalieri e il cardiologo li ha tolti — chi firma lo fa sul foglio stampato, e
+il nome del medico è già in testa a ogni pagina. Ricetta, certificato e
+richiesta di esame la firma la tengono: senza, non varrebbero niente.
+
+Sopra il filetto dei recapiti, allineata a destra, una riga in corpo 5 e grigio
+chiarissimo dice **«Creato con Corioli»**. Sta nella banda già vuota fra la
+fine del contenuto e il piede: si legge se la si cerca, non si nota mentre si
+legge il referto.
+
+Dei punteggi (CHA₂DS₂-VASc, HAS-BLED) il referto porta **solo il totale**: le
+voci che li compongono restano nella maschera, dove servono mentre si compila,
+ma nel referto sono già nella prosa dell'anamnesi. Accanto ai due punteggi
+compaiono peso, creatinina, età ed eGFR, che sono i dati da cui si decide la
+dose dell'anticoagulante orale. Il modulo della fibrillazione atriale si stampa
+solo se il medico ha dichiarato qualcosa sull'aritmia: i punteggi si calcolano
+da età, sesso e fattori di rischio, quindi da soli comparirebbero su ogni
+referto.
+
 Ogni modulo ha i propri modelli di refertazione riutilizzabili, gestibili da
-Impostazioni → Modelli.
+Impostazioni → Modelli. La **TC coronarica** fa eccezione e non ne ha: il suo
+referto lo scrive il cardiologo leggendo quello del radiologo, e un testo
+precompilato su un esame che si chiede ogni cinque anni non fa risparmiare
+tempo.
+
+### Quello che la maschera non chiede
+
+Alcune voci sono state tolte di proposito, e vanno lasciate fuori:
+
+- **Il ritmo all'ECG** e la **forma clinica della fibrillazione atriale** erano
+  tendine con la diagnosi dentro. La diagnosi la scrive il cardiologo nel
+  referto testuale del modulo: viene da una frase sua e non da una voce di
+  menu.
+- **La terapia anticoagulante in atto** era un campo strutturato. Serviva a
+  filtrare la voce «INR labile» dell'HAS-BLED, che vale solo in warfarin: ora
+  quella casella si spunta a mano e la sua nota dice la condizione.
+- Nelle tendine della TC coronarica (CAD-RADS, burden di placca, esito FFR-TC,
+  segmenti) c'è la voce **«Nessuna menzione»**. Le tendine non si riportano a
+  vuoto una volta scelte: senza quella voce, sfiorare il burden di placca
+  bastava a far uscire nel referto un valore fra P1 e P4 che il referto
+  radiologico non nominava affatto.
+- Il modulo **fibrillazione atriale** ha un interruttore esplicito. I due
+  punteggi si calcolano da età, sesso e fattori di rischio, quindi senza una
+  dichiarazione del medico ogni referto porterebbe un «CHA₂DS₂-VASc 0 / 9»
+  addosso a un paziente che non è mai stato fibrillante.
 
 ## Gruppi di ricerca
 
@@ -86,10 +223,22 @@ referto. L'interpretazione resta del medico.
 | LDL | Friedewald (tot − HDL − TG/5) | non calcolato con TG ≥ 400 mg/dL |
 | Colesterolo non-HDL | totale − HDL | — |
 | eGFR + stadio KDIGO | CKD-EPI 2021 senza coefficiente etnico | richiede età e sesso |
-| HOMA-IR | (glicemia × insulinemia) / 405 | solo su prelievo a digiuno |
+| HOMA-IR | (glicemia × insulinemia) / 405 | solo su prelievo a digiuno; sei fasce di lettura, da «ottimale» a «marcatamente elevato» |
 | QTc | Bazett (QT / √RR) | segnalato come inaffidabile fuori da 50-100 bpm |
 | Fascia calcium score | fasce Agatston 0 / 1-99 / 100-399 / ≥ 400 | descrittiva, non diagnostica |
 | SCORE2 | modello ESC 2021 per regione di rischio | **non attivo**, vedi sotto |
+
+### La classe di rischio nel referto
+
+La classe di rischio **non si ricava dai lipidi**: la attribuisce il medico
+dall'anamnesi dei fattori di rischio — eventi pregressi, danno d'organo,
+comorbidità — e sono le linee guida a legare a quella classe l'obiettivo di
+LDL e di ApoB. Il referto stampa la classe dichiarata, l'obiettivo che le
+corrisponde e di quanto il paziente ne è distante: è il ragionamento che il
+medico curante deve poter rifare leggendo il foglio. Senza classe dichiarata
+la sezione non esce — un obiettivo lipidico senza la classe da cui deriva
+sarebbe un numero senza motivo. Il punteggio SCORE2 resta invece di supporto
+e fuori dal referto.
 
 ### SCORE2: perché è disattivato
 

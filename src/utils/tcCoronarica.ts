@@ -190,6 +190,21 @@ export const MODIFICATORI_CAD_RADS: {
   },
 ];
 
+/**
+ * Voce "nessuna menzione" delle tendine del modulo.
+ *
+ * Una tendina di NextUI, una volta scelta una voce, non si puo' piu' riportare
+ * a vuoto: bastava sfiorare il burden di placca perche' il referto uscisse per
+ * forza con un valore fra P1 e P4, anche quando il referto radiologico non lo
+ * nominava affatto. Serve percio' una voce esplicita che riporti il campo a
+ * vuoto, e non puo' essere la stringa vuota: il componente la interpreta come
+ * "nessuna selezione" e la riga non risulta cliccabile.
+ */
+export const SENZA_MENZIONE = "__nessuna__";
+
+/** Etichetta della voce che lascia il campo fuori dal referto. */
+export const SENZA_MENZIONE_LABEL = "Nessuna menzione";
+
 /** Burden di placca secondo CAD-RADS, da Agatston, SIS o stima visiva. */
 export type BurdenPlacca = "P1" | "P2" | "P3" | "P4";
 

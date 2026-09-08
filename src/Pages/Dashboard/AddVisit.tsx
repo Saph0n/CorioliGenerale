@@ -24,6 +24,7 @@ import {
   DropdownItem,
   Chip,
   Checkbox,
+  Switch,
   Tooltip,
 } from "@nextui-org/react";
 import { useSearchParams, useNavigate, useParams } from "react-router-dom";
@@ -66,6 +67,7 @@ import {
   validateBodyWeight,
   validateFrequenzaCardiaca,
   validatePressioneArteriosa,
+  normalizzaPressioneArteriosa,
   validateVisitDate,
 } from "../../utils/formValidation";
 import {
@@ -80,6 +82,7 @@ import {
   Copy,
   X,
   Ruler,
+  BookOpen,
 } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
 import { Breadcrumb } from "../../components/Breadcrumb";
@@ -151,6 +154,8 @@ import {
 } from "../../utils/scompenso";
 import {
   BURDEN_PLACCA,
+  SENZA_MENZIONE,
+  SENZA_MENZIONE_LABEL,
   CAD_RADS_CATEGORIE,
   ESITI_FFR_CT,
   MODIFICATORI_CAD_RADS,
@@ -328,7 +333,7 @@ const CAMPO_CHADSVASC: Record<"scompenso" | "ictus" | "vascolare", string> = {
 };
 
 /**
- * Fattori di rischio cardiovascolare da spuntare accanto ai parametri.
+ * Fattori di rischio cardiovascolare da spuntare accanto alle variabili cliniche.
  *
  * Il fumo non e' in elenco: sta gia' nel campo "Fumatore" qui sopra, che ha tre
  * stati perche' alimenta SCORE2, dove "non rilevato" e "no" non coincidono.
@@ -356,21 +361,6 @@ const CAMPO_HASBLED: Record<FattoreHasBled, string> = {
   farmaci: "hbFarmaci",
   alcol: "hbAlcol",
 };
-
-/** Forme cliniche della fibrillazione atriale. */
-const TIPI_FA: { key: string; label: string }[] = [
-  { key: "parossistica", label: "Parossistica — risoluzione entro 7 giorni" },
-  { key: "persistente", label: "Persistente — oltre 7 giorni" },
-  { key: "persistente-lunga", label: "Persistente di lunga durata — oltre 12 mesi" },
-  { key: "permanente", label: "Permanente — ritmo sinusale non perseguito" },
-];
-
-/** Terapia anticoagulante in atto: decide se l'INR labile è una voce sensata. */
-const ANTICOAGULANTI: { key: string; label: string }[] = [
-  { key: "nessuno", label: "Nessuna terapia anticoagulante" },
-  { key: "warfarin", label: "Warfarin (TAO)" },
-  { key: "doac", label: "Anticoagulante orale diretto (DOAC)" },
-];
 
 /**
  * Riquadro con il totale di un punteggio, le voci che lo compongono e la sua
@@ -533,6 +523,10 @@ const MISURE: Record<string, { path: string; range?: ChiaveMisura }> = {
   "lab.alt": { path: "laboratorio.alt", range: "lab.alt" },
   "lab.uric": { path: "laboratorio.uricemia", range: "lab.uricemia" },
   "lab.tsh": { path: "laboratorio.tsh", range: "lab.tsh" },
+  "lab.hspcr": { path: "laboratorio.hsPcr", range: "lab.hsPcr" },
+  // Nessuna soglia: il dosaggio delle LDL ossidate non e' standardizzato e i
+  // valori di riferimento cambiano da un laboratorio all'altro.
+  "lab.oxldl": { path: "laboratorio.oxLdl" },
   // Elettrocardiogramma
   "ecg.pr": { path: "ecg.pr", range: "ecg.pr" },
   "ecg.qrs": { path: "ecg.qrs", range: "ecg.qrs" },
@@ -545,6 +539,8 @@ const MISURE: Record<string, { path: string; range?: ChiaveMisura }> = {
   "eco.pp": { path: "ecocardiogramma.pp", range: "eco.pp" },
   "eco.fe": { path: "ecocardiogramma.fe", range: "eco.fe" },
   "eco.as": { path: "ecocardiogramma.atrioSinistro", range: "eco.atrioSinistro" },
+  "eco.gradmed": { path: "ecocardiogramma.gradienteAorticoMedio" },
+  "eco.gradmax": { path: "ecocardiogramma.gradienteAorticoMassimo" },
   "eco.rad": { path: "ecocardiogramma.radiceAortica" },
   "eco.aoasc": {
     path: "ecocardiogramma.aortaAscendente",
@@ -592,11 +588,25 @@ const MISURE: Record<string, { path: string; range?: ChiaveMisura }> = {
  * percorsi.
  */
 const GRUPPI_LABORATORIO = {
-  lipidico: ["lab.tot", "lab.hdl", "lab.tg", "lab.ldl", "lab.apob", "lab.lpa"],
+  lipidico: [
+    "lab.tot", "lab.hdl", "lab.tg", "lab.ldl", "lab.apob", "lab.lpa", "lab.oxldl",
+  ],
   glucidico: ["lab.gli", "lab.ins", "lab.hba1c"],
   renale: ["lab.crea", "lab.alb"],
-  altri: ["lab.ast", "lab.alt", "lab.uric", "lab.tsh", "lab.hb"],
+  altri: ["lab.hspcr", "lab.ast", "lab.alt", "lab.uric", "lab.tsh", "lab.hb"],
 } as const;
+
+/**
+ * Chiave scelta in una tendina, con "nessuna menzione" tradotta in campo vuoto.
+ *
+ * Le tendine di NextUI non si riportano a vuoto una volta scelte: senza la voce
+ * esplicita, un referto radiologico che non nomina il burden di placca usciva
+ * comunque stampato con un valore fra P1 e P4.
+ */
+function senzaMenzione(keys: unknown): string {
+  const k = (Array.from(keys as Iterable<unknown>)[0] as string) ?? "";
+  return k === SENZA_MENZIONE ? "" : k;
+}
 
 const MAX_IMAGES = 20;
 const MAX_IMAGE_BYTES = 7 * 1024 * 1024; // 7MB per immagine
@@ -925,13 +935,17 @@ export default function AddVisit() {
         return false;
       }
 
-      const visitaForSave =
-        pesoCorporeoDraft !== null
-          ? {
-              ...visitaData,
-              pesoCorporeo: parseWeightFieldBlur(pesoCorporeoDraft),
-            }
-          : visitaData;
+      const visitaForSave = {
+        ...visitaData,
+        ...(pesoCorporeoDraft !== null
+          ? { pesoCorporeo: parseWeightFieldBlur(pesoCorporeoDraft) }
+          : {}),
+        // "120 80" e "120-80" si salvano come "120/80": il separatore che si
+        // digita non deve decidere se la visita si salva.
+        pressioneArteriosa: normalizzaPressioneArteriosa(
+          visitaData.pressioneArteriosa,
+        ),
+      };
 
       const paramErr =
         validateBodyWeight(visitaForSave.pesoCorporeo) ??
@@ -1595,6 +1609,13 @@ export default function AddVisit() {
     () => valutaMisura("lab.ctHdl", ctHdlCalc.ok ? ctHdlCalc.result.value : undefined),
     [ctHdlCalc],
   );
+  // La fascia dell'HOMA e' una soglia di riferimento come le altre: la scrive
+  // `rangeClinici`, cosi' l'indice si presenta con la stessa etichetta colorata
+  // degli altri valori invece di una frase tutta sua.
+  const homaSegnale = useMemo(
+    () => valutaMisura("lab.homa", homaCalc.ok ? homaCalc.result.value : undefined),
+    [homaCalc],
+  );
   const tgHdlSegnale = useMemo(
     () => valutaMisura("lab.tgHdl", tgHdlCalc.ok ? tgHdlCalc.result.value : undefined),
     [tgHdlCalc],
@@ -1658,9 +1679,17 @@ export default function AddVisit() {
             egfr: egfrCalc.ok ? egfrCalc.result.value : undefined,
             bmi: bmi ?? undefined,
             ritmo: visitaData.ecg.ritmo,
+            fibrillazioneAtriale: visitaData.fibrillazioneAtriale.attivo,
             eta: etaPaziente,
           }),
-    [visitaData.scompenso.ntProBnp, egfrCalc, bmi, visitaData.ecg.ritmo, etaPaziente],
+    [
+      visitaData.scompenso.ntProBnp,
+      egfrCalc,
+      bmi,
+      visitaData.ecg.ritmo,
+      visitaData.fibrillazioneAtriale.attivo,
+      etaPaziente,
+    ],
   );
 
   const fa = visitaData.fibrillazioneAtriale;
@@ -1741,7 +1770,7 @@ export default function AddVisit() {
         sesso: sessoPaziente,
         fattori: {
           scompenso: fa.cvScompenso,
-          // Dichiarati fra i fattori di rischio accanto ai parametri: il
+          // Dichiarati fra i fattori di rischio accanto alle variabili: il
           // punteggio li legge da li' invece di richiederli, altrimenti si
           // potrebbero avere spuntati di la' e no di qua.
           ipertensione: fattoriRischio.ipertensione,
@@ -1765,7 +1794,10 @@ export default function AddVisit() {
     () =>
       calcolaHasBled({
         eta: etaPaziente,
-        inTao: fa.anticoagulante === "warfarin",
+        // La tendina della terapia anticoagulante non c'e' piu': la voce
+        // "INR labile" vale solo in warfarin, e adesso e' la spunta stessa del
+        // medico a dichiararlo — l'etichetta della casella dice la condizione.
+        inTao: Boolean(fa.hbInrLabile),
         fattori: {
           ipertensioneNonControllata: fa.hbIpertensioneNonControllata,
           funzioneRenale: fa.hbFunzioneRenale,
@@ -1779,7 +1811,6 @@ export default function AddVisit() {
       }),
     [
       etaPaziente,
-      fa.anticoagulante,
       fa.hbIpertensioneNonControllata,
       fa.hbFunzioneRenale,
       fa.hbFunzioneEpatica,
@@ -2032,11 +2063,11 @@ export default function AddVisit() {
         )}
 
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* LEFT COLUMN: Parametri & Immagini */}
+          {/* LEFT COLUMN: Variabili cliniche & Immagini */}
           <div className="w-full lg:w-[29%] min-w-[300px] space-y-6">
             <Card className="shadow-sm border border-default-200 bg-white">
               <CardHeader className="pb-0 pt-4 px-4 font-semibold text-gray-700 uppercase text-xs tracking-wider">
-                <span>Parametri</span>
+                <span>Variabili cliniche</span>
               </CardHeader>
               <CardBody className="px-4 py-6 gap-6">
                 <div className="grid grid-cols-2 gap-3">
@@ -2255,14 +2286,21 @@ export default function AddVisit() {
                 <Divider className="my-2" />
 
                 {/* Il prontuario chiude la card invece di spezzare il flusso
-                    dei parametri: è un'azione, non un dato da compilare, e in
+                    delle variabili: è un'azione, non un dato da compilare, e in
                     mezzo ai campi si leggeva come un campo. Sta in un modal
                     perché è materiale da guardare mentre si scrive, non
-                    contenuto da stampare. */}
+                    contenuto da stampare.
+
+                    In grigio piatto però non si vedeva: alla prova il
+                    cardiologo l'ha trovato solo quando gliel'hanno indicato, e
+                    un prontuario che non si trova non serve a niente. Colorato
+                    e con l'icona si legge come il pulsante che è. */}
                 <Button
                   size="sm"
                   variant="flat"
+                  color="primary"
                   className="w-full"
+                  startContent={<BookOpen size={15} />}
                   onPress={() => setIsProntuarioOpen(true)}
                 >
                   Prontuario — pilastri, icosapent, colchicina
@@ -2363,7 +2401,28 @@ export default function AddVisit() {
                       onDraftChange={(d) => setDraft("lab.lpa", d)}
                       {...misura("lab.lpa")}
                     />
+                    {/* Nessun semaforo: il dosaggio delle LDL ossidate non e'
+                        standardizzato, i valori di riferimento cambiano da un
+                        laboratorio all'altro e confrontare due referti di
+                        centri diversi non vuol dire niente. Si registra il
+                        numero e lo legge il medico sul referto che ha in mano. */}
+                    <MisuraInput
+                      label="LDL ossidate"
+                      unit="U/L"
+                      decimals={false}
+                      value={visitaData.laboratorio.oxLdl}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "oxLdl", v)
+                      }
+                      draft={draftOf("lab.oxldl")}
+                      onDraftChange={(d) => setDraft("lab.oxldl", d)}
+                      {...misura("lab.oxldl")}
+                    />
                   </div>
+                  <p className="text-xs text-default-500">
+                    LDL ossidate: valori di riferimento del laboratorio che ha
+                    eseguito il dosaggio, non confrontabili fra centri diversi.
+                  </p>
                   {(ldlCalc.ok ||
                     nonHdlCalc.ok ||
                     ctHdlCalc.ok ||
@@ -2432,7 +2491,11 @@ export default function AddVisit() {
                   </div>
                   {homaCalc.ok && (
                     <StrisciaCalcolati>
-                      <RigaCalcolata label="HOMA-IR" outcome={homaCalc} />
+                      <RigaCalcolata
+                        label="HOMA-IR"
+                        outcome={homaCalc}
+                        segnale={homaSegnale}
+                      />
                     </StrisciaCalcolati>
                   )}
                 </GruppoCampi>
@@ -2482,11 +2545,22 @@ export default function AddVisit() {
                 </GruppoCampi>
 
                 <GruppoCampi
-                  titolo="Altri parametri"
+                  titolo="Altri esami"
                   compilati={compilatiTra(GRUPPI_LABORATORIO.altri)}
                   totale={GRUPPI_LABORATORIO.altri.length}
                 >
                   <div className="grid grid-cols-2 gap-3">
+                    <MisuraInput
+                      label="hs-PCR"
+                      unit="mg/L"
+                      value={visitaData.laboratorio.hsPcr}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "hsPcr", v)
+                      }
+                      draft={draftOf("lab.hspcr")}
+                      onDraftChange={(d) => setDraft("lab.hspcr", d)}
+                      {...misura("lab.hspcr")}
+                    />
                     <MisuraInput
                       label="AST"
                       unit="U/L"
@@ -2901,37 +2975,11 @@ export default function AddVisit() {
                       />
                     }
                   />
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <Select
-                      label="Ritmo"
-                      size="sm"
-                      variant="bordered"
-                      labelPlacement="outside"
-                      placeholder="—"
-                      className="col-span-2 md:col-span-1"
-                      description={
-                        <PrecedenteTesto precedente={precedenti["ecg.ritmo"]} />
-                      }
-                      classNames={{ description: "m-0" }}
-                      selectedKeys={
-                        visitaData.ecg.ritmo ? [visitaData.ecg.ritmo] : []
-                      }
-                      onSelectionChange={(keys) =>
-                        handleBloccoChange(
-                          "ecg",
-                          "ritmo",
-                          (Array.from(keys)[0] as string) ?? "",
-                        )
-                      }
-                    >
-                      <SelectItem key="sinusale">Sinusale</SelectItem>
-                      <SelectItem key="fibrillazione atriale">
-                        Fibrillazione atriale
-                      </SelectItem>
-                      <SelectItem key="flutter atriale">Flutter atriale</SelectItem>
-                      <SelectItem key="da pacemaker">Da pacemaker</SelectItem>
-                      <SelectItem key="altro">Altro</SelectItem>
-                    </Select>
+                  {/* Niente tendina con la diagnosi di ritmo: la scrive il
+                      cardiologo nel referto qui sotto, ed e' piu'
+                      professionale che venga da una frase sua invece che da
+                      una voce di menu. Qui restano solo le misure. */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <MisuraInput
                       label="PR"
                       unit="ms"
@@ -3082,6 +3130,42 @@ export default function AddVisit() {
                       onDraftChange={(d) => setDraft("eco.as", d)}
                       {...misura("eco.as")}
                     />
+                    {/* I gradienti transvalvolari aortici: la stenosi aortica
+                        e' la patologia in cui tutto il resto dell'eco puo'
+                        leggersi normale, e senza questi due numeri il referto
+                        non la descrive. */}
+                    <MisuraInput
+                      label="Grad. Ao. medio"
+                      unit="mmHg"
+                      decimals={false}
+                      value={visitaData.ecocardiogramma.gradienteAorticoMedio}
+                      onValueChange={(v) =>
+                        handleBloccoChange(
+                          "ecocardiogramma",
+                          "gradienteAorticoMedio",
+                          v,
+                        )
+                      }
+                      draft={draftOf("eco.gradmed")}
+                      onDraftChange={(d) => setDraft("eco.gradmed", d)}
+                      {...misura("eco.gradmed")}
+                    />
+                    <MisuraInput
+                      label="Grad. Ao. massimo"
+                      unit="mmHg"
+                      decimals={false}
+                      value={visitaData.ecocardiogramma.gradienteAorticoMassimo}
+                      onValueChange={(v) =>
+                        handleBloccoChange(
+                          "ecocardiogramma",
+                          "gradienteAorticoMassimo",
+                          v,
+                        )
+                      }
+                      draft={draftOf("eco.gradmax")}
+                      onDraftChange={(d) => setDraft("eco.gradmax", d)}
+                      {...misura("eco.gradmax")}
+                    />
                     <MisuraInput
                       label="Radice aortica"
                       unit="mm"
@@ -3166,21 +3250,15 @@ export default function AddVisit() {
                     Collassabile come i moduli 7-11: i campi sono molti, ma una
                     visita su cento porta una TC coronarica, e tenerli aperti a
                     vuoto è il tipo di ingombro che rende lenta la maschera. */}
+                {/* Nessun modello di refertazione qui: il referto della TC lo
+                    scrive il cardiologo leggendo quello del radiologo, e un
+                    testo precompilato su un esame che si chiede ogni cinque
+                    anni non fa risparmiare tempo, lo rende solo meno suo. */}
                 <ModuloCollassabile
                   numero="6"
                   titolo="TC coronarica"
                   sottotitolo="non eseguita"
                   compilato={bloccoCompilato("tcCoronarica")}
-                  azione={
-                    <TemplateSelector
-                      templates={allTemplates.filter(
-                        (t) =>
-                          t.category === "visita" &&
-                          t.section === "tcCoronarica",
-                      )}
-                      onSelect={(t) => applyBloccoTemplate("tcCoronarica", t)}
-                    />
-                  }
                 >
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <Input
@@ -3325,13 +3403,18 @@ export default function AddVisit() {
                         handleBloccoChange(
                           "tcCoronarica",
                           "cadRads",
-                          (Array.from(keys)[0] as string) ?? "",
+                          senzaMenzione(keys),
                         )
                       }
                     >
-                      {CAD_RADS_CATEGORIE.map((o) => (
-                        <SelectItem key={o.key}>{o.label}</SelectItem>
-                      ))}
+                      <SelectItem key={SENZA_MENZIONE} className="text-default-500">
+                        {SENZA_MENZIONE_LABEL}
+                      </SelectItem>
+                      <>
+                        {CAD_RADS_CATEGORIE.map((o) => (
+                          <SelectItem key={o.key}>{o.label}</SelectItem>
+                        ))}
+                      </>
                     </Select>
                     <Select
                       label="Burden di placca"
@@ -3344,13 +3427,18 @@ export default function AddVisit() {
                         handleBloccoChange(
                           "tcCoronarica",
                           "burdenPlacca",
-                          (Array.from(keys)[0] as string) ?? "",
+                          senzaMenzione(keys),
                         )
                       }
                     >
-                      {BURDEN_PLACCA.map((o) => (
-                        <SelectItem key={o.chiave}>{o.label}</SelectItem>
-                      ))}
+                      <SelectItem key={SENZA_MENZIONE} className="text-default-500">
+                        {SENZA_MENZIONE_LABEL}
+                      </SelectItem>
+                      <>
+                        {BURDEN_PLACCA.map((o) => (
+                          <SelectItem key={o.chiave}>{o.label}</SelectItem>
+                        ))}
+                      </>
                     </Select>
                     {/* Più di un modificatore per lo stesso esame: uno stent e
                         una placca ad alto rischio convivono. Nelle targhette
@@ -3524,9 +3612,11 @@ export default function AddVisit() {
                       new Set((tc.segmenti ?? []).map((n) => String(n)))
                     }
                     onSelectionChange={(keys) => {
-                      const v = Array.from(keys)
-                        .map((k) => Number(k))
-                        .sort((a, b) => a - b);
+                      const scelte = Array.from(keys) as string[];
+                      // "Nessuna menzione" non si somma agli altri: azzera.
+                      const v = scelte.includes(SENZA_MENZIONE)
+                        ? []
+                        : scelte.map((k) => Number(k)).sort((a, b) => a - b);
                       handleBloccoChange(
                         "tcCoronarica",
                         "segmenti",
@@ -3534,6 +3624,10 @@ export default function AddVisit() {
                       );
                     }}
                   >
+                    <SelectItem key={SENZA_MENZIONE} className="text-default-500">
+                      {SENZA_MENZIONE_LABEL}
+                    </SelectItem>
+                    <>
                     {SEGMENTI_SCCT.map((sg) => (
                       <SelectItem
                         key={String(sg.numero)}
@@ -3545,6 +3639,7 @@ export default function AddVisit() {
                         </span>
                       </SelectItem>
                     ))}
+                    </>
                   </Select>
 
                   {/* FFR-TC: facoltativo, resta vuoto se l'esame non lo riporta. */}
@@ -3570,13 +3665,18 @@ export default function AddVisit() {
                         handleBloccoChange(
                           "tcCoronarica",
                           "ffrCtEsito",
-                          (Array.from(keys)[0] as string) ?? "",
+                          senzaMenzione(keys),
                         )
                       }
                     >
-                      {ESITI_FFR_CT.map((o) => (
-                        <SelectItem key={o.chiave}>{o.label}</SelectItem>
-                      ))}
+                      <SelectItem key={SENZA_MENZIONE} className="text-default-500">
+                        {SENZA_MENZIONE_LABEL}
+                      </SelectItem>
+                      <>
+                        {ESITI_FFR_CT.map((o) => (
+                          <SelectItem key={o.chiave}>{o.label}</SelectItem>
+                        ))}
+                      </>
                     </Select>
                   </div>
 
@@ -4284,60 +4384,39 @@ export default function AddVisit() {
                     />
                   }
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <Select
-                      label="Forma clinica"
-                      size="sm"
-                      variant="bordered"
-                      labelPlacement="outside"
-                      placeholder="Non indicata"
-                      description={
-                        <PrecedenteTesto
-                          precedente={precedenti["fibrillazioneAtriale.tipo"]}
-                          descrivi={(k) =>
-                            TIPI_FA.find((o) => o.key === k)?.label ?? k
-                          }
-                        />
-                      }
-                      classNames={{ description: "m-0" }}
-                      selectedKeys={fa.tipo ? [fa.tipo] : []}
-                      onSelectionChange={(keys) =>
-                        handleBloccoChange(
-                          "fibrillazioneAtriale",
-                          "tipo",
-                          (Array.from(keys)[0] as string) ?? "",
-                        )
-                      }
-                    >
-                      {TIPI_FA.map((o) => (
-                        <SelectItem key={o.key}>{o.label}</SelectItem>
-                      ))}
-                    </Select>
-                    {/* Non è un dato accessorio: la voce "INR labile"
-                        dell'HAS-BLED vale solo in warfarin, e lasciarla
-                        spuntabile a un paziente in DOAC gonfierebbe il
-                        punteggio di un punto che non gli spetta. */}
-                    <Select
-                      label="Terapia anticoagulante in atto"
-                      size="sm"
-                      variant="bordered"
-                      labelPlacement="outside"
-                      placeholder="Non indicata"
-                      selectedKeys={fa.anticoagulante ? [fa.anticoagulante] : []}
-                      onSelectionChange={(keys) =>
-                        handleBloccoChange(
-                          "fibrillazioneAtriale",
-                          "anticoagulante",
-                          (Array.from(keys)[0] as string) ?? "",
-                        )
-                      }
-                    >
-                      {ANTICOAGULANTI.map((o) => (
-                        <SelectItem key={o.key}>{o.label}</SelectItem>
-                      ))}
-                    </Select>
-                  </div>
+                  {/* Interruttore esplicito, e non l'aver toccato un campo:
+                      i due punteggi si calcolano da eta', sesso e fattori di
+                      rischio, quindi bastava aprire la sezione per ritrovarsi
+                      un "CHA₂DS₂-VASc 0 / 9" stampato addosso a un paziente
+                      che non e' mai stato fibrillante.
 
+                      Ne' forma clinica ne' terapia anticoagulante: sono
+                      diagnosi e decisioni, e le formula il cardiologo nel
+                      referto qui sotto. */}
+                  <Switch
+                    size="sm"
+                    isSelected={fa.attivo === true}
+                    onValueChange={(v) =>
+                      handleBloccoChange(
+                        "fibrillazioneAtriale",
+                        "attivo",
+                        v ? true : undefined,
+                      )
+                    }
+                  >
+                    <span className="text-sm text-gray-700">
+                      Valuta la fibrillazione atriale in questa visita
+                    </span>
+                  </Switch>
+                  {fa.attivo !== true && (
+                    <p className="text-xs text-default-500">
+                      Finch&eacute; resta spento, il modulo non entra nel referto
+                      e i punteggi non vengono calcolati.
+                    </p>
+                  )}
+
+                  {fa.attivo === true && (
+                  <>
                   {/* Età e sesso non sono caselle: i due punteggi li prendono
                       dall'anagrafica, così non possono contraddire la scheda
                       del paziente. */}
@@ -4389,8 +4468,8 @@ export default function AddVisit() {
                                     </span>
                                   </span>
                                   <p className="text-xs text-default-400">
-                                    Dai fattori di rischio, nella colonna dei
-                                    parametri.
+                                    Dai fattori di rischio, nella colonna
+                                    delle variabili cliniche.
                                   </p>
                                 </div>
                               </div>
@@ -4440,15 +4519,16 @@ export default function AddVisit() {
                       </p>
                       <div className="space-y-1.5">
                         {FATTORI_HASBLED.map((f) => {
-                          const inWarfarin = fa.anticoagulante === "warfarin";
-                          const disabilitato = !!f.soloWarfarin && !inWarfarin;
+                          // La voce "INR labile" vale solo in warfarin. La
+                          // tendina della terapia non c'e' piu': la casella
+                          // resta spuntabile e a dire la condizione e' la sua
+                          // nota, perche' chi la spunta sa cosa prende il
+                          // paziente.
                           return (
                             <div key={f.chiave}>
                               <Checkbox
                                 size="sm"
-                                isDisabled={disabilitato}
                                 isSelected={
-                                  !disabilitato &&
                                   fa[
                                     CAMPO_HASBLED[
                                       f.chiave
@@ -4463,13 +4543,7 @@ export default function AddVisit() {
                                   )
                                 }
                               >
-                                <span
-                                  className={`text-sm ${
-                                    disabilitato
-                                      ? "text-default-400"
-                                      : "text-gray-700"
-                                  }`}
-                                >
+                                <span className="text-sm text-gray-700">
                                   {f.label}
                                   <span className="ml-1 text-default-400">
                                     (+1)
@@ -4518,8 +4592,10 @@ export default function AddVisit() {
                     }
                     variant="bordered"
                     minRows={4}
-                    placeholder="Data di riscontro, sintomi, strategia di controllo del ritmo o della frequenza, terapia in atto..."
+                    placeholder="Data di riscontro, sintomi, strategia di controllo del ritmo o della frequenza, farmaco anticoagulante e dosaggio..."
                   />
+                  </>
+                  )}
                 </ModuloCollassabile>
 
                 {/* Sezione 12: Accertamenti */}

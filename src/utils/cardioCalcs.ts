@@ -204,24 +204,13 @@ export function calcolaHomaIr(
       value: homa,
       display: fmt(homa, 2),
       unit: "",
-      source: `Matthews 1985, solo a digiuno — ${fasciaHomaIr(homa)}`,
+      // La fascia di lettura non sta piu' qui: e' una soglia di riferimento
+      // come le altre e vive in `rangeClinici` (`lab.homa`), cosi' l'indice si
+      // presenta con la stessa etichetta colorata degli altri valori invece di
+      // avere una frase tutta sua dentro la formula.
+      source: "Matthews 1985, solo su prelievo a digiuno",
     },
   };
-}
-
-/**
- * Fascia di lettura dell'HOMA-IR.
- *
- * ATTENZIONE: le soglie dell'HOMA non sono universali. Dipendono dalla
- * popolazione di riferimento e dal metodo di dosaggio dell'insulina, e in
- * letteratura il valore di taglio oscilla fra 2 e 2,9. Quelle qui sotto sono
- * le fasce di uso piu' comune e vanno confermate con il referente clinico
- * prima di darle per definitive.
- */
-export function fasciaHomaIr(homa: number): string {
-  if (homa < 2) return "sensibilità insulinica conservata";
-  if (homa < 2.5) return "borderline";
-  return "suggestivo di insulino-resistenza";
 }
 
 // ─── Funzione renale ─────────────────────────────────────────────────────────

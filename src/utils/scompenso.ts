@@ -291,8 +291,19 @@ export interface ContestoConfondenti {
   egfr?: number;
   /** Indice di massa corporea. */
   bmi?: number;
-  /** Ritmo rilevato all'ECG, per intercettare la fibrillazione atriale. */
+  /**
+   * Ritmo rilevato all'ECG, per intercettare la fibrillazione atriale.
+   *
+   * Resta per le visite in archivio: la tendina del ritmo non c'e' piu' nella
+   * maschera, la diagnosi la scrive il cardiologo nel referto testuale, e da
+   * un testo libero non si estrae un confondente senza sbagliare.
+   */
   ritmo?: string;
+  /**
+   * Il medico sta valutando la fibrillazione atriale in questa visita: e' la
+   * strada da cui arriva ora l'avvertenza, al posto della vecchia tendina.
+   */
+  fibrillazioneAtriale?: boolean;
   eta?: number;
 }
 
@@ -317,7 +328,7 @@ export function confondentiNtProBnp(ctx: ContestoConfondenti): string[] {
       "Funzione renale ridotta (eGFR < 60): il peptide si accumula, un valore elevato è meno specifico.",
     );
   }
-  if (ritmo && /fibrillazion|\bfa\b|flutter/i.test(ritmo)) {
+  if (ctx.fibrillazioneAtriale || (ritmo && /fibrillazion|\bfa\b|flutter/i.test(ritmo))) {
     avvisi.push(
       "Fibrillazione o flutter atriale: alzano il peptide indipendentemente dallo scompenso.",
     );

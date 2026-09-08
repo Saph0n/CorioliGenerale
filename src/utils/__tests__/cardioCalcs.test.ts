@@ -10,7 +10,6 @@ import {
   calcolaPercentualeFcMax,
   calcolaRapportoCtHdl,
   calcolaRapportoTgHdl,
-  fasciaHomaIr,
   calcolaQtcBazett,
   calcolaScore2,
   calcolaScore2Op,
@@ -403,17 +402,13 @@ describe("rapporto trigliceridi / HDL", () => {
   });
 });
 
-describe("fasce dell'HOMA-IR", () => {
-  it("separa conservata, borderline e insulino-resistenza", () => {
-    expect(fasciaHomaIr(1.5)).toContain("conservata");
-    expect(fasciaHomaIr(2.2)).toBe("borderline");
-    expect(fasciaHomaIr(3.4)).toContain("insulino-resistenza");
-  });
-
-  it("la fascia compare accanto al risultato del calcolo", () => {
+describe("HOMA-IR", () => {
+  // La fascia di lettura sta in `rangeClinici` (`lab.homa`) insieme alle altre
+  // soglie di riferimento: qui resta solo la formula.
+  it("dichiara che vale solo a digiuno", () => {
     const out = calcolaHomaIr(100, 15);
     expect(out.ok).toBe(true);
-    if (out.ok) expect(out.result.source).toContain("insulino-resistenza");
+    if (out.ok) expect(out.result.source).toContain("digiuno");
   });
 });
 

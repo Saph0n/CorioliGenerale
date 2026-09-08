@@ -161,6 +161,16 @@ export default function AddPatient() {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
+  /**
+   * Progetto di ricerca da cui si e' arrivati, quando si e' arrivati da li'.
+   * Solo in creazione: in modifica i gruppi si cambiano dai chip della scheda,
+   * e sovrascriverli da un parametro nell'indirizzo cancellerebbe gli altri.
+   */
+  const gruppoDaArruolare =
+    searchParams.get("mode") === "edit"
+      ? null
+      : (searchParams.get("gruppo")?.trim() || null);
+
   useEffect(() => {
     const cf = searchParams.get("cf");
     const id = searchParams.get("id");
@@ -446,6 +456,17 @@ export default function AddPatient() {
         altezza: registerData.height
           ? parseOptionalHeight(registerData.height)
           : undefined,
+        // Arrivando da un progetto di ricerca il paziente ci entra subito.
+        // Prima bisognava uscire, crearlo, tornare nel progetto e cercarlo:
+        // tre passaggi per una cosa sola, ed e' il giro che il cardiologo ha
+        // definito macchinoso provandolo.
+        ...(gruppoDaArruolare
+          ? {
+              gruppiRicerca: [
+                { nome: gruppoDaArruolare, dal: todayIsoDate() },
+              ],
+            }
+          : {}),
       };
       if (isEditMode && patientId) {
         await PatientService.updatePatient(patientId, payload);
@@ -454,9 +475,17 @@ export default function AddPatient() {
       } else {
         await PatientService.addPatient(payload);
         setHasUnsavedChanges(false);
-        showToast("Paziente aggiunto con successo");
+        showToast(
+          gruppoDaArruolare
+            ? `Paziente aggiunto e arruolato in ${gruppoDaArruolare}`
+            : "Paziente aggiunto con successo",
+        );
       }
-      navigate("/pazienti");
+      navigate(
+        gruppoDaArruolare
+          ? `/gruppi-ricerca?gruppo=${encodeURIComponent(gruppoDaArruolare)}`
+          : "/pazienti",
+      );
     } catch (error: any) {
       console.error("Error saving patient:", error);
       setError(error?.message || "Errore durante il salvataggio del paziente.");
