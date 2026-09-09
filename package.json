@@ -22,6 +22,7 @@
     "dist:all": "npm run build && electron-builder --mac --win appx --publish=never",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "anteprima": "cross-env ANTEPRIMA=1 vitest run src/services/__tests__/anteprimaReferto.test.ts",
     "test:watch": "vitest"
   },
   "dependencies": {

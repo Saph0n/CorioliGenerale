@@ -92,6 +92,53 @@ export type ChiaveMisura =
   | "vitali.bmi";
 
 /**
+ * Pressione arteriosa misurata in ambulatorio.
+ *
+ * Non passa da `valutaMisura` perche' e' l'unica misura fatta di due numeri, e
+ * conta il peggiore dei due: 150/85 e' ipertensione di grado 1 per la sola
+ * sistolica, e va segnalata come tale.
+ *
+ * Fasce ESC/ESH: ottimale sotto 120/80, normale fino a 129/84, normale-alta
+ * 130-139 o 85-89, ipertensione dal 140 o dal 90 in su. Le soglie sono quelle
+ * standard della misurazione in studio, **da far confermare al referente
+ * clinico** come tutte le altre: vedi la nota in testa a questo file.
+ */
+export function valutaPressioneArteriosa(
+  sistolica: number | undefined,
+  diastolica: number | undefined,
+): Segnale {
+  const sis = sistolica != null && Number.isFinite(sistolica) ? sistolica : null;
+  const dia = diastolica != null && Number.isFinite(diastolica) ? diastolica : null;
+  if (sis == null && dia == null) return norma;
+
+  if ((sis != null && sis >= 180) || (dia != null && dia >= 110)) {
+    return alterato("≥ 180 o ≥ 110 mmHg: ipertensione di grado 3", "grado 3");
+  }
+  if ((sis != null && sis >= 160) || (dia != null && dia >= 100)) {
+    return alterato("160-179 o 100-109 mmHg: ipertensione di grado 2", "grado 2");
+  }
+  if ((sis != null && sis >= 140) || (dia != null && dia >= 90)) {
+    return alterato("140-159 o 90-99 mmHg: ipertensione di grado 1", "grado 1");
+  }
+  if ((sis != null && sis >= 130) || (dia != null && dia >= 85)) {
+    return attenzione("130-139 o 85-89 mmHg: pressione normale-alta", "normale-alta");
+  }
+  return norma;
+}
+
+/**
+ * Legge una pressione scritta come "140/90" e la valuta.
+ *
+ * Il campo e' testo libero normalizzato al salvataggio: qui si accetta quello
+ * che c'e' in archivio, comprese le forme vecchie con altri separatori.
+ */
+export function valutaPressioneScritta(testo: string | undefined): Segnale {
+  const m = /^\s*(\d{2,3})\s*[/\\\-\s]\s*(\d{2,3})\s*$/.exec(testo ?? "");
+  if (!m) return norma;
+  return valutaPressioneArteriosa(Number(m[1]), Number(m[2]));
+}
+
+/**
  * Valuta una misura rispetto ai limiti di riferimento correnti.
  *
  * Restituisce sempre un `Segnale`: quando il valore manca o e' nella norma il

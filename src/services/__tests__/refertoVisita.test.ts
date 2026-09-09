@@ -67,6 +67,22 @@ async function testoDelPdf(v: Visit): Promise<string> {
   return await blob!.text();
 }
 
+/**
+ * Il referto dal titolo indicato in avanti.
+ *
+ * Serve quando la stessa parola compare in due punti del foglio per due
+ * ragioni diverse: "Ipertensione arteriosa" e' un fattore di rischio fra le
+ * variabili cliniche ed e' anche una voce del CHA2DS2-VASc, e solo la seconda
+ * il cardiologo non vuole vedere stampata. Nel flusso del PDF il testo sta
+ * nell'ordine in cui e' stato disegnato, quindi tagliare al titolo isola la
+ * sezione.
+ */
+function dalTitolo(testo: string, titolo: string): string {
+  const i = testo.indexOf(titolo);
+  expect(i, `"${titolo}" non compare nel referto`).toBeGreaterThan(-1);
+  return testo.slice(i);
+}
+
 describe("referto di visita: esami strumentali", () => {
   it("raggruppa i moduli strumentali sotto un titolo solo", async () => {
     const testo = await testoDelPdf(
@@ -107,19 +123,29 @@ describe("referto di visita: fibrillazione atriale", () => {
 
   it("stampa il totale del punteggio", async () => {
     const testo = await testoDelPdf(conFa);
-    expect(testo).toContain("FIBRILLAZIONE ATRIALE");
-    expect(testo).toContain("CHA2DS2-VASC");
+    // Non e' piu' una sezione di primo livello: sta sotto "Inquadramento
+    // clinico" con lo scompenso e il rischio, come i moduli strumentali
+    // stanno sotto "Esami strumentali".
+    expect(testo).toContain("INQUADRAMENTO CLINICO");
+    expect(testo).toContain("Fibrillazione atriale");
+    expect(testo).toContain("CHA2DS2-VASc");
     // Eta' 76 (2) + ipertensione (1) + scompenso (1) = 4 su 9.
     expect(testo).toContain("4 / 9");
   });
 
   it("non stampa le voci che compongono il punteggio", async () => {
-    const testo = await testoDelPdf(conFa);
     // Le voci sono gia' nella prosa dell'anamnesi: nel referto sono rumore
     // fra il cardiologo e il numero che gli serve.
-    expect(testo).not.toContain("Scompenso cardiaco o disfunzione");
-    expect(testo).not.toContain("Ipertensione arteriosa");
-    expect(testo).not.toContain("Le linee guida legano a questo punteggio");
+    //
+    // Si guarda dal titolo del modulo in avanti e non tutto il referto:
+    // "Ipertensione arteriosa" compare anche fra i fattori di rischio delle
+    // variabili cliniche, dove risponde a un'altra domanda — su che base il
+    // paziente e' in quella classe di rischio — e dove il cardiologo la
+    // vuole. Quello che non deve tornare e' la scomposizione del punteggio.
+    const sezione = dalTitolo(await testoDelPdf(conFa), "Fibrillazione atriale");
+    expect(sezione).not.toContain("Scompenso cardiaco o disfunzione");
+    expect(sezione).not.toContain("Ipertensione arteriosa");
+    expect(sezione).not.toContain("Le linee guida legano a questo punteggio");
   });
 
   it("non stampa forma clinica e terapia anticoagulante", async () => {
@@ -134,7 +160,7 @@ describe("referto di visita: fibrillazione atriale", () => {
     expect(testo).toContain("78 kg");
     expect(testo).toContain("1.1 mg/dL");
     expect(testo).toContain("76 anni");
-    expect(testo).toContain("EGFR");
+    expect(testo).toContain("eGFR");
   });
 
   it("resta fuori dal referto finche' l'interruttore e' spento", async () => {
@@ -147,7 +173,9 @@ describe("referto di visita: fibrillazione atriale", () => {
         fibrillazioneAtriale: { cvScompenso: true, hbAlcol: true },
       }),
     );
-    expect(testo).not.toContain("FIBRILLAZIONE ATRIALE");
+    // Niente modulo e nient'altro da inquadrare: non si apre neanche il gruppo.
+    expect(testo).not.toContain("Fibrillazione atriale");
+    expect(testo).not.toContain("INQUADRAMENTO CLINICO");
   });
 
   it("ristampa le visite salvate prima dell'interruttore", async () => {
@@ -156,7 +184,7 @@ describe("referto di visita: fibrillazione atriale", () => {
     const testo = await testoDelPdf(
       visita({ fibrillazioneAtriale: { tipo: "permanente", cvIctus: true } }),
     );
-    expect(testo).toContain("FIBRILLAZIONE ATRIALE");
+    expect(testo).toContain("Fibrillazione atriale");
   });
 });
 
@@ -214,9 +242,17 @@ describe("referto di visita: impaginazione da referto ospedaliero", () => {
   });
 
   it("numera le pagine con il totale", async () => {
+    // Il totale non e' fissato nel test: dipende da quanto testo entra in una
+    // pagina e cambia a ogni ritocco dell'interlinea. Quello che deve reggere
+    // e' che la numerazione ci sia su tutte le pagine, che il totale sia lo
+    // stesso ovunque e che i numeri vadano in ordine.
     const testo = await testoDelPdf(lungo);
-    expect(testo).toContain("Pagina 1 di 2");
-    expect(testo).toContain("Pagina 2 di 2");
+    const numeri = [...testo.matchAll(/Pagina (\d+) di (\d+)/g)];
+    expect(numeri.length).toBeGreaterThan(1);
+    const totale = numeri[0][2];
+    expect(numeri.map((m) => m[2])).toEqual(numeri.map(() => totale));
+    expect(numeri.map((m) => m[1])).toEqual(numeri.map((_, i) => String(i + 1)));
+    expect(numeri.length).toBe(Number(totale));
   });
 
   it("ripete l'identita' del paziente dalla seconda pagina", async () => {
@@ -238,17 +274,142 @@ describe("referto di visita: impaginazione da referto ospedaliero", () => {
     const testo = await testoDelPdf(lungo);
     expect(testo).toContain("Creato con Corioli");
   });
+
+  it("numera anche il referto di una pagina sola", async () => {
+    // "Pagina 1 di 1" e' il modo in cui un foglio dichiara di essere intero:
+    // senza, chi lo riceve non sa se ne manca un altro.
+    const testo = await testoDelPdf(visita({}));
+    expect(testo).toContain("Pagina 1 di 1");
+  });
+
+  it("porta l'autore del referto sulle pagine dopo la prima", async () => {
+    // La carta intestata sta sulla prima pagina soltanto: un foglio che si
+    // stacca era attribuibile al paziente ma non a chi lo ha scritto.
+    const testo = await testoDelPdf(lungo);
+    const occorrenze = testo.split("Dott. Vincenzo Trani").length - 1;
+    expect(occorrenze).toBeGreaterThan(1);
+  });
+
+  it("dice quando e' stata stampata questa copia", async () => {
+    // La visita si puo' correggere e il referto ristampare: due copie della
+    // stessa visita sono due fogli diversi, e devono poterlo dire.
+    const testo = await testoDelPdf(visita({}));
+    expect(testo).toContain("Emesso il");
+    expect(testo).toContain("rif. v1");
+  });
+
+  it("si presenta con un titolo nelle proprieta' del file", async () => {
+    // Il referto finisce in archivi e allegati di posta: senza proprieta' e'
+    // un documento senza titolo che nessuna ricerca trova.
+    const testo = await testoDelPdf(visita({}));
+    expect(testo).toContain("Referto di visita cardiologica");
+    expect(testo).toContain("PROVA Mario");
+  });
+});
+
+describe("referto di visita: inquadramento clinico", () => {
+  it("raccoglie i tre inquadramenti sotto un titolo solo", async () => {
+    // Scompenso, fibrillazione e rischio non sono esami: sono le conclusioni
+    // che il cardiologo trae dopo averli letti, e aprivano tre sezioni di
+    // primo livello in fila.
+    const testo = await testoDelPdf(
+      visita({
+        scompenso: { nyha: "II" },
+        categoriaRischioCv: "alto",
+        laboratorio: { colesteroloTotale: 240, hdl: 40, trigliceridi: 150 },
+      }),
+    );
+    expect(testo.split("INQUADRAMENTO CLINICO").length - 1).toBe(1);
+    expect(testo).toContain("Scompenso cardiaco");
+    expect(testo).toContain("Rischio cardiovascolare");
+  });
+
+  it("non apre il gruppo quando non c'e' niente da inquadrare", async () => {
+    const testo = await testoDelPdf(visita({ ecg: { pr: 160 } }));
+    expect(testo).not.toContain("INQUADRAMENTO CLINICO");
+  });
+});
+
+describe("referto di visita: fattori di rischio dichiarati", () => {
+  it("stampa le premesse da cui discende la classe di rischio", async () => {
+    // La classe non si calcola: la attribuisce il medico guardando queste
+    // caselle. Stampare "Rischio molto alto" senza di loro chiede al curante
+    // di crederci sulla parola.
+    const testo = await testoDelPdf(
+      visita({
+        categoriaRischioCv: "molto-alto",
+        fattoriRischio: {
+          ipertensione: true,
+          dislipidemia: true,
+          eventoCvPregresso: true,
+        },
+      }),
+    );
+    expect(testo).toContain("FATTORI DI RISCHIO");
+    expect(testo).toContain("Ipertensione arteriosa");
+    expect(testo).toContain("Dislipidemia");
+    expect(testo).toContain("Pregresso evento cardiovascolare");
+    // Le caselle non spuntate restano fuori: il referto dice quello che c'e'.
+    expect(testo).not.toContain("Sedentarieta'");
+  });
+
+  it("tiene il fumo fra i fattori e non fra i parametri vitali", async () => {
+    // Il fumo non e' mai stato un segno vitale, ed era anche l'unico fattore
+    // di rischio che usciva nel referto mentre gli altri sette restavano
+    // nella maschera.
+    const testo = await testoDelPdf(visita({ fumatore: "no" }));
+    const vitali = testo.slice(
+      testo.indexOf("PARAMETRI VITALI"), testo.indexOf("FATTORI DI RISCHIO"),
+    );
+    expect(vitali).not.toContain("Fumo");
+    expect(dalTitolo(testo, "FATTORI DI RISCHIO")).toContain("Fumo");
+  });
+});
+
+describe("referto di visita: immagini allegate", () => {
+  it("le stampa dopo le conclusioni", async () => {
+    // Stavano prima, e con quattro allegati la sezione che il curante cerca
+    // per prima finiva dietro una galleria.
+    const blob = await PdfService.generateVisitPDF(
+      paziente,
+      visita({
+        terapiaSpecifica: "Si conferma la terapia in atto.",
+        immagini: ["data:image/png;base64,iVBORw0KGgo="],
+      }),
+      { includeImages: true },
+    );
+    const testo = await blob!.text();
+    expect(testo).toContain("IMMAGINI ALLEGATE");
+    expect(testo.indexOf("IMMAGINI ALLEGATE")).toBeGreaterThan(
+      testo.indexOf("CONCLUSIONI E TERAPIA"),
+    );
+  });
+
+  it("numera le figure per poterle citare", async () => {
+    const blob = await PdfService.generateVisitPDF(
+      paziente,
+      visita({ immagini: ["data:image/png;base64,iVBORw0KGgo="] }),
+      { includeImages: true },
+    );
+    expect(await blob!.text()).toContain("Fig. 1");
+  });
 });
 
 describe("referto di visita: caratteri stampabili", () => {
-  it("scrive la soglia del calcium score senza simboli illeggibili", async () => {
-    // Il caso segnalato dal cardiologo: il punteggio oltre la soglia severa
-    // usciva come "Agatston BOM e 300" e sconfinava fuori dal foglio.
+  it("non lascia passare il maggiore-uguale nel referto", async () => {
+    // Il caso segnalato dal cardiologo: un carattere fuori dalla codifica del
+    // font faceva ripiegare jsPDF su UTF-16, il testo usciva illeggibile e la
+    // riga sconfinava oltre il margine. Il maggiore-uguale e' dappertutto
+    // nelle soglie, dalle fasce Agatston ai fenotipi dello scompenso.
     const testo = await testoDelPdf(
-      visita({ tcCoronarica: { cacScore: 460 } }),
+      visita({
+        tcCoronarica: { cacScore: 460 },
+        ecocardiogramma: { fe: 55 },
+        scompenso: { nyha: "II", ntProBnp: 450, contestoBnp: "ambulatoriale" },
+      }),
     );
-    expect(testo).toContain("Agatston >= 300");
     expect(testo).not.toContain("\u2265");
+    expect(testo).not.toContain("\u2264");
   });
 
   it("non produce stringhe a due byte", async () => {
@@ -278,11 +439,17 @@ describe("referto di visita: rischio cardiovascolare", () => {
         laboratorio: { colesteroloTotale: 280, hdl: 38, trigliceridi: 260, apoB: 140 },
       }),
     );
-    expect(testo).toContain("RISCHIO CARDIOVASCOLARE");
+    expect(testo).toContain("INQUADRAMENTO CLINICO");
+    expect(testo).toContain("Rischio cardiovascolare");
     expect(testo).toContain("Rischio molto alto");
+    // L'obiettivo della classe e il valore del paziente, entrambi stampati.
     expect(testo).toContain("55 mg/dL");
-    // La distanza dall obiettivo: e il dato per cui il curante legge la sezione.
-    expect(testo).toContain("sopra l'obiettivo");
+    expect(testo).toContain("190 mg/dL");
+    // La distanza fra i due non si scrive piu'. C'era, ed era stata chiesta dal
+    // cardiologo; e' uscita con tutte le altre letture che l'app aggiungeva ai
+    // valori, perche' il referto lo legge un medico che ha davanti i due numeri
+    // e il grassetto che dice se il paziente e' fuori.
+    expect(testo).not.toContain("sopra l'obiettivo");
   });
 
   it("senza classe dichiarata non inventa un obiettivo", async () => {
@@ -299,5 +466,154 @@ describe("referto di visita: rischio cardiovascolare", () => {
       visita({ sintesiRischio: "Prevenzione secondaria." }),
     );
     expect(testo).toContain("Prevenzione secondaria.");
+  });
+});
+
+/**
+ * Con che carattere e' scritta una stringa nel PDF.
+ *
+ * Il grassetto nel referto non e' decorazione: dice "questo valore e' fuori dai
+ * limiti". Serve poterlo verificare, perche' e' esattamente il tipo di regola
+ * che un refactor del layout riporta a "tutto in grassetto" senza che nessun
+ * test se ne accorga.
+ *
+ * Nel flusso del PDF il carattere si sceglie con `/F<n>`, e la corrispondenza
+ * fra quel nome e il font vero sta nel dizionario dei font del documento.
+ */
+async function carattereDi(v: Visit, testo: string): Promise<string> {
+  const blob = await PdfService.generateVisitPDF(paziente, v);
+  const pdf = await blob!.text();
+
+  // /F2 rimanda a un oggetto, e l'oggetto dice qual e' il font vero.
+  const oggetti = new Map<string, string>();
+  for (const m of pdf.matchAll(
+    /(\d+)\s+0\s+obj\s*<<\s*\/Type\s*\/Font\s*\/BaseFont\s*\/([\w-]+)/g,
+  )) {
+    oggetti.set(m[1], m[2]);
+  }
+  const fonti = new Map<string, string>();
+  for (const m of pdf.matchAll(/\/(F\d+)\s+(\d+)\s+0\s+R/g)) {
+    fonti.set(m[1], oggetti.get(m[2]) ?? "");
+  }
+
+  const posizione = pdf.indexOf(`(${testo})`);
+  expect(posizione, `"${testo}" non compare nel referto`).toBeGreaterThan(-1);
+
+  const prima = pdf.slice(0, posizione);
+  const scelte = [...prima.matchAll(/\/(F\d+)\s+[\d.]+\s+Tf/g)];
+  const ultima = scelte[scelte.length - 1]?.[1] ?? "";
+  return fonti.get(ultima) ?? ultima;
+}
+
+describe("referto di visita: il grassetto segnala i valori fuori norma", () => {
+  it("mette in grassetto una pressione da ipertensione", async () => {
+    const carattere = await carattereDi(
+      visita({ pressioneArteriosa: "150/85" }),
+      "150/85 mmHg",
+    );
+    expect(carattere).toContain("Bold");
+  });
+
+  it("lascia in tondo una pressione normale", async () => {
+    const carattere = await carattereDi(
+      visita({ pressioneArteriosa: "120/80" }),
+      "120/80 mmHg",
+    );
+    expect(carattere).not.toContain("Bold");
+  });
+
+  it("distingue i valori nello stesso referto", async () => {
+    // Glicemia alterata e TSH nella norma, fianco a fianco nella stessa
+    // tabella: se il grassetto tornasse a essere lo stile di tutti i valori,
+    // questo test cadrebbe.
+    const v = visita({ laboratorio: { glicemia: 140, tsh: 2.1 } });
+    expect(await carattereDi(v, "140 mg/dL")).toContain("Bold");
+    expect(await carattereDi(v, "2.1 mU/L")).not.toContain("Bold");
+  });
+});
+
+describe("referto di visita: nessun giudizio accanto al valore", () => {
+  it("stampa l'NT-proBNP senza la lettura della soglia", async () => {
+    // Il grassetto e' l'unico segnale: "210 pg/mL (Sopra la soglia di
+    // esclusione)" diceva a parole quello che il grassetto dice da solo, e la
+    // soglia la legge il cardiologo nel testo del modulo. Stessa regola della
+    // pressione, che non porta scritto "iperteso", e del calcium score, che
+    // non porta la sua fascia.
+    const testo = await testoDelPdf(
+      visita({ scompenso: { ntProBnp: 210, contestoBnp: "ambulatoriale" } }),
+    );
+    expect(testo).toContain("210 pg/mL");
+    expect(testo).not.toContain("Sopra la soglia di esclusione");
+  });
+
+  it("non spiega le soglie e non indica il passo successivo", async () => {
+    // Le note che l'app scriveva sotto la tabella dello scompenso uscivano
+    // nello stesso carattere della prosa del cardiologo, e niente diceva che
+    // non le aveva scritte lui. Il referto lo legge un medico.
+    const testo = await testoDelPdf(
+      visita({
+        ecocardiogramma: { fe: 45 },
+        scompenso: { ntProBnp: 210, contestoBnp: "ambulatoriale" },
+      }),
+    );
+    expect(testo).toContain("Scompenso cardiaco");
+    expect(testo).not.toContain("prosegue con l'ecocardiogramma");
+    expect(testo).not.toContain("ESC 2021");
+    expect(testo).not.toContain("non va sospesa in automatico");
+    expect(testo).not.toContain("il fenotipo richiede un ecocardiogramma");
+  });
+
+  it("stampa l'eGFR senza lo stadio KDIGO", async () => {
+    const testo = await testoDelPdf(visita({ laboratorio: { creatinina: 1.2 } }));
+    // Nel flusso del PDF le parentesi dell'etichetta sono protette da una
+    // barra rovesciata, quindi si cerca la sola sigla.
+    expect(testo).toContain("eGFR");
+    // Nel flusso del PDF le parentesi dentro una stringa disegnata sono
+    // protette da una barra rovesciata: se lo stadio tornasse accanto al
+    // valore, il documento conterrebbe `\(G`. Si controlla quello e non il
+    // numero, che dipende dall'eta' del paziente e cambia con gli anni.
+    expect(testo).not.toContain("\\(G");
+  });
+});
+
+describe("referto di visita: cognome e nome", () => {
+  it("scrive il cognome in maiuscolo per distinguerlo dal nome", async () => {
+    // Scritti allo stesso modo non si capisce quale sia quale, e su un referto
+    // che arriva sulla scrivania di qualcun altro e la prima cosa che si legge.
+    const testo = await testoDelPdf(visita({}));
+    expect(testo).toContain("PROVA Mario");
+    expect(testo).not.toContain("Prova Mario");
+  });
+});
+
+describe("referto di visita: nomi lunghi", () => {
+  it("non tronca un cognome lungo", async () => {
+    // La cella dell anagrafica e larga una colonna su quattro: un cognome
+    // lungo ci finiva dentro tagliato, senza che niente lo segnalasse.
+    const lungo = {
+      ...paziente,
+      cognome: "Vandenbroucke Della Rovere",
+      nome: "Massimiliano Alessandro",
+    };
+    const blob = await PdfService.generateVisitPDF(lungo, visita({}));
+    const testo = await blob!.text();
+    // Il PDF spezza le righe: si controlla che ci sia ogni pezzo del nome.
+    for (const pezzo of ["VANDENBROUCKE", "ROVERE", "Massimiliano", "Alessandro"]) {
+      expect(testo, pezzo + " manca dal referto").toContain(pezzo);
+    }
+  });
+
+  it("manda a capo il campo accanto invece di stringere il nome", async () => {
+    // Con il nome che occupa due colonne, la data della visita scende: deve
+    // esserci comunque.
+    const lungo = {
+      ...paziente,
+      cognome: "Vandenbroucke Della Rovere",
+      codiceFiscale: "VNDMSS50D12A794K",
+    };
+    const blob = await PdfService.generateVisitPDF(lungo, visita({}));
+    const testo = await blob!.text();
+    expect(testo).toContain("Data visita");
+    expect(testo).toContain("Codice fiscale");
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SCORE2_OP_COEFFICIENTS_VALIDATED } from "../score2OpCoefficients";
 import {
+  calcolaClearanceCockcroftGault,
   calcolaEgfrCkdEpi,
   calcolaHomaIr,
   calcolaLdlFriedewald,
@@ -447,5 +448,41 @@ describe("SCORE2-OP", () => {
   it("sotto i 70 anni resta in carico a SCORE2, che risponde", () => {
     const out = calcolaScore2({ ...anziano, eta: 65 });
     expect(out.ok).toBe(true);
+  });
+});
+
+describe("clearance secondo Cockcroft-Gault", () => {
+  // Serve alle soglie dei DOAC, che le schede tecniche scrivono su questa
+  // clearance e non sull eGFR.
+  it("applica la formula", () => {
+    // (140 - 70) x 80 / (72 x 1) = 77,8 mL/min
+    const out = calcolaClearanceCockcroftGault(1, 70, 80, "M");
+    expect(out.ok).toBe(true);
+    if (out.ok) expect(Math.round(out.result.value)).toBe(78);
+  });
+
+  it("applica il coefficiente femminile", () => {
+    const uomo = calcolaClearanceCockcroftGault(1, 70, 80, "M");
+    const donna = calcolaClearanceCockcroftGault(1, 70, 80, "F");
+    expect(uomo.ok && donna.ok).toBe(true);
+    if (uomo.ok && donna.ok) {
+      expect(donna.result.value / uomo.result.value).toBeCloseTo(0.85, 5);
+    }
+  });
+
+  it("diverge dal CKD-EPI nell anziano magro, che e il caso della riduzione di dose", () => {
+    // Donna di 84 anni, 48 kg, creatinina 1,1: il CKD-EPI la colloca sopra i
+    // 50 mL/min, la clearance sotto. E la fascia in cui l edoxaban va dimezzato.
+    const clcr = calcolaClearanceCockcroftGault(1.1, 84, 48, "F");
+    const egfr = calcolaEgfrCkdEpi(1.1, 84, "F");
+    expect(clcr.ok && egfr.ok).toBe(true);
+    if (clcr.ok && egfr.ok) {
+      expect(clcr.result.value).toBeLessThan(50);
+      expect(egfr.result.value).toBeGreaterThan(clcr.result.value);
+    }
+  });
+
+  it("non calcola senza peso", () => {
+    expect(calcolaClearanceCockcroftGault(1, 70, undefined, "M").ok).toBe(false);
   });
 });

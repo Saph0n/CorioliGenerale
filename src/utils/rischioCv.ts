@@ -19,6 +19,8 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
+import type { FattoriRischioCvData } from "../types/Storage";
+
 /** Classi di rischio previste dalle linee guida, in ordine crescente. */
 export type CategoriaRischioCv =
   | "basso"
@@ -42,6 +44,31 @@ export const CATEGORIA_RISCHIO_LABELS: Record<CategoriaRischioCv, string> = {
   "molto-alto": "Rischio molto alto",
   "molto-alto-ricorrente": "Molto alto con evento ricorrente entro 2 anni",
 };
+
+/**
+ * Fattori di rischio cardiovascolare dichiarati dal medico nella visita.
+ *
+ * Stanno qui e non nella maschera perche' li usano in due: la maschera per
+ * disegnare le caselle, il referto per stampare quelli spuntati accanto alla
+ * classe di rischio. Sono le premesse da cui la classe discende, e un referto
+ * che dichiara "rischio molto alto" senza mostrarle chiede di essere creduto
+ * sulla parola.
+ *
+ * Il fumo non e' in elenco: sta nel campo "Fumatore" della visita, che ha tre
+ * stati perche' alimenta SCORE2, dove "non rilevato" e "no" non coincidono.
+ */
+export const FATTORI_RISCHIO_CV: {
+  chiave: keyof FattoriRischioCvData;
+  label: string;
+}[] = [
+  { chiave: "ipertensione", label: "Ipertensione arteriosa" },
+  { chiave: "dislipidemia", label: "Dislipidemia" },
+  { chiave: "diabete", label: "Diabete o prediabete" },
+  { chiave: "familiaritaCad", label: "Familiarita' per CAD precoce" },
+  { chiave: "obesita", label: "Obesita'" },
+  { chiave: "sedentarieta", label: "Sedentarieta'" },
+  { chiave: "eventoCvPregresso", label: "Pregresso evento cardiovascolare" },
+];
 
 /** Obiettivo lipidico: soglia in mg/dL, con l'equivalente in mmol/L. */
 export interface TargetLipidico {

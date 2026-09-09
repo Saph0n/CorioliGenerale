@@ -31,3 +31,6 @@ db
 *.sw?
 
 .env
+
+# Anteprima del referto generata da "npm run anteprima"
+anteprima-referto.pdf

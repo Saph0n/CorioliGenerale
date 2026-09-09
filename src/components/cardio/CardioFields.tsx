@@ -354,7 +354,7 @@ export function CalcSuggestion({
   if (!outcome.ok) {
     return (
       <div className="rounded-lg border border-dashed border-default-200 bg-default-50/60 px-2.5 py-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-default-400">
+        <p className="text-[11px] font-semibold tracking-wide text-default-400">
           {label}
         </p>
         <p className="mt-0.5 text-[11px] leading-snug text-default-400">
@@ -378,7 +378,7 @@ export function CalcSuggestion({
   return (
     <div className={`rounded-lg border px-2.5 py-2 ${cornice}`}>
       <div className="flex items-center justify-between gap-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-default-500">
+        <p className="text-[11px] font-semibold tracking-wide text-default-500">
           {label}
         </p>
         <Tooltip content={source} placement="top" delay={200}>
@@ -447,7 +447,7 @@ export function RiquadroTarget({
       }`}
     >
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-default-600">
+        <p className="text-[11px] font-semibold tracking-wide text-default-600">
           {label}
         </p>
         <p className="text-[11px] font-semibold text-default-600 whitespace-nowrap">

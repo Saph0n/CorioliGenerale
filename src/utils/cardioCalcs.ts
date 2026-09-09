@@ -249,6 +249,52 @@ export function calcolaEgfrCkdEpi(
   };
 }
 
+/**
+ * Clearance della creatinina secondo Cockcroft-Gault (mL/min).
+ *
+ * Sta accanto al CKD-EPI e non al suo posto, perche' rispondono a due domande
+ * diverse. Il CKD-EPI stadia la malattia renale ed e' normalizzato per
+ * superficie corporea; le schede tecniche degli anticoagulanti orali diretti
+ * fissano invece le soglie di riduzione della dose sulla **clearance secondo
+ * Cockcroft-Gault**, che il peso lo usa davvero.
+ *
+ * I due numeri divergono proprio dove la decisione conta: nell'anziano magro
+ * il CKD-EPI e' piu' generoso, e usarlo al posto della clearance porta a
+ * lasciare la dose piena a chi andrebbe ridotto.
+ *
+ * Creatininemia in mg/dL, peso in kg.
+ */
+export function calcolaClearanceCockcroftGault(
+  creatinina: number | undefined,
+  eta: number | undefined,
+  peso: number | undefined,
+  sesso: "M" | "F" | undefined,
+): CalcOutcome {
+  const scr = num(creatinina);
+  const age = num(eta);
+  const kg = num(peso);
+  if (scr == null || age == null || kg == null || (sesso !== "M" && sesso !== "F")) {
+    return {
+      ok: false,
+      reason: "Servono creatininemia, eta', peso corporeo e sesso del paziente.",
+    };
+  }
+  if (scr <= 0 || kg <= 0 || age <= 0) {
+    return { ok: false, reason: "Valori non validi per la formula." };
+  }
+  const clcr = (((140 - age) * kg) / (72 * scr)) * (sesso === "F" ? 0.85 : 1);
+  return {
+    ok: true,
+    result: {
+      value: clcr,
+      display: fmt(clcr, 0),
+      unit: "mL/min",
+      source:
+        "Cockcroft-Gault, con il peso corporeo: e' la clearance su cui le schede tecniche dei DOAC fissano le riduzioni di dose",
+    },
+  };
+}
+
 /** Stadio KDIGO della malattia renale cronica in base all'eGFR. */
 export function stadioKdigo(egfr: number): string {
   if (egfr >= 90) return "G1";

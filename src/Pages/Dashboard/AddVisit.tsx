@@ -137,6 +137,7 @@ import {
 import {
   CATEGORIA_RISCHIO_LABELS,
   CATEGORIE_RISCHIO_CV,
+  FATTORI_RISCHIO_CV,
   TARGET_APOB,
   TARGET_LDL,
   confrontaConTarget,
@@ -331,25 +332,6 @@ const CAMPO_CHADSVASC: Record<"scompenso" | "ictus" | "vascolare", string> = {
   ictus: "cvIctus",
   vascolare: "cvVascolare",
 };
-
-/**
- * Fattori di rischio cardiovascolare da spuntare accanto alle variabili cliniche.
- *
- * Il fumo non e' in elenco: sta gia' nel campo "Fumatore" qui sopra, che ha tre
- * stati perche' alimenta SCORE2, dove "non rilevato" e "no" non coincidono.
- */
-const FATTORI_RISCHIO_CV: {
-  chiave: keyof NonNullable<NonNullable<Visit["visita"]>["fattoriRischio"]>;
-  label: string;
-}[] = [
-  { chiave: "ipertensione", label: "Ipertensione arteriosa" },
-  { chiave: "dislipidemia", label: "Dislipidemia" },
-  { chiave: "diabete", label: "Diabete o prediabete" },
-  { chiave: "familiaritaCad", label: "Familiarità per CAD precoce" },
-  { chiave: "obesita", label: "Obesità" },
-  { chiave: "sedentarieta", label: "Sedentarietà" },
-  { chiave: "eventoCvPregresso", label: "Pregresso evento cardiovascolare" },
-];
 
 const CAMPO_HASBLED: Record<FattoreHasBled, string> = {
   ipertensioneNonControllata: "hbIpertensioneNonControllata",
@@ -2922,7 +2904,7 @@ export default function AddVisit() {
                 {/* Sezione 2: Descrizione */}
                 <div className="space-y-2 group">
                   <label className="text-sm font-bold text-gray-700 block mb-1">
-                    2. Descrizione Problema / Dati Clinici
+                    2. Motivo della visita
                   </label>
                   <RefertoTextarea
                     value={visitaData.problemaClinico}

@@ -14,28 +14,31 @@ pazienti sul server.
 
 ## La visita cardiologica
 
-Un solo tipo di visita, come in ambulatorio: il referto è diviso in otto sezioni.
+Un solo tipo di visita, come in ambulatorio. Il referto segue quest'ordine:
 
-1. Descrizione problema / dati clinici
+1. **Variabili cliniche** — parametri vitali, antropometria, fattori di rischio
 2. Anamnesi — campo unico oppure sezioni multiple configurabili
    (familiare, fisiologica, patologica, chirurgica, farmacologica, allergica,
    abitudini di vita + sezioni personalizzate)
-3. Esame obiettivo
-4. **Elettrocardiogramma** — PR, QRS, QT, asse, QTc calcolato, referto
-5. **Ecocardiogramma** — DTD/DTS, SIV, PP, FE, atrio sinistro, gradienti
-   transvalvolari aortici medio e massimo, radice aortica, aorta ascendente,
-   TAPSE, PAPs, E/A, E/e', referto
-6. **TC coronarica** — data, struttura, calcium score con fascia Agatston,
-   CAD-RADS, burden di placca, segmenti SCCT, sintesi del referto radiologico
-7. Accertamenti
-8. **Rischio cardiovascolare** — classe dichiarata dal medico, obiettivo
-   lipidico che ne discende e distanza del paziente da quell'obiettivo
+3. Motivo della visita
+4. Esame obiettivo
+5. **Esami strumentali** — elettrocardiogramma, ecocardiogramma, TC coronarica,
+   test ergometrico, Holter ECG e pressorio
+6. **Esami ematochimici**
+7. **Inquadramento clinico** — scompenso, fibrillazione atriale, rischio
+   cardiovascolare
+8. Accertamenti
 9. Conclusioni e terapia
+10. Immagini allegate
+
+L'anamnesi viene prima del motivo della visita, come nei referti cardiologici
+standard e come nella maschera di inserimento: per capire perché il paziente è
+qui serve prima conoscerne la storia.
 
 Colonna di sinistra (**variabili cliniche**: cambiano a ogni controllo, ed è
 il confronto con il valore precedente che si guarda): parametri vitali
-(P.A., F.C., fumo), peso con BMI, esami di laboratorio — compresi hs-PCR e
-LDL ossidate — indici calcolati e immagini allegabili al PDF.
+(P.A., F.C.), peso con BMI, fattori di rischio, esami di laboratorio —
+compresi hs-PCR e LDL ossidate — indici calcolati e immagini allegabili al PDF.
 
 La pressione arteriosa si può scrivere con la barra, il trattino o lo spazio
 (`120/80`, `120-80`, `120 80`): viene ricondotta alla forma canonica al
@@ -46,8 +49,8 @@ valore in grassetto sotto, righe a bande alterne) e le sezioni hanno
 un'intestazione su barra grigia: con otto sezioni e una dozzina di misure per
 modulo, la vecchia riga continua separata da punti era illeggibile. Nella
 tabella degli esami ematochimici compaiono anche LDL secondo Friedewald (quando
-manca il dosaggio diretto) ed eGFR, etichettati come calcolati e accompagnati
-dalla nota che sono stime derivate, non risultati di laboratorio.
+manca il dosaggio diretto) ed eGFR: che siano calcolati lo dice l'etichetta
+della cella, e tanto basta a chi legge il referto.
 
 ECG, ecocardiogramma, TC coronarica, test ergometrico e Holter stanno sotto
 un'unica barra **"Esami strumentali"**, con il nome del modulo come sottotitolo
@@ -55,11 +58,34 @@ più leggero: sono tutti esami strumentali, e cinque barre di pari livello
 facevano sembrare il referto un elenco di blocchi scollegati. La barra del
 gruppo compare solo se almeno un modulo ha qualcosa da stampare.
 
+Stessa cosa per **"Inquadramento clinico"**, che raccoglie scompenso,
+fibrillazione atriale e rischio cardiovascolare: non sono esami, sono le
+conclusioni che il cardiologo trae dopo averli letti, e aprivano tre sezioni di
+primo livello in fila con lo stesso peso di una barra che ne raccoglie sei.
+
+### I fattori di rischio stanno nel referto
+
+Il referto stampa la classe di rischio dichiarata e l'obiettivo lipidico che ne
+discende, ma **la classe non è calcolata**: la attribuisce il medico guardando
+le caselle dei fattori di rischio della visita. Quelle caselle ora escono nel
+referto, come terza colonna delle variabili cliniche: senza, il foglio chiede al
+curante di credere alla classe sulla parola, e il ragionamento che la sezione
+del rischio dice di voler documentare resta a metà.
+
+Sono righe di elenco senza etichetta — sette «Ipertensione arteriosa: Sì» di
+fila direbbero sette volte la stessa cosa. Il **fumo** tiene l'etichetta perché
+è l'unico che si stampa anche in negativo, e sta qui e non più fra i parametri
+vitali: non è mai stato un segno vitale, ed era anche l'unico fattore di rischio
+che usciva nel referto mentre gli altri sette restavano nella maschera.
+
 ### Due caratteri, due voci
 
 Il racconto clinico — anamnesi, descrizione del problema, esame obiettivo,
 referti testuali dei moduli, conclusioni — è in **tondo con grazie** (Times,
-10,5 pt). Etichette, numeri e tabelle restano in **bastoni** (Helvetica).
+10,5 pt) con interlinea di 6,1 mm. Etichette, numeri e tabelle restano in
+**bastoni** (Helvetica). Il tondo a 10,5 chiede più aria fra le righe di quanta
+ne volesse l Helvetica a 9,5: in un referto che si legge di fretta la densità è
+il primo ostacolo.
 
 Prima era tutto Helvetica e il referto leggeva come la stampa di un modulo:
 dati e prosa avevano la stessa voce. Le grazie sono la lingua dei documenti,
@@ -83,15 +109,71 @@ e il valore in grassetto sotto — lo stesso linguaggio con cui il referto
 scrive tutti gli altri dati. Erano righe «Etichetta: valore» su due colonne,
 cioè la grafica di un modulo da compilare.
 
+### Il grassetto vuol dire una cosa sola
+
+Nel referto il **grassetto segnala il valore fuori dai limiti di riferimento**, e
+nient'altro. Prima ogni valore misurato era in grassetto: con quaranta numeri in
+grassetto su un foglio, il grassetto non diceva niente. Ora il corpo è tutto di
+peso normale e chi apre il referto vede subito dove guardare — la pressione a
+150/85, l'eGFR a 44, i trigliceridi a 260.
+
+Le soglie stanno tutte in `rangeClinici.ts`: il PDF non ne conosce nessuna, si
+limita a chiedere se il valore è fuori norma. Sono in grassetto anche il calcium
+score in fascia severa, l'NT-proBNP sopra la soglia di esclusione e i lipidi
+fuori dall'obiettivo della classe di rischio.
+
+Le uniche due eccezioni sono strutturali e stanno fuori dai dati clinici: il nome
+del paziente nella fascia identificativa e i titoli, che sono gerarchia di pagina
+e non enfasi.
+
+Il grassetto e il solo segnale: accanto al valore non compare **nessun giudizio
+scritto**. Sulla pressione arteriosa in particolare il referto non dice
+"iperteso", mette in grassetto 150/85 e basta.
+
+### Il referto non spiega
+
+La regola vale per tutto quello che l'applicazione sa e il referto non deve
+dire: **il foglio va in mano a un medico, che sa cosa sta leggendo**. Sono
+uscite dal referto, una dopo l'altra:
+
+- la lettura della soglia accanto all'NT-proBNP — «210 pg/mL *(Sopra la soglia
+  di esclusione)*» — che diceva a parole quello che il grassetto dice da solo;
+- lo **stadio KDIGO** accanto all'eGFR: nel referto esce «63», la stadiazione
+  resta nella maschera dove serve mentre si compila;
+- la **fascia Agatston** accanto al calcium score, tolta prima delle altre;
+- tutte le note che l'app scriveva sotto la tabella dello scompenso: la fascia
+  HFmrEF di ESC 2021, l'avvertenza a non sospendere la terapia quando la
+  frazione risale, la soglia di esclusione per contesto, il confronto fra la
+  frazione precedente e quella attuale. Uscivano **nello stesso carattere della
+  prosa del cardiologo**, e niente sul foglio diceva che non le aveva scritte
+  lui;
+- la **distanza dei lipidi dall'obiettivo** — «132 mg/dL — 77 mg/dL sopra
+  l'obiettivo di 55 mg/dL». Era stata chiesta dal cardiologo, ed è uscita con le
+  altre: il valore e il bersaglio sono stampati entrambi, uno sotto l'altro, e
+  il grassetto dice già che il paziente è fuori;
+- la nota che sotto gli ematochimici diceva che i valori calcolati sono stime
+  derivate e non risultati di laboratorio: lo dice l'etichetta della cella.
+
+Nel referto restano quindi i dati, i calcoli con la loro etichetta, il grassetto
+per il fuori norma e le parole del cardiologo. Le letture, le fasce e le soglie
+restano tutte **nella maschera**, dove servono mentre si compila.
+
+Le etichette **non sono in maiuscolo**: ApoB, NT-proBNP, hs-PCR e Lp(a) hanno una
+grafia loro, e si leggono a colpo d occhio proprio per come alternano maiuscole e
+minuscole. Appiattirla in APOB e NT-PROBNP e come scrivere un cognome tutto in
+maiuscolo per farlo sembrare piu importante.
+
 ### Gerarchia della pagina
 
 Tre livelli, un trattamento ciascuno, senza eccezioni:
 
-1. **Sezione** — maiuscoletto spaziato con un filetto pieno sotto, a tutta
-   larghezza. Vale per tutte: Anamnesi, Esame obiettivo, Esami strumentali,
-   Esami ematochimici, Conclusioni.
+1. **Sezione** — maiuscoletto spaziato con un filetto sotto **lungo quanto la
+   parola**, non quanto il foglio: da parte a parte tagliava la pagina in fasce
+   e faceva pesare ogni titolo come una divisione. Vale per tutte: Anamnesi,
+   Esame obiettivo, Esami strumentali, Esami ematochimici, Inquadramento
+   clinico, Conclusioni.
 2. **Modulo dentro una sezione** — grassetto piccolo sottolineato
-   (Elettrocardiogramma, TC coronarica).
+   (Elettrocardiogramma, TC coronarica, Fibrillazione atriale).
 3. **Colonna dentro una griglia** — etichetta grigia piccola in maiuscolo
    (Parametri vitali, Antropometria).
 
@@ -112,12 +194,28 @@ retino al 4-5% di nero a seconda della macchina sparisce o si sporca, un
 filetto stampa identico ovunque. È anche il modo in cui sono fatte le
 intestazioni nei referti ospedalieri.
 
+Nell'anagrafica il **nome prende due colonne solo se in una non ci sta**: si
+misura con il carattere con cui verra' scritto e si allarga soltanto quando
+serve, perche' allargarlo sempre faceva scendere la data della visita anche per
+un nome corto. Se non ci sta nemmeno in due colonne va a capo dentro la cella e
+la riga si alza: un referto che tronca il cognome e' un referto sbagliato.
+
 Le due tabelle (misure a griglia, valori lunghi a due colonne) restano due,
 perché servono a cose diverse, ma hanno la stessa etichetta e lo stesso filetto
 di riga. Quando una si spezza fra due pagine, la pagina nuova riapre con il
 nome del modulo seguito da *(segue)*: senza, si trovavano due righe di misure
 orfane senza sapere a quale esame appartenessero.
 
+
+Le **immagini allegate** chiudono il referto, dopo le conclusioni: stavano
+prima, e con quattro allegati la sezione che il curante e il paziente cercano
+per prima finiva dietro una galleria. Le immagini panoramiche — un tracciato
+ECG, una striscia Holter — prendono la riga intera invece della mezza colonna,
+perché in una cella da 85 mm un tracciato lungo e basso è decorativo e non
+refertabile. Ogni figura è numerata (*Fig. 1*) per poterla citare nel testo, e
+viene ricampionata a 200 dpi sulla dimensione stampata: prima entrava nel PDF
+alla risoluzione della fotocamera, e quattro foto facevano un referto da
+megabyte che poi doveva viaggiare per posta.
 
 Peso e BMI stanno **solo** fra le variabili cliniche. Comparivano anche nel
 blocco d'intestazione, venti millimetri più sopra: sono variabili della
@@ -128,18 +226,28 @@ visita, non identità del paziente.
 Il referto si stampa e viaggia: finisce dal medico curante, dai colleghi, in
 una cartella di carta. Da qui tre cose che i referti ospedalieri hanno sempre:
 
-- **«Pagina 2 di 3»** in fondo a destra. I piedi si disegnano in coda, a
-  documento chiuso, perché il totale prima non si conosce.
+- **«Pagina 2 di 3»** in fondo a destra, e **«Pagina 1 di 1»** anche quando la
+  pagina è una sola: la numerazione è il modo in cui il foglio dichiara di
+  essere intero. I piedi si disegnano in coda, a documento chiuso, perché il
+  totale prima non si conosce.
 - **Riga di identificazione** in testa alle pagine dopo la prima (cognome e
-  nome, data di nascita, data della visita): un foglio che si stacca dalla
-  graffetta o che viene fotocopiato da solo resta attribuibile.
+  nome, data di nascita, data della visita) e, a destra, **il nome del medico
+  che lo ha scritto**: la carta intestata sta solo sulla prima pagina, e un
+  foglio che si stacca dalla graffetta era attribuibile al paziente ma non al
+  suo autore.
+- **Data di emissione** al centro del piede, con il riferimento della visita:
+  la visita si può correggere e il referto ristampare, e due copie della stessa
+  visita sono due fogli diversi che devono poterlo dire.
+- **Proprietà del file** (titolo, autore, oggetto): il referto finisce in
+  archivi e allegati di posta, e senza proprietà è un documento senza titolo che
+  nessuna ricerca trova.
 Il referto **non** porta il blocco firma in calce: si chiude sulle conclusioni.
 Luogo, data e riga per la firma erano stati aggiunti sull'esempio dei referti
 ospedalieri e il cardiologo li ha tolti — chi firma lo fa sul foglio stampato, e
 il nome del medico è già in testa a ogni pagina. Ricetta, certificato e
 richiesta di esame la firma la tengono: senza, non varrebbero niente.
 
-Sopra il filetto dei recapiti, allineata a destra, una riga in corpo 5 e grigio
+Sotto il filetto del piede, allineata a sinistra, una riga in corpo 5 e grigio
 chiarissimo dice **«Creato con Corioli»**. Sta nella banda già vuota fra la
 fine del contenuto e il piede: si legge se la si cerca, non si nota mentre si
 legge il referto.
@@ -222,11 +330,27 @@ referto. L'interpretazione resta del medico.
 |---|---|---|
 | LDL | Friedewald (tot − HDL − TG/5) | non calcolato con TG ≥ 400 mg/dL |
 | Colesterolo non-HDL | totale − HDL | — |
-| eGFR + stadio KDIGO | CKD-EPI 2021 senza coefficiente etnico | richiede età e sesso |
+| eGFR + stadio KDIGO | CKD-EPI 2021 senza coefficiente etnico | richiede età e sesso; nel referto esce il solo eGFR |
 | HOMA-IR | (glicemia × insulinemia) / 405 | solo su prelievo a digiuno; sei fasce di lettura, da «ottimale» a «marcatamente elevato» |
 | QTc | Bazett (QT / √RR) | segnalato come inaffidabile fuori da 50-100 bpm |
 | Fascia calcium score | fasce Agatston 0 / 1-99 / 100-399 / ≥ 400 | descrittiva, non diagnostica |
 | SCORE2 | modello ESC 2021 per regione di rischio | **non attivo**, vedi sotto |
+
+### La TC coronarica nel referto: tre numeri
+
+Del modulo TC il referto stampa **il punteggio Agatston, la classe CAD-RADS e il
+burden di placca**, e nient altro. Niente fascia di calcificazione, niente
+intervallo Agatston accanto al punteggio, niente descrizione per esteso della
+classe CAD-RADS, niente avvertenza sul fatto che il calcium score non equivale a
+stenosi ostruttiva.
+
+Non e una semplificazione: e il cardiologo che legge. Sa che 460 e alto e sa
+cosa vuol dire 4B, e tre righe che glielo spiegano tolgono valore al colpo
+d occhio. La lettura del quadro la scrive lui nella sintesi del modulo, dove puo
+dire dove sono le alterazioni invece di elencarle a segmenti.
+
+Data, struttura, metodica e segmenti SCCT restano compilabili — servono per gli
+studi — ma di norma si lasciano vuoti e allora non compaiono.
 
 ### La classe di rischio nel referto
 
@@ -265,6 +389,7 @@ npm install          # dipendenze
 npm run electron:dev # app in sviluppo (Vite + Electron)
 npm run dev          # solo interfaccia nel browser, su http://localhost:5173
 npm test             # test (vitest)
+npm run anteprima    # scrive anteprima-referto.pdf con una visita di prova
 npm run typecheck    # controllo dei tipi
 npm run lint         # eslint
 npm run build        # typecheck + build dell'interfaccia
@@ -321,9 +446,25 @@ I test coprono i calcolatori cardiologici, le date locali, la validazione e
 l'import dei backup, la migrazione dei dati demo e i moduli Electron di backup
 e stampa.
 
+Sul referto ce ne sono di due tipi. `refertoVisita.test.ts` verifica **cosa**
+c'è scritto: sono le regole di composizione che arrivano dal cardiologo, e si
+perdono facilmente in un refactor del layout. `refertoImpaginazione.test.ts`
+verifica **dove** finisce: intercetta ogni `doc.text`, misura la stringa con lo
+stesso metro che usa jsPDF e controlla che niente esca dai margini o scenda nel
+piede. È la classe di difetti che il testo estratto dal PDF non mostra — le
+parole ci sono tutte e il foglio si stampa sbagliato — ed è così che è venuto
+fuori che la prosa veniva mandata a capo misurandola con il carattere delle
+tabelle, e usciva fino a un centimetro e mezzo oltre il margine destro.
+
 ```bash
 npm test
+npm run anteprima    # per guardare il foglio invece di leggerlo
 ```
+
+`npm run anteprima` scrive `anteprima-referto.pdf` usando il paziente e la
+visita di prova in `refertoDiProva.ts`: serve a vedere un cambiamento di layout
+senza doversi creare un paziente finto nell'applicazione e stampargli una
+visita.
 
 ## Da completare prima della distribuzione
 
@@ -339,6 +480,20 @@ npm test
   indistinguibile da Corioli in dashboard. Per separarla basta aggiungere
   `"corioli-cardiologia"` a `VALID_APPS` e il relativo caso in `mapAppToTipo`
   (`tipo` e `app` sono colonne `String`, nessuna migrazione DB necessaria).
+- **Font del referto:** jsPDF usa i caratteri standard, che sono in codifica
+  WinAnsi. Il sanificatore in `PdfService.san` deve quindi degradare tutto
+  quello che quella tabella non contiene: le vocali accentate diventano `e'`, il
+  maggiore-uguale diventa `>=`, i pedici di CHA₂DS₂-VASc diventano cifre normali
+  e l'eGFR **esce senza unità di misura**, perché `mL/min/1,73 m²` ha un
+  carattere che il font non disegna. Fuori dall'italiano il danno è peggiore: un
+  cognome come *Michał* diventa `Micha?`, e `β-bloccante` diventa
+  `?-bloccante`. Si risolve incorporando un font Unicode
+  (`addFileToVFS` + `addFont`); serve decidere **quale**, perché i caratteri di
+  sistema Windows non sono ridistribuibili. Su questa macchina c'è Noto Sans
+  (licenza SIL OFL, ridistribuibile) ma non un Noto Serif, e il referto usa due
+  voci — grazie per la prosa, bastoni per i dati. Da subsettare con `pyftsubset`
+  prima di incorporarlo: il TTF intero pesa 415 KB per stile e finirebbe dentro
+  ogni referto.
 - **Layout del referto:** in attesa dei referti reali del cardiologo per
   allineare tipografia e occupazione della pagina.
 

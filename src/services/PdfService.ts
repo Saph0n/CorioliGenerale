@@ -21,13 +21,13 @@ import {
 import { getRicettaTesto } from "../utils/ricettaTemplate";
 import {
   calcolaCaloNotturno,
+  calcolaClearanceCockcroftGault,
   calcolaEgfrCkdEpi,
   calcolaPercentualeFcMax,
   calcolaLdlFriedewald,
   calcolaQtcBazett,
   calcolaRapportoCtHdl,
   calcolaRapportoTgHdl,
-  stadioKdigo,
 } from "../utils/cardioCalcs";
 import {
   CONTESTO_BNP_LABELS,
@@ -41,14 +41,19 @@ import {
   calcolaHasBled,
 } from "../utils/fibrillazioneAtriale";
 import {
+  valutaMisura,
+  valutaPressioneScritta,
+  type ChiaveMisura,
+} from "../utils/rangeClinici";
+import {
   CATEGORIA_RISCHIO_LABELS,
+  FATTORI_RISCHIO_CV,
   TARGET_APOB,
   TARGET_LDL,
   confrontaConTarget,
   descriviTargetLdl,
 } from "../utils/rischioCv";
 import {
-  CAD_RADS_CATEGORIE,
   SOGLIA_CAC_PREDEFINITA,
   categoriaCac,
   segmentoScct,
@@ -215,6 +220,8 @@ export class PdfService {
     doctor: Doctor | null;
     opts: FooterVisibilityOptions;
     differita?: boolean;
+    /** Riga di emissione del referto: quando e' stato stampato, e quale copia. */
+    emissione?: string;
   } | null = null;
 
   private static dc(d: jsPDF, c: readonly number[]) { d.setDrawColor(c[0], c[1], c[2]); }
@@ -246,14 +253,29 @@ export class PdfService {
     textStyle?: { font?: "helvetica" | "times"; style?: "normal" | "bold" | "italic"; fontSize?: number; color?: readonly number[] },
   ): number {
     if (!text?.trim()) return y;
+
+    // Il carattere si imposta **prima** di mandare a capo, non solo prima di
+    // scrivere: `splitTextToSize` misura con il font corrente, e il font
+    // corrente era quello lasciato dall'ultima cosa disegnata — di solito
+    // l'Helvetica 7 di un'etichetta di tabella. La prosa veniva quindi spezzata
+    // sulla misura di un carattere piu' stretto e poi scritta in Times 10,5:
+    // le righe uscivano fino a un centimetro e mezzo oltre il margine destro,
+    // e nel testo estratto dal PDF non si vedeva perche' le parole c'erano
+    // tutte.
+    const applica = () => {
+      if (!textStyle) return;
+      doc.setFont(textStyle.font ?? "helvetica", textStyle.style ?? "normal");
+      if (textStyle.fontSize != null) doc.setFontSize(textStyle.fontSize);
+      if (textStyle.color) this.tc(doc, textStyle.color);
+    };
+
+    applica();
     const lines: string[] = doc.splitTextToSize(san(text), maxW);
     for (const line of lines) {
       y = this.pb(doc, y, lh + 1);
-      if (textStyle) {
-        doc.setFont(textStyle.font ?? "helvetica", textStyle.style ?? "normal");
-        if (textStyle.fontSize != null) doc.setFontSize(textStyle.fontSize);
-        if (textStyle.color) this.tc(doc, textStyle.color);
-      }
+      // Da riapplicare a ogni riga: dopo un salto pagina il piede ha cambiato
+      // font, corpo e colore.
+      applica();
       doc.text(line, x, y);
       y += lh;
     }
@@ -273,7 +295,11 @@ export class PdfService {
    */
   private static drawInquadramentoGrid(
     doc: jsPDF, y: number, title: string,
-    columns: { header: string; items: { label: string; value: string }[] }[],
+    columns: {
+      header: string;
+      /** Senza etichetta la voce e' una riga di elenco: il valore da solo. */
+      items: { label?: string; value: string; forte?: boolean }[];
+    }[],
   ): number {
     const cols = columns.map((c) => ({
       header: c.header,
@@ -281,10 +307,33 @@ export class PdfService {
     }));
     if (!cols.some((c) => c.items.length > 0)) return y;
 
-    y = this.sezione(doc, y, title);
-    y = this.pb(doc, y, 40);
-
     const colW = PW / cols.length;
+
+    // Si misura tutto prima di disegnare. Dentro una colonna l'impaginazione
+    // scorre in verticale senza mai chiedere un salto pagina: con la vecchia
+    // riserva fissa di 40 mm, una colonna piu' lunga di quella scriveva sotto
+    // il piede. Misurata l'altezza vera, la griglia o ci sta o scende intera
+    // alla pagina dopo, titolo compreso.
+    doc.setFontSize(8);
+    const misurate = cols.map((c) =>
+      c.items.map((item) => {
+        doc.setFont("helvetica", "normal");
+        const lbl = item.label ? san(item.label) + ": " : "";
+        const lblW = lbl ? doc.getTextWidth(lbl) : 0;
+        doc.setFont("helvetica", item.forte ? "bold" : "normal");
+        const linee: string[] = doc.splitTextToSize(
+          san(item.value), colW - lblW - 4,
+        );
+        return { lbl, lblW, linee };
+      }),
+    );
+    const altezza = 10 + Math.max(
+      ...misurate.map((items) =>
+        items.reduce((h, it) => h + it.linee.length * LH, 0),
+      ),
+    );
+
+    y = this.sezione(doc, y, title, altezza + 12);
     let maxY = y;
 
     for (let c = 0; c < cols.length; c++) {
@@ -297,20 +346,22 @@ export class PdfService {
       let cy = y + 10;
       doc.setFontSize(8);
 
-      for (const item of cols[c].items) {
-        doc.setFont("helvetica", "bold"); this.tc(doc, K80);
-        const lbl = san(item.label) + ": ";
-        doc.text(lbl, cx, cy);
+      cols[c].items.forEach((item, i) => {
+        const { lbl, lblW, linee } = misurate[c][i];
+        if (lbl) {
+          doc.setFont("helvetica", "normal"); this.tc(doc, K80);
+          doc.text(lbl, cx, cy);
+        }
 
-        doc.setFont("helvetica", "normal"); this.tc(doc, K0);
-        const lblWidth = doc.getTextWidth(lbl);
-        const valueX = cx + lblWidth + 1; // piccolo margine tra titolo e valore
-        const vlines = doc.splitTextToSize(san(item.value), colW - lblWidth - 4);
-        for (const line of vlines) {
+        doc.setFont("helvetica", item.forte ? "bold" : "normal"); this.tc(doc, K0);
+        // Piccolo margine fra etichetta e valore; senza etichetta il valore
+        // parte dal filo della colonna.
+        const valueX = lbl ? cx + lblW + 1 : cx;
+        for (const line of linee) {
           doc.text(line, valueX, cy);
           cy += LH;
         }
-      }
+      });
       maxY = Math.max(maxY, cy);
     }
 
@@ -408,8 +459,26 @@ export class PdfService {
       ? `${fd(patient.dataNascita)}${a ? `  (${a} anni)` : ""}`
       : "";
 
+    // Il nome prende due colonne **solo se in una non ci sta**. Allargarlo
+    // sempre faceva scendere la data della visita anche per "PROVA Mario", che
+    // in 43 millimetri sta larghissimo: una riga in piu' nell'anagrafica di
+    // ogni referto per un problema che quel referto non aveva.
+    //
+    // Si misura con lo stesso carattere con cui la tabella lo scrivera'
+    // (helvetica bold 9, perche' il nome e' in grassetto), sulla larghezza utile
+    // della cella. Se non ci sta nemmeno in due colonne, ci pensa la tabella:
+    // manda a capo dentro la cella e alza la riga.
+    const nome = this.nomePaziente(patient);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+    const spanNome = doc.getTextWidth(san(nome)) > PW / 4 - 4 ? 2 : 1;
+
     const voci = [
-      { label: "Paziente", value: `${patient.cognome} ${patient.nome}`.trim() },
+      {
+        label: "Paziente",
+        value: nome,
+        forte: true,
+        span: spanNome,
+      },
       ...(opts?.showBirthDate === false
         ? []
         : [{ label: "Data di nascita", value: nascita }]),
@@ -443,8 +512,12 @@ export class PdfService {
     if (!content?.trim()) return y;
     // Stessa barra grigia delle altre sezioni: "Anamnesi" e "Esami
     // ematochimici" sono lo stesso livello e devono pesare uguale.
-    y = this.sezione(doc, y, title);
-    y = this.block(doc, content, ML, y, PW, LH + 0.5, {
+    //
+    // Il titolo si porta dietro due righe di testo, non una: con una sola,
+    // "Conclusioni e Terapia" poteva aprire in fondo alla pagina con un rigo
+    // orfano e proseguire su quella dopo.
+    y = this.sezione(doc, y, title, 16 + LH + 1.3);
+    y = this.block(doc, content, ML, y, PW, LH + 1.3, {
       font: "times", style: "normal", fontSize: 10.5, color: K0,
     });
     if (note) {
@@ -510,45 +583,115 @@ export class PdfService {
   // ─────────────────────────────────────────────────────────────────────────────
   // IMAGE GALLERY
   // ─────────────────────────────────────────────────────────────────────────────
-  private static toJpeg(url: string): Promise<string> {
+  /**
+   * Converte in JPEG ridimensionando al lato lungo richiesto.
+   *
+   * Il ridimensionamento e' il punto: prima l'immagine entrava nel PDF alla
+   * risoluzione nativa per essere disegnata larga otto centimetri, e quattro
+   * foto di telefono facevano un referto da megabyte che poi doveva viaggiare
+   * per posta elettronica. A 200 dpi sulla dimensione stampata non si perde
+   * niente di quello che una laser sa rendere.
+   */
+  private static toJpeg(url: string, maxLatoPx: number): Promise<string> {
     return new Promise((res, rej) => {
       const img = new Image(); img.crossOrigin = "anonymous";
       img.onload = () => {
+        const scala = Math.min(
+          1, maxLatoPx / Math.max(img.naturalWidth, img.naturalHeight, 1),
+        );
         const c = document.createElement("canvas");
-        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.width = Math.max(1, Math.round(img.naturalWidth * scala));
+        c.height = Math.max(1, Math.round(img.naturalHeight * scala));
         const ctx = c.getContext("2d")!;
-        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0);
+        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
         res(c.toDataURL("image/jpeg", 0.88));
       };
       img.onerror = () => rej(new Error("fail")); img.src = url;
     });
   }
 
+  /**
+   * Galleria degli allegati, in fondo al referto.
+   *
+   * Due larghezze invece di una: le immagini panoramiche — un tracciato ECG,
+   * una striscia Holter — prendono la riga intera, le altre restano in coppia.
+   * In una cella da 85 mm un tracciato lungo e basso e' decorativo e non
+   * refertabile, e in un referto un'immagine che non si legge e' peggio di
+   * un'immagine che manca.
+   */
   private static async drawImages(doc: jsPDF, imgs: string[] | undefined, y: number): Promise<number> {
     if (!imgs?.length) return y;
+
+    const GAP = 4;
+    const MEZZA = (PW - GAP) / 2;
+    /** Lato lungo massimo: 200 dpi sulla larghezza piena della colonna. */
+    const MAX_PX = Math.round((PW / 25.4) * 200);
+    /** Sopra questo rapporto base/altezza l'immagine prende la riga intera. */
+    const PANORAMICA = 1.6;
+
+    const convertite = await Promise.all(
+      imgs.map((im) => this.toJpeg(im, MAX_PX).catch(() => null)),
+    );
+    const misurate = convertite.map((img) => {
+      if (!img) return { img: null, ratio: 1, piena: false };
+      try {
+        const p = doc.getImageProperties(img);
+        const ratio = p.width / p.height;
+        return { img, ratio, piena: ratio >= PANORAMICA };
+      } catch {
+        return { img: null, ratio: 1, piena: false };
+      }
+    });
+
     y = this.sezione(doc, y, "Immagini allegate");
-    const COLS = 2, GAP = 4, tW = (PW - GAP) / COLS, tH = 55;
-    for (let i = 0; i < imgs.length; i += COLS) {
-      y = this.pb(doc, y, tH + 6);
-      const row = imgs.slice(i, i + COLS);
-      const conv = await Promise.all(row.map(im => this.toJpeg(im).catch(() => null)));
-      conv.forEach((img, col) => {
-        const x = ML + col * (tW + GAP);
-        this.dc(doc, K200); doc.setLineWidth(0.2); doc.rect(x, y, tW, tH, "S");
-        if (img) {
+
+    let i = 0;
+    let numero = 1;
+    while (i < misurate.length) {
+      const corrente = misurate[i];
+      const successiva = misurate[i + 1];
+      // Una panoramica non si accompagna: prende la riga da sola.
+      const coppia = !corrente.piena && successiva && !successiva.piena;
+      const riga = coppia ? [corrente, successiva] : [corrente];
+      const larghezza = corrente.piena ? PW : MEZZA;
+      const altezza = corrente.piena ? 78 : 55;
+
+      y = this.pb(doc, y, altezza + 10);
+      riga.forEach((cella, col) => {
+        const x = ML + col * (larghezza + GAP);
+        this.dc(doc, K200); doc.setLineWidth(0.2);
+        doc.rect(x, y, larghezza, altezza, "S");
+
+        let disegnata = false;
+        if (cella.img) {
           try {
-            const p = (doc as any).getImageProperties(img);
-            const r = p.width / p.height;
-            let w = tW - 3, h = w / r;
-            if (h > tH - 3) { h = tH - 3; w = h * r; }
-            doc.addImage(img, "JPEG", x + (tW - w) / 2, y + (tH - h) / 2, w, h);
-          } catch {
-            doc.setFont("helvetica", "italic"); doc.setFontSize(7); this.tc(doc, K140);
-            doc.text("Immagine non disponibile", x + tW / 2, y + tH / 2, { align: "center" });
-          }
+            let w = larghezza - 3, h = w / cella.ratio;
+            if (h > altezza - 3) { h = altezza - 3; w = h * cella.ratio; }
+            doc.addImage(
+              cella.img, "JPEG",
+              x + (larghezza - w) / 2, y + (altezza - h) / 2, w, h,
+            );
+            disegnata = true;
+          } catch { /* sotto esce la nota al posto dell'immagine */ }
         }
+        if (!disegnata) {
+          doc.setFont("helvetica", "italic"); doc.setFontSize(7); this.tc(doc, K140);
+          doc.text(
+            "Immagine non disponibile",
+            x + larghezza / 2, y + altezza / 2, { align: "center" },
+          );
+        }
+
+        // La didascalia serve a poterla citare: "come da Fig. 2" nel testo del
+        // referto non si puo' scrivere se le figure non hanno un numero.
+        doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); this.tc(doc, K80);
+        doc.text(`Fig. ${numero + col}`, x, y + altezza + 3.6);
       });
-      y += tH + 4;
+
+      numero += riga.length;
+      i += riga.length;
+      y += altezza + 7;
     }
     return y + 4;
   }
@@ -569,9 +712,23 @@ export class PdfService {
     doc.text("Creato con Corioli", ML, FOOT_Y + 4.5);
 
     this.rule(doc, FOOT_Y, ML, MR, 0.2);
+
+    // Quando e' stato stampato questo foglio e da quale visita viene. Serve
+    // alla ristampa: se una visita viene corretta e il referto ristampato, due
+    // fogli identici in copertina possono portare contenuti diversi, e senza
+    // una data di emissione non c'e' modo di sapere quale si ha in mano.
+    // Stesso corpo e stesso grigio della firma dell'applicazione: si legge se
+    // la si cerca.
+    if (this.fCtx?.emissione) {
+      doc.setFont("helvetica", "normal"); doc.setFontSize(5); this.tc(doc, K200);
+      doc.text(san(this.fCtx.emissione), 105, FOOT_Y + 4.5, { align: "center" });
+    }
+
     // I recapiti dello studio sono saliti nella carta intestata, dove si
-    // cercano. Qui resta la numerazione, che serve solo al foglio stampato.
-    if (pagina && pagina.totale > 1) {
+    // cercano. Qui resta la numerazione, che serve solo al foglio stampato: si
+    // stampa anche su una pagina sola, perche' e' il modo in cui il foglio
+    // dichiara di essere completo.
+    if (pagina) {
       doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); this.tc(doc, K140);
       doc.text(
         `Pagina ${pagina.numero} di ${pagina.totale}`,
@@ -594,9 +751,12 @@ export class PdfService {
     doctor: Doctor | null, opts: FooterVisibilityOptions,
   ): void {
     const totale = doc.getNumberOfPages();
+    const autore = doctor
+      ? san(`Dott. ${doctor.nome} ${doctor.cognome}`.trim())
+      : "";
     const nato = patient.sesso === "F" ? "nata" : "nato";
     const identita = [
-      san(`${patient.cognome} ${patient.nome}`.trim()),
+      san(this.nomePaziente(patient)),
       patient.dataNascita ? `${nato} il ${fd(patient.dataNascita)}` : "",
       dataVisita ? `visita del ${fd(dataVisita)}` : "",
     ].filter(Boolean).join("   -   ");
@@ -607,6 +767,11 @@ export class PdfService {
       if (n > 1) {
         doc.setFont("helvetica", "normal"); doc.setFontSize(7); this.tc(doc, K80);
         doc.text(identita, ML, 12);
+        // A destra chi lo ha scritto. La carta intestata sta sulla prima
+        // pagina soltanto: da qui in poi un foglio che si stacca era
+        // attribuibile al paziente ma non al suo autore, ed e' la meta' che
+        // serve a chi lo riceve.
+        if (autore) doc.text(autore, MR, 12, { align: "right" });
         this.rule(doc, 14.5, ML, MR, 0.2);
       }
 
@@ -730,42 +895,76 @@ export class PdfService {
    */
   private static drawMisureTable(
     doc: jsPDF, y: number,
-    items: { label: string; value: string }[],
+    items: { label: string; value: string; forte?: boolean; span?: number }[],
     colonne = 3,
     titolo?: string,
   ): number {
     const presenti = items.filter((i) => i.value && i.value !== "-");
     if (presenti.length === 0) return y;
 
-    const righe = Math.ceil(presenti.length / colonne);
     const colW = PW / colonne;
-    const rowH = 9;
+    const RIGA_BASE = 9;
+
+    // Le celle si dispongono per larghezza, non contandole: una voce puo'
+    // chiedere piu' colonne con `span`, e quando nella riga non ci sta piu' si
+    // va a capo. Serve al nome del paziente, che in una cella da 43 mm veniva
+    // troncato senza dirlo: un referto che tronca il cognome e' un referto
+    // sbagliato, e mandare a capo il campo accanto costa una riga.
+    type Cella = { item: (typeof presenti)[number]; col: number; span: number };
+    const righe: Cella[][] = [];
+    let corrente: Cella[] = [];
+    let col = 0;
+    for (const item of presenti) {
+      const span = Math.min(Math.max(Math.round(item.span ?? 1), 1), colonne);
+      if (col + span > colonne) {
+        if (corrente.length) righe.push(corrente);
+        corrente = [];
+        col = 0;
+      }
+      corrente.push({ item, col, span });
+      col += span;
+    }
+    if (corrente.length) righe.push(corrente);
 
     // Si impagina una riga alla volta invece di riservare il blocco intero:
     // per una tabella di dodici misure lo spazio non c'e' quasi mai in fondo
     // alla pagina, e la tabella scivolava tutta a quella dopo lasciando mezzo
     // foglio bianco. Se il salto capita a meta', la pagina nuova riapre con il
     // nome del modulo.
-    for (let r = 0; r < righe; r++) {
+    for (const riga of righe) {
+      // Il valore che non entra nella sua cella va a capo dentro la cella, e
+      // la riga si alza per contenerlo. Prima veniva disegnata la sola prima
+      // riga di testo e il resto spariva.
+      const spezzate = riga.map((cella) => {
+        doc.setFont("helvetica", cella.item.forte ? "bold" : "normal");
+        doc.setFontSize(9);
+        const maxW = cella.span * colW - 4;
+        return doc.splitTextToSize(san(cella.item.value), maxW) as string[];
+      });
+      const massimoRighe = Math.max(1, ...spezzate.map((l) => l.length));
+      const rowH = RIGA_BASE + (massimoRighe - 1) * LH;
+
       const prima = y;
       y = this.pb(doc, y, rowH + 2);
       if (y !== prima) y = this.segue(doc, y, titolo);
 
-      for (let c = 0; c < colonne; c++) {
-        const item = presenti[r * colonne + c];
-        if (!item) continue;
-        const cx = ML + c * colW + 2;
-        const maxW = colW - 4;
+      riga.forEach((cella, i) => {
+        const cx = ML + cella.col * colW + 2;
+        const maxW = cella.span * colW - 4;
 
-        doc.setFont("helvetica", "normal"); doc.setFontSize(6.8); this.tc(doc, K80);
-        doc.text(san(item.label).toUpperCase(), cx, y + 3.4, { maxWidth: maxW });
+        doc.setFont("helvetica", "normal"); doc.setFontSize(7); this.tc(doc, K80);
+        doc.text(san(cella.item.label), cx, y + 3.4, { maxWidth: maxW });
 
-        doc.setFont("helvetica", "bold"); doc.setFontSize(9); this.tc(doc, K0);
-        const linee: string[] = doc.splitTextToSize(san(item.value), maxW);
-        doc.text(linee[0] ?? "", cx, y + 7.6);
-      }
+        doc.setFont("helvetica", cella.item.forte ? "bold" : "normal");
+        doc.setFontSize(9); this.tc(doc, K0);
+        spezzate[i].forEach((linea, n) => {
+          doc.text(linea, cx, y + 7.6 + n * LH);
+        });
+      });
 
-      this.dc(doc, K200); doc.setLineWidth(0.1);
+      // 0,15 e non 0,1: sotto quello spessore il filetto sparisce in
+      // fotocopia, ed e' quello che al referto succede quasi sempre.
+      this.dc(doc, K200); doc.setLineWidth(0.15);
       doc.line(ML, y + rowH, MR, y + rowH);
       y += rowH;
     }
@@ -779,7 +978,8 @@ export class PdfService {
    * non troncato.
    */
   private static drawDettagliTable(
-    doc: jsPDF, y: number, items: { label: string; value: string }[],
+    doc: jsPDF, y: number,
+    items: { label: string; value: string; forte?: boolean }[],
     titolo?: string,
   ): number {
     const presenti = items.filter((i) => i.value && i.value !== "-");
@@ -787,7 +987,7 @@ export class PdfService {
 
     const labelW = 34;
     presenti.forEach((item) => {
-      doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+      doc.setFont("helvetica", item.forte ? "bold" : "normal"); doc.setFontSize(9);
       const linee: string[] = doc.splitTextToSize(
         san(item.value), PW - labelW - 4,
       );
@@ -796,16 +996,17 @@ export class PdfService {
       y = this.pb(doc, y, h + 2);
       if (y !== prima) y = this.segue(doc, y, titolo);
 
-      doc.setFont("helvetica", "normal"); doc.setFontSize(6.8); this.tc(doc, K80);
-      doc.text(san(item.label).toUpperCase(), ML + 2, y + 4);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7); this.tc(doc, K80);
+      doc.text(san(item.label), ML + 2, y + 4);
 
-      doc.setFont("helvetica", "bold"); doc.setFontSize(9); this.tc(doc, K0);
+      doc.setFont("helvetica", item.forte ? "bold" : "normal");
+      doc.setFontSize(9); this.tc(doc, K0);
       linee.forEach((linea, i) => {
         doc.text(linea, ML + labelW, y + 4 + i * LH);
       });
 
       y += h;
-      this.rule(doc, y, ML, MR, 0.1);
+      this.rule(doc, y, ML, MR, 0.15);
     });
     return y + 3;
   }
@@ -819,16 +1020,25 @@ export class PdfService {
   // 6,4 di intestazione piu una riga di testo piu un margine. Con i 16 tondi di
   // prima una sezione da una riga sola scivolava alla pagina dopo per mezzo
   // millimetro, e ci finiva da sola.
-  private static sezione(doc: jsPDF, y: number, titolo: string, need = 14): number {
+  private static sezione(doc: jsPDF, y: number, titolo: string, need = 16): number {
     y = this.pb(doc, y, need);
     y += 2;
+    const SPAZIATURA = 0.35;
     doc.setFont("helvetica", "bold"); doc.setFontSize(8.6); this.tc(doc, K0);
     // La spaziatura fra le lettere fa leggere il maiuscoletto come
     // un'intestazione e non come una parola urlata.
-    doc.text(san(titolo).toUpperCase(), ML, y, { charSpace: 0.35 });
+    const t = san(titolo).toUpperCase();
+    doc.text(t, ML, y, { charSpace: SPAZIATURA });
+
+    // Il filetto e' lungo quanto la parola che sottolinea, non quanto il
+    // foglio: da parte a parte tagliava la pagina in fasce e faceva pesare
+    // ogni titolo come una divisione. `getTextWidth` non conosce la
+    // spaziatura fra le lettere, che va aggiunta a mano.
+    const larghezza = doc.getTextWidth(t) + SPAZIATURA * Math.max(t.length - 1, 0);
     this.dc(doc, K30); doc.setLineWidth(0.45);
-    doc.line(ML, y + 1.7, MR, y + 1.7);
-    return y + 6.4;
+    doc.line(ML, y + 1.9, ML + larghezza, y + 1.9);
+
+    return y + 8.6;
   }
 
   /**
@@ -838,12 +1048,13 @@ export class PdfService {
    * tornerebbe a sembrare un elenco di blocchi tutti di pari livello.
    */
   private static sottosezione(doc: jsPDF, y: number, titolo: string): number {
-    y = this.pb(doc, y, 14);
+    y = this.pb(doc, y, 16);
+    y += 2.5;
     doc.setFont("helvetica", "bold"); doc.setFontSize(8.2); this.tc(doc, K30);
     const t = san(titolo);
     doc.text(t, ML + 1, y);
     this.rule(doc, y + 1.1, ML + 1, ML + 1 + doc.getTextWidth(t), 0.25);
-    return y + 5;
+    return y + 6.5;
   }
 
   /**
@@ -880,12 +1091,41 @@ export class PdfService {
     return y + 5.5;
   }
 
+  /**
+   * `true` quando la misura cade fuori dai limiti di riferimento.
+   *
+   * E' l'unica cosa che accende il grassetto nel referto: le soglie stanno
+   * tutte in `rangeClinici`, qui si legge soltanto il verdetto.
+   */
+  private static fuoriNorma(
+    chiave: ChiaveMisura, valore: number | undefined, sesso?: "M" | "F",
+  ): boolean {
+    if (valore == null || !Number.isFinite(valore)) return false;
+    return valutaMisura(chiave, valore, sesso).livello !== "nella-norma";
+  }
+
+  /**
+   * Cognome in maiuscolo e nome in tondo: "PROVA Mario".
+   *
+   * Scritti tutti e due allo stesso modo non si capisce quale sia quale, e su
+   * un referto che arriva sulla scrivania di qualcun altro e' la prima cosa
+   * che si legge. E' la convenzione dei referti ospedalieri, e costa niente.
+   */
+  private static nomePaziente(patient: Patient): string {
+    const cognome = (patient.cognome ?? "").trim();
+    const nome = (patient.nome ?? "").trim();
+    return [cognome.toUpperCase(), nome].filter(Boolean).join(" ");
+  }
+
   /** Referto testuale di un modulo strumentale. */
   private static drawRefertoModulo(
     doc: jsPDF, y: number, testo: string | undefined,
   ): number {
     if (!testo?.trim()) return y;
-    return this.block(doc, testo, ML, y + 1, PW, LH + 0.5, {
+    // Due righe insieme o si va a capo pagina: il referto testuale di un
+    // modulo non deve lasciare un rigo solo sotto la sua tabella.
+    y = this.pb(doc, y, 4.5 + 2 * (LH + 1.3));
+    return this.block(doc, testo, ML, y + 4.5, PW, LH + 1.3, {
       font: "times", style: "normal", fontSize: 10.5, color: K0,
     });
   }
@@ -904,10 +1144,22 @@ export class PdfService {
     // Niente riga "Ritmo": la diagnosi la scrive il cardiologo nel referto
     // testuale del modulo, ed e' li' che chi legge se l'aspetta.
     const misure = [
-      { label: "PR", value: ecg.pr ? `${ecg.pr} ms` : "" },
-      { label: "QRS", value: ecg.qrs ? `${ecg.qrs} ms` : "" },
+      {
+        label: "PR",
+        value: ecg.pr ? `${ecg.pr} ms` : "",
+        forte: this.fuoriNorma("ecg.pr", ecg.pr),
+      },
+      {
+        label: "QRS",
+        value: ecg.qrs ? `${ecg.qrs} ms` : "",
+        forte: this.fuoriNorma("ecg.qrs", ecg.qrs),
+      },
       { label: "QT", value: ecg.qt ? `${ecg.qt} ms` : "" },
-      { label: "QTc", value: qtc.ok ? `${qtc.result.display} ms` : "" },
+      {
+        label: "QTc",
+        value: qtc.ok ? `${qtc.result.display} ms` : "",
+        forte: qtc.ok && this.fuoriNorma("ecg.qtc", qtc.result.value),
+      },
       { label: "Asse", value: ecg.asse != null ? `${ecg.asse}°` : "" },
     ];
     const haMisure = misure.some((m) => m.value);
@@ -930,10 +1182,18 @@ export class PdfService {
     const misure = [
       { label: "DTD VS", value: mm(eco.ddvs) },
       { label: "DTS VS", value: mm(eco.dsvs) },
-      { label: "SIV", value: mm(eco.siv) },
-      { label: "PP", value: mm(eco.pp) },
-      { label: "FE", value: eco.fe != null ? `${eco.fe}%` : "" },
-      { label: "Atrio sx", value: mm(eco.atrioSinistro) },
+      { label: "SIV", value: mm(eco.siv), forte: this.fuoriNorma("eco.siv", eco.siv) },
+      { label: "PP", value: mm(eco.pp), forte: this.fuoriNorma("eco.pp", eco.pp) },
+      {
+        label: "FE",
+        value: eco.fe != null ? `${eco.fe}%` : "",
+        forte: this.fuoriNorma("eco.fe", eco.fe),
+      },
+      {
+        label: "Atrio sx",
+        value: mm(eco.atrioSinistro),
+        forte: this.fuoriNorma("eco.atrioSinistro", eco.atrioSinistro),
+      },
       {
         label: "Grad. Ao. medio",
         value: eco.gradienteAorticoMedio != null
@@ -947,9 +1207,21 @@ export class PdfService {
           : "",
       },
       { label: "Radice ao.", value: mm(eco.radiceAortica) },
-      { label: "Ao. asc.", value: mm(eco.aortaAscendente) },
-      { label: "TAPSE", value: mm(eco.tapse) },
-      { label: "PAPs", value: eco.paps != null ? `${eco.paps} mmHg` : "" },
+      {
+        label: "Ao. asc.",
+        value: mm(eco.aortaAscendente),
+        forte: this.fuoriNorma("eco.aortaAscendente", eco.aortaAscendente),
+      },
+      {
+        label: "TAPSE",
+        value: mm(eco.tapse),
+        forte: this.fuoriNorma("eco.tapse", eco.tapse),
+      },
+      {
+        label: "PAPs",
+        value: eco.paps != null ? `${eco.paps} mmHg` : "",
+        forte: this.fuoriNorma("eco.paps", eco.paps),
+      },
       { label: "E/A", value: eco.rapportoEA != null ? String(eco.rapportoEA) : "" },
       { label: "E/e'", value: eco.rapportoEe != null ? String(eco.rapportoEe) : "" },
     ];
@@ -970,9 +1242,9 @@ export class PdfService {
   ): number {
     if (!tc) return y;
     const esitoCac = categoriaCac(tc.cacScore, sogliaCac);
-    const cadRads = tc.cadRads
-      ? (CAD_RADS_CATEGORIE.find((o) => o.key === tc.cadRads)?.label ?? tc.cadRads)
-      : "";
+    // Solo la sigla: la descrizione per esteso ("tronco comune >= 50% o
+    // trivasale >= 70%") ripete a chi refertava la definizione della classe.
+    const cadRads = tc.cadRads ? `CAD-RADS ${tc.cadRads}` : "";
 
     // I modificatori si scrivono attaccati alla categoria, come si refertano:
     // "CAD-RADS 3 / HRP, S".
@@ -1015,9 +1287,10 @@ export class PdfService {
       { label: "Metodica", value: v(tc.metodica, "") },
       {
         label: "Calcium score",
-        value: tc.cacScore != null
-          ? `${tc.cacScore}${esitoCac ? ` \u00b7 ${esitoCac.label.toLowerCase()} \u00b7 ${esitoCac.intervallo}` : " Agatston"}`
-          : "",
+        // Il solo punteggio Agatston. La fascia resta nella maschera, dove
+        // serve mentre si compila, e non nel referto.
+        value: tc.cacScore != null ? String(tc.cacScore) : "",
+        forte: esitoCac?.categoria === "severa",
       },
       {
         label: "CAD-RADS",
@@ -1034,9 +1307,10 @@ export class PdfService {
     y = apriGruppo(y);
     y = this.sottosezione(doc, y, "TC coronarica");
     y = this.drawDettagliTable(doc, y, misure, "TC coronarica");
-    // L'avvertenza sul CAC accompagna il punteggio anche fuori dall'app: e' il
-    // referto che qualcun altro leggera' senza avere davanti la maschera.
-    if (esitoCac) y = this.drawRefertoModulo(doc, y, esitoCac.flag);
+    // L'avvertenza sul CAC resta nella maschera e non entra nel referto: "il
+    // punteggio CAC non equivale a stenosi ostruttiva" e' una cosa che il
+    // cardiologo sa, e nel referto occupa due righe per non dire niente. Il
+    // giudizio lo formula lui qui sotto.
     y = this.drawRefertoModulo(doc, y, tc.referto);
     return y + 4;
   }
@@ -1086,6 +1360,7 @@ export class PdfService {
     sc: NonNullable<Visit["visita"]>["scompenso"],
     fe: number | undefined,
     patient: Patient,
+    apriGruppo: ApriGruppo,
     fePrecedenti: FePrecedente[] = [],
   ): number {
     if (!sc) return y;
@@ -1106,11 +1381,17 @@ export class PdfService {
       { label: "Classe NYHA", value: sc.nyha ? `NYHA ${sc.nyha}` : "" },
       { label: "Data dosaggio", value: sc.dataBnp ? fd(sc.dataBnp) : "" },
       {
+        // Il solo valore dosato. Accanto al numero non va nessun giudizio
+        // scritto: "210 pg/mL (Sopra la soglia di esclusione)" faceva dire al
+        // referto quello che il grassetto dice gia' da solo, e la lettura della
+        // soglia la fa il cardiologo nel testo del modulo. E' la stessa regola
+        // per cui la pressione non porta scritto "iperteso" e il calcium score
+        // non porta la sua fascia.
+        //
+        // La valutazione resta: decide il grassetto, che e' l'unico segnale.
         label: "NT-proBNP",
-        value:
-          sc.ntProBnp != null
-            ? `${sc.ntProBnp} pg/mL${esito ? ` (${esito.titolo})` : ""}`
-            : "",
+        value: sc.ntProBnp != null ? `${sc.ntProBnp} pg/mL` : "",
+        forte: esito != null && esito.livello !== "esclusione",
       },
       {
         label: "Contesto",
@@ -1119,15 +1400,18 @@ export class PdfService {
     ];
     if (!misure.some((m) => m.value) && !sc.referto?.trim()) return y;
 
-    y = this.sezione(doc, y, "Scompenso cardiaco");
+    y = apriGruppo(y);
+    y = this.sottosezione(doc, y, "Scompenso cardiaco");
     y = this.drawDettagliTable(doc, y, misure, "Scompenso cardiaco");
-    // Per l'HFimpEF il confronto che lo ha prodotto vale piu' della sigla: il
-    // referto porta le due FE e la nota di non alleggerire la terapia, che e'
-    // il rischio del momento in cui la frazione risale.
-    if (!fenotipo) y = this.drawRefertoModulo(doc, y, FENOTIPO_DA_DEFINIRE.motivo);
-    if (fenotipo?.riferimento) y = this.drawRefertoModulo(doc, y, fenotipo.riferimento);
-    if (fenotipo?.avvertenza) y = this.drawRefertoModulo(doc, y, fenotipo.avvertenza);
-    if (esito) y = this.drawRefertoModulo(doc, y, esito.nota);
+    // Sotto la tabella c'e' solo il testo del cardiologo. Le note che l'app
+    // scriveva qui — la fascia HFmrEF di ESC 2021, l'avvertenza a non
+    // sospendere la terapia quando la frazione risale, la lettura della soglia
+    // dell'NT-proBNP, il confronto fra la frazione precedente e quella attuale
+    // — uscivano nello stesso carattere della sua prosa, e niente sul foglio
+    // diceva che non le aveva scritte lui. Il referto lo legge un medico.
+    //
+    // Il confronto fra le due frazioni resta dove serve: e' quello che fa
+    // comparire la sigla HFimpEF nella riga del fenotipo.
     y = this.drawRefertoModulo(doc, y, sc.referto);
     return y + 4;
   }
@@ -1159,6 +1443,7 @@ export class PdfService {
     fattoriRischio: NonNullable<Visit["visita"]>["fattoriRischio"],
     pesoCorporeo: number | undefined,
     creatinina: number | undefined,
+    apriGruppo: ApriGruppo,
   ): number {
     if (!fa) return y;
     const etaNum = Number(calcAge(patient.dataNascita));
@@ -1229,6 +1514,10 @@ export class PdfService {
     ];
 
     const egfr = calcolaEgfrCkdEpi(creatinina, eta, sesso);
+    // Le soglie di riduzione dei DOAC sono scritte sulla clearance secondo
+    // Cockcroft-Gault, non sull'eGFR: nel paziente anziano e magro i due
+    // numeri divergono, ed e' esattamente il paziente in cui la dose si riduce.
+    const clcr = calcolaClearanceCockcroftGault(creatinina, eta, pesoCorporeo, sesso);
     const misure = [
       ...misureFa,
       { label: "Peso", value: pesoCorporeo != null ? `${pesoCorporeo} kg` : "" },
@@ -1237,14 +1526,19 @@ export class PdfService {
       {
         // Senza unità come nel blocco degli ematochimici: "mL/min/1,73 m²" ha
         // un carattere che il font standard di jsPDF non disegna.
+        // Senza lo stadio KDIGO fra parentesi: e' una classificazione che il
+        // medico legge dal numero, e accanto al valore non va nessun giudizio.
         label: "eGFR (CKD-EPI)",
-        value: egfr.ok
-          ? `${egfr.result.display} (${stadioKdigo(egfr.result.value)})`
-          : "",
+        value: egfr.ok ? egfr.result.display : "",
+      },
+      {
+        label: "ClCr (Cockcroft-Gault)",
+        value: clcr.ok ? `${clcr.result.display} mL/min` : "",
       },
     ];
 
-    y = this.sezione(doc, y, "Fibrillazione atriale");
+    y = apriGruppo(y);
+    y = this.sottosezione(doc, y, "Fibrillazione atriale");
     y = this.drawDettagliTable(doc, y, misure, "Fibrillazione atriale");
     y = this.drawRefertoModulo(doc, y, fa.referto);
     return y + 4;
@@ -1384,9 +1678,13 @@ export class PdfService {
    * lipidi**. La attribuisce il medico dall'anamnesi dei fattori di rischio —
    * eventi pregressi, danno d'organo, comorbidita' — e sono le linee guida a
    * legare a quella classe l'obiettivo di LDL e di ApoB. Qui si stampa la
-   * classe dichiarata, l'obiettivo che le corrisponde e la distanza del
-   * paziente da quell'obiettivo: e' il ragionamento che il curante deve poter
-   * rifare leggendo il referto.
+   * classe dichiarata, l'obiettivo che le corrisponde e il valore del paziente:
+   * e' il ragionamento che il curante deve poter rifare leggendo il referto, e
+   * per rifarlo gli bastano i due numeri.
+   *
+   * La distanza fra i due era scritta accanto al valore ("77 mg/dL sopra
+   * l'obiettivo di 55 mg/dL") ed e' stata tolta con tutte le altre letture
+   * che l'applicazione aggiungeva ai dati: il referto lo legge un medico.
    *
    * Senza classe dichiarata la sezione non esce: un obiettivo lipidico senza
    * la classe da cui deriva sarebbe un numero senza motivo.
@@ -1396,8 +1694,16 @@ export class PdfService {
     categoria: NonNullable<Visit["visita"]>["categoriaRischioCv"],
     lab: NonNullable<Visit["visita"]>["laboratorio"],
     sintesi: string | undefined,
+    apriGruppo: ApriGruppo,
   ): number {
-    if (!categoria) return this.drawTextSection(doc, y, "Sintesi del rischio", sintesi);
+    if (!categoria) {
+      // Senza classe resta la sola sintesi scritta dal medico, che e' comunque
+      // un inquadramento e sta nel gruppo con gli altri.
+      if (!sintesi?.trim()) return y;
+      y = apriGruppo(y);
+      y = this.sottosezione(doc, y, "Sintesi del rischio");
+      return this.drawRefertoModulo(doc, y, sintesi) + 4;
+    }
 
     // LDL dosato quando c'e', altrimenti quello di Friedewald: e' il valore su
     // cui il medico ragiona, e il referto dice sempre da dove viene.
@@ -1413,10 +1719,13 @@ export class PdfService {
       { label: "Classe di rischio", value: CATEGORIA_RISCHIO_LABELS[categoria] },
       { label: "Obiettivo LDL", value: descriviTargetLdl(categoria) },
       {
+        // Il valore dosato e nient'altro. L'obiettivo della classe sta nella
+        // riga sopra e il grassetto dice se il paziente e' fuori: la distanza
+        // scritta ("77 mg/dL sopra l'obiettivo di 55") era una sottrazione fra
+        // due numeri che il referto ha gia' stampato entrambi.
         label: lab?.ldlMisurato != null ? "LDL dosato" : "LDL (Friedewald)",
-        value: ldl != null
-          ? `${Math.round(ldl)} mg/dL${ldlEsito ? ` \u2014 ${ldlEsito.testo}` : ""}`
-          : "",
+        value: ldl != null ? `${Math.round(ldl)} mg/dL` : "",
+        forte: ldlEsito != null && !ldlEsito.aTarget,
       },
       {
         label: "Obiettivo ApoB",
@@ -1426,13 +1735,13 @@ export class PdfService {
       },
       {
         label: "ApoB",
-        value: lab?.apoB != null
-          ? `${lab.apoB} mg/dL${apoBEsito ? ` \u2014 ${apoBEsito.testo}` : ""}`
-          : "",
+        value: lab?.apoB != null ? `${lab.apoB} mg/dL` : "",
+        forte: apoBEsito != null && !apoBEsito.aTarget,
       },
     ];
 
-    y = this.sezione(doc, y, "Rischio cardiovascolare");
+    y = apriGruppo(y);
+    y = this.sottosezione(doc, y, "Rischio cardiovascolare");
     y = this.drawDettagliTable(doc, y, misure, "Rischio cardiovascolare");
     y = this.drawRefertoModulo(doc, y, sintesi);
     return y + 4;
@@ -1452,10 +1761,13 @@ export class PdfService {
     const ctHdl = calcolaRapportoCtHdl(lab.colesteroloTotale, lab.hdl);
     const tgHdl = calcolaRapportoTgHdl(lab.trigliceridi, lab.hdl);
     const eta = Number(calcAge(patient.dataNascita));
+    const sesso = patient.sesso === "M" || patient.sesso === "F"
+      ? patient.sesso
+      : undefined;
     const egfr = calcolaEgfrCkdEpi(
       lab.creatinina,
       Number.isFinite(eta) && eta > 0 ? eta : undefined,
-      patient.sesso === "M" || patient.sesso === "F" ? patient.sesso : undefined,
+      sesso,
     );
 
     const misure = [
@@ -1466,35 +1778,80 @@ export class PdfService {
         value: lab.ldlMisurato != null
           ? mg(lab.ldlMisurato)
           : ldlCalc?.ok ? `${ldlCalc.result.display} mg/dL` : "",
+        forte: this.fuoriNorma(
+          "lab.ldl",
+          lab.ldlMisurato ?? (ldlCalc?.ok ? ldlCalc.result.value : undefined),
+        ),
       },
-      { label: "Trigliceridi", value: mg(lab.trigliceridi) },
-      { label: "ApoB", value: mg(lab.apoB) },
-      { label: "Lp(a)", value: mg(lab.lpa) },
+      {
+        label: "Trigliceridi",
+        value: mg(lab.trigliceridi),
+        forte: this.fuoriNorma("lab.trigliceridi", lab.trigliceridi),
+      },
+      { label: "ApoB", value: mg(lab.apoB), forte: this.fuoriNorma("lab.apoB", lab.apoB) },
+      { label: "Lp(a)", value: mg(lab.lpa), forte: this.fuoriNorma("lab.lpa", lab.lpa) },
       {
         label: "CT / HDL (calc.)",
         value: ctHdl.ok ? ctHdl.result.display : "",
+        forte: ctHdl.ok && this.fuoriNorma("lab.ctHdl", ctHdl.result.value),
       },
       {
         label: "TG / HDL (calc.)",
         value: tgHdl.ok ? tgHdl.result.display : "",
+        forte: tgHdl.ok && this.fuoriNorma("lab.tgHdl", tgHdl.result.value),
       },
-      { label: "Glicemia", value: mg(lab.glicemia) },
+      {
+        label: "Glicemia",
+        value: mg(lab.glicemia),
+        forte: this.fuoriNorma("lab.glicemia", lab.glicemia),
+      },
       { label: "Insulinemia", value: lab.insulina != null ? `${lab.insulina} uU/mL` : "" },
-      { label: "HbA1c", value: lab.hba1c != null ? `${lab.hba1c}%` : "" },
+      {
+        label: "HbA1c",
+        value: lab.hba1c != null ? `${lab.hba1c}%` : "",
+        forte: this.fuoriNorma("lab.hba1c", lab.hba1c),
+      },
       { label: "Creatinina", value: mg(lab.creatinina) },
       {
         label: "eGFR (CKD-EPI)",
-        value: egfr.ok
-          ? `${egfr.result.display} (${stadioKdigo(egfr.result.value)})`
-          : "",
+        value: egfr.ok ? egfr.result.display : "",
+        forte: egfr.ok && this.fuoriNorma("lab.egfr", egfr.result.value),
       },
-      { label: "Albuminuria", value: lab.albuminuria != null ? `${lab.albuminuria} mg/g` : "" },
-      { label: "Emoglobina", value: lab.emoglobina != null ? `${lab.emoglobina} g/dL` : "" },
-      { label: "AST", value: lab.ast != null ? `${lab.ast} U/L` : "" },
-      { label: "ALT", value: lab.alt != null ? `${lab.alt} U/L` : "" },
-      { label: "Uricemia", value: mg(lab.uricemia) },
-      { label: "TSH", value: lab.tsh != null ? `${lab.tsh} mU/L` : "" },
-      { label: "hs-PCR", value: lab.hsPcr != null ? `${lab.hsPcr} mg/L` : "" },
+      {
+        label: "Albuminuria",
+        value: lab.albuminuria != null ? `${lab.albuminuria} mg/g` : "",
+        forte: this.fuoriNorma("lab.albuminuria", lab.albuminuria),
+      },
+      {
+        label: "Emoglobina",
+        value: lab.emoglobina != null ? `${lab.emoglobina} g/dL` : "",
+        forte: this.fuoriNorma("lab.emoglobina", lab.emoglobina, sesso),
+      },
+      {
+        label: "AST",
+        value: lab.ast != null ? `${lab.ast} U/L` : "",
+        forte: this.fuoriNorma("lab.ast", lab.ast),
+      },
+      {
+        label: "ALT",
+        value: lab.alt != null ? `${lab.alt} U/L` : "",
+        forte: this.fuoriNorma("lab.alt", lab.alt),
+      },
+      {
+        label: "Uricemia",
+        value: mg(lab.uricemia),
+        forte: this.fuoriNorma("lab.uricemia", lab.uricemia, sesso),
+      },
+      {
+        label: "TSH",
+        value: lab.tsh != null ? `${lab.tsh} mU/L` : "",
+        forte: this.fuoriNorma("lab.tsh", lab.tsh),
+      },
+      {
+        label: "hs-PCR",
+        value: lab.hsPcr != null ? `${lab.hsPcr} mg/L` : "",
+        forte: this.fuoriNorma("lab.hsPcr", lab.hsPcr),
+      },
       { label: "LDL ossidate", value: lab.oxLdl != null ? `${lab.oxLdl} U/L` : "" },
     ];
     if (!misure.some((m) => m.value)) return y;
@@ -1504,16 +1861,8 @@ export class PdfService {
       : "Esami ematochimici";
     y = this.sezione(doc, y, titolo);
     y = this.drawMisureTable(doc, y, misure, 3, "Esami ematochimici");
-
-    if (ldlCalc?.ok || egfr.ok || ctHdl.ok || tgHdl.ok) {
-      doc.setFont("helvetica", "italic"); doc.setFontSize(7); this.tc(doc, K140);
-      y = this.block(
-        doc,
-        "I valori indicati come calcolati sono stime derivate dai dosaggi riportati, non risultati di laboratorio.",
-        ML + 1, y, PW - 2, 3.8,
-        { font: "helvetica", style: "italic", fontSize: 7, color: K140 },
-      );
-    }
+    // Niente nota sui valori calcolati: che l'LDL sia di Friedewald e l'eGFR
+    // una stima lo dice l'etichetta della cella, e chi legge il referto lo sa.
     return y + 4;
   }
 
@@ -1539,10 +1888,34 @@ export class PdfService {
       showDoctorPhoneInPdf: prefs?.showDoctorPhoneInPdf as boolean | undefined,
       showDoctorEmailInPdf: prefs?.showDoctorEmailInPdf as boolean | undefined,
     };
+    // Timbro di emissione: quando questa copia e' stata prodotta e da quale
+    // visita viene. La visita si puo' correggere e il referto ristampare, e
+    // due copie della stessa visita sono due fogli diversi.
+    const ora = new Date();
+    const rif = (visit.id ?? "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8);
+    const emissione = [
+      `Emesso il ${ora.toLocaleDateString("it-IT")} alle ${
+        ora.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
+      }`,
+      rif ? `rif. ${rif}` : "",
+    ].filter(Boolean).join("   -   ");
+
     // Piedi differiti: la numerazione "Pagina 2 di 3" vuole un totale che si
     // conosce solo a documento chiuso.
-    this.fCtx = { doctor, opts: fo, differita: true };
+    this.fCtx = { doctor, opts: fo, differita: true, emissione };
     const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+
+    // Il referto viaggia: finisce in una cartella di rete, in un gestionale
+    // documentale, in un allegato di posta. Senza proprieta' il file e' un
+    // "documento senza titolo" che nessuna ricerca trova, mentre il nome del
+    // paziente sta gia' nel nome del file e nel corpo del referto.
+    doc.setProperties({
+      title: `Referto di visita cardiologica - ${this.nomePaziente(patient)} - ${fd(visit.dataVisita)}`,
+      subject: "Referto di visita cardiologica",
+      author: doctor ? `Dott. ${doctor.nome} ${doctor.cognome}`.trim() : "",
+      creator: "Corioli Cardiologia",
+    });
+    doc.setLanguage("it");
 
     let y = this.drawHeader(doc, "VISITA CARDIOLOGICA", "", doctor, true, fo);
 
@@ -1557,15 +1930,42 @@ export class PdfService {
       : "-";
     y = this.drawPatientBlock(doc, patient, visit.dataVisita, y, "Data visita");
 
+    // I fattori di rischio dichiarati dal medico nella maschera. Il referto
+    // stampa piu' sotto la classe di rischio e l'obiettivo lipidico che ne
+    // discende, ma la classe non e' calcolata: la attribuisce il medico
+    // guardando proprio queste caselle. Senza, il referto chiede al curante di
+    // credere alla classe sulla parola, e il ragionamento che dice di voler
+    // documentare resta a meta'.
+    //
+    // Sono righe di elenco senza etichetta: sette "Ipertensione arteriosa: Si'"
+    // di fila direbbero sette volte la stessa cosa.
+    const dichiarati = FATTORI_RISCHIO_CV
+      .filter((f) => vis.fattoriRischio?.[f.chiave])
+      .map((f) => ({ value: f.label }));
+    // Il fumo tiene l'etichetta perche' e' l'unico che si stampa anche in
+    // negativo: la maschera lo chiede a tre stati, e "non fumatore" e' un dato,
+    // "non rilevato" no.
+    const fumo = vis.fumatore === "si" ? "Si'" : vis.fumatore === "no" ? "No" : "";
+
     // "Variabili" e non "parametri": un parametro e' fisso, questi cambiano a
     // ogni controllo, ed e' il confronto con il valore precedente che si guarda.
     y = this.drawInquadramentoGrid(doc, y, "Variabili cliniche", [
       {
         header: "Parametri vitali",
         items: [
-          { label: "P.A.", value: v(vis.pressioneArteriosa ? `${vis.pressioneArteriosa} mmHg` : "") },
-          { label: "F.C.", value: v(vis.frequenzaCardiaca ? `${vis.frequenzaCardiaca} bpm` : "") },
-          { label: "Fumo", value: vis.fumatore === "si" ? "Si'" : vis.fumatore === "no" ? "No" : "-" },
+          {
+            label: "P.A.",
+            value: v(vis.pressioneArteriosa ? `${vis.pressioneArteriosa} mmHg` : ""),
+            forte:
+              valutaPressioneScritta(vis.pressioneArteriosa).livello !== "nella-norma",
+          },
+          {
+            label: "F.C.",
+            value: v(vis.frequenzaCardiaca ? `${vis.frequenzaCardiaca} bpm` : ""),
+            forte: this.fuoriNorma(
+              "vitali.frequenzaCardiaca", Number(vis.frequenzaCardiaca) || undefined,
+            ),
+          },
         ],
       },
       {
@@ -1573,7 +1973,21 @@ export class PdfService {
         items: [
           { label: "Peso", value: peso > 0 ? `${peso} kg` : "-" },
           { label: "Altezza", value: altezzaCm > 0 ? `${altezzaCm} cm` : "-" },
-          { label: "BMI", value: bmi },
+          {
+            label: "BMI",
+            value: bmi,
+            forte: this.fuoriNorma("vitali.bmi", Number(bmi) || undefined),
+          },
+        ],
+      },
+      {
+        // Il fumo stava fra i parametri vitali, dove non e' mai stato un segno
+        // vitale: e' un fattore di rischio, ed era anche l'unico dei suoi a
+        // uscire nel referto mentre gli altri sette restavano nella maschera.
+        header: "Fattori di rischio",
+        items: [
+          ...(fumo ? [{ label: "Fumo", value: fumo }] : []),
+          ...dichiarati,
         ],
       },
     ]);
@@ -1590,7 +2004,7 @@ export class PdfService {
       y = this.drawTextSection(doc, y, "Anamnesi", vis.prestazione);
     }
 
-    y = this.drawTextSection(doc, y, "Descrizione Problema / Dati Clinici", vis.problemaClinico);
+    y = this.drawTextSection(doc, y, "Motivo della visita", vis.problemaClinico);
 
     y = this.drawTextSection(doc, y, "Esame Obiettivo", vis.esameObiettivo);
 
@@ -1609,13 +2023,22 @@ export class PdfService {
     y = this.drawHolterEcg(doc, y, vis.holterEcg, strumentali);
     y = this.drawHolterPressorio(doc, y, vis.holterPressorio, strumentali);
     y = this.drawLaboratorio(doc, y, vis.laboratorio, patient);
+
+    // Scompenso, fibrillazione atriale e rischio cardiovascolare aprivano tre
+    // sezioni di primo livello in fila, con lo stesso peso di "Esami
+    // strumentali" che invece ne raccoglie sei. Non sono esami: sono i tre
+    // inquadramenti che il cardiologo formula dopo averli letti, e stanno
+    // insieme sotto un titolo solo per la stessa ragione per cui ci stanno i
+    // moduli strumentali. Il gruppo si apre da solo al primo che ha qualcosa
+    // da dire.
+    const inquadramento = this.gruppo(doc, "Inquadramento clinico");
     y = this.drawScompenso(
-      doc, y, vis.scompenso, vis.ecocardiogramma?.fe, patient,
+      doc, y, vis.scompenso, vis.ecocardiogramma?.fe, patient, inquadramento,
       await this.fePrecedenti(patient.id, visit.id),
     );
     y = this.drawFibrillazioneAtriale(
       doc, y, vis.fibrillazioneAtriale, patient, vis.fattoriRischio,
-      vis.pesoCorporeo, vis.laboratorio?.creatinina,
+      vis.pesoCorporeo, vis.laboratorio?.creatinina, inquadramento,
     );
     // La sintesi del rischio si stampa: e' il punto in cui il medico mette
     // insieme rischio calcolato e reperti di imaging, e le linee guida chiedono
@@ -1627,10 +2050,16 @@ export class PdfService {
     // Il punteggio SCORE2 resta invece di supporto e fuori dal referto.
     y = this.drawRischioCv(
       doc, y, vis.categoriaRischioCv, vis.laboratorio, vis.sintesiRischio,
+      inquadramento,
     );
     y = this.drawTextSection(doc, y, "Accertamenti", vis.accertamenti);
-    if (options?.includeImages) y = await this.drawImages(doc, vis.immagini, y);
-    this.drawTextSection(doc, y, "Conclusioni e Terapia", vis.terapiaSpecifica);
+    y = this.drawTextSection(doc, y, "Conclusioni e Terapia", vis.terapiaSpecifica);
+
+    // Le immagini chiudono il referto, dopo le conclusioni. Stavano prima, e
+    // con quattro allegati da 55 mm la sezione che il curante e il paziente
+    // cercano per prima finiva dietro una galleria, a pagina tre. Un allegato
+    // sta in fondo: e' quello che significa allegato.
+    if (options?.includeImages) await this.drawImages(doc, vis.immagini, y);
 
     // Niente blocco firma in calce al referto: luogo, data e riga per la firma
     // erano stati aggiunti sull'esempio dei referti ospedalieri, il cardiologo
