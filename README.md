@@ -23,7 +23,7 @@ Un solo tipo di visita, come in ambulatorio. Il referto segue quest'ordine:
 3. Motivo della visita
 4. Esame obiettivo
 5. **Esami strumentali** — elettrocardiogramma, ecocardiogramma, TC coronarica,
-   test ergometrico, Holter ECG e pressorio
+   test ergometrico, Holter ECG e pressorio, **Doppler TSA**
 6. **Esami ematochimici**
 7. **Inquadramento clinico** — scompenso, fibrillazione atriale, rischio
    cardiovascolare
@@ -37,8 +37,28 @@ qui serve prima conoscerne la storia.
 
 Colonna di sinistra (**variabili cliniche**: cambiano a ogni controllo, ed è
 il confronto con il valore precedente che si guarda): parametri vitali
-(P.A., F.C.), peso con BMI, fattori di rischio, esami di laboratorio —
-compresi hs-PCR e LDL ossidate — indici calcolati e immagini allegabili al PDF.
+(P.A., F.C.), peso con BMI, fattori di rischio, esami di laboratorio, indici
+calcolati e immagini allegabili al PDF.
+
+I pannelli di laboratorio seguono il ragionamento, non l'ordine del referto di
+laboratorio:
+
+- **Burden aterogeno** (era «assetto lipidico»): colesterolo totale, HDL,
+  trigliceridi, LDL dosato, ApoB, Lp(a) e **ATS carotidea**, la stenosi
+  carotidea in percentuale. La placca vista all'ecografo non ha niente di
+  lipidico, ma è lo stesso burden e pesa sulla classe di rischio più di
+  qualunque dosaggio: sta lì perché è lì che la si guarda mentre si decide.
+- **Profilo infiammatorio / redox**: hs-PCR, LDL ossidate e **fibrinogeno**,
+  cioè la parte della placca che i lipidi non misurano. Stavano sparsi fra il
+  pannello lipidico e «altri esami».
+- **Metabolismo glucidico**: glicemia, insulinemia, HbA1c, con **HOMA-IR**
+  calcolato.
+- **Funzione renale**: creatinina, albuminuria, con eGFR calcolato.
+- **Altri esami**: emocromo, transaminasi, uricemia, TSH.
+
+L'**ATS carotidea** del burden aterogeno e la **stenosi massima** del modulo
+Doppler TSA sono lo stesso campo, non due copie: si scrive da tutte e due le
+parti e il valore resta uno.
 
 La pressione arteriosa si può scrivere con la barra, il trattino o lo spazio
 (`120/80`, `120-80`, `120 80`): viene ricondotta alla forma canonica al
@@ -63,6 +83,21 @@ fibrillazione atriale e rischio cardiovascolare: non sono esami, sono le
 conclusioni che il cardiologo trae dopo averli letti, e aprivano tre sezioni di
 primo livello in fila con lo stesso peso di una barra che ne raccoglie sei.
 
+### Doppler TSA
+
+L'EcoColorDoppler dei tronchi sovraaortici sta fra gli esami strumentali anche
+se a refertarlo sono il chirurgo vascolare o il radiologo: il cardiologo lo
+legge per la stessa ragione per cui legge la TC coronarica, cioè perché la
+placca vista con gli ultrasuoni è aterosclerosi documentata e sposta la classe
+di rischio senza bisogno di nessun punteggio. È anche l'esame che i pazienti
+chiedono più spesso.
+
+Il modulo porta data e struttura, IMT massimo, stenosi massima con la sua sede,
+placche, assi vertebrali e il referto testuale, con tre modelli di refertazione
+predefiniti. Nel referto stampato la stenosi esce con la sede accanto — «45%
+(bulbo carotideo destro)» — perché una percentuale senza il vaso non è
+refertabile.
+
 ### I fattori di rischio stanno nel referto
 
 Il referto stampa la classe di rischio dichiarata e l'obiettivo lipidico che ne
@@ -78,24 +113,24 @@ fila direbbero sette volte la stessa cosa. Il **fumo** tiene l'etichetta perché
 vitali: non è mai stato un segno vitale, ed era anche l'unico fattore di rischio
 che usciva nel referto mentre gli altri sette restavano nella maschera.
 
-### Due caratteri, due voci
+### Un carattere solo
 
-Il racconto clinico — anamnesi, descrizione del problema, esame obiettivo,
-referti testuali dei moduli, conclusioni — è in **tondo con grazie** (Times,
-10,5 pt) con interlinea di 6,1 mm. Etichette, numeri e tabelle restano in
-**bastoni** (Helvetica). Il tondo a 10,5 chiede più aria fra le righe di quanta
-ne volesse l Helvetica a 9,5: in un referto che si legge di fretta la densità è
-il primo ostacolo.
+Tutto il referto è in **bastoni** (Helvetica): carta intestata, prosa clinica,
+etichette, numeri e tabelle. Il racconto clinico — anamnesi, motivo della
+visita, esame obiettivo, referti testuali dei moduli, conclusioni — resta a
+10,5 pt con interlinea di 6,1 mm, che è la stessa aria di prima: il corpo del
+testo si distingue dai dati per dimensione e interlinea, non per famiglia.
 
-Prima era tutto Helvetica e il referto leggeva come la stampa di un modulo:
-dati e prosa avevano la stessa voce. Le grazie sono la lingua dei documenti,
-ed è con quelle che sono scritti i referti ospedalieri; i bastoni restano
-dove il dato si legge a colpo d'occhio invece che riga per riga.
+C'erano due voci, tondo con grazie per la prosa e bastoni per i dati. La
+distinzione si leggeva, ma due famiglie su un foglio sono anche due misure, due
+pesi e due allineamenti da tenere insieme a ogni modifica. Con una sola il
+referto è più uniforme e la gerarchia la fanno corpo, interlinea e grassetto —
+che è poi l'unico segnale che il referto usa per il resto.
 
 ### Carta intestata
 
-In alto a sinistra chi firma (nome in Times bold, qualifica in maiuscoletto
-spaziato), a destra dove lo si trova (ambulatorio, indirizzo, telefono e
+In alto a sinistra chi firma (nome in bastoni neretto), a destra dove lo si
+trova (ambulatorio, indirizzo, telefono e
 e-mail secondo le preferenze di stampa). Sotto, un **filetto doppio** —
 0,7 mm e 0,15 mm a poco più di un millimetro di distanza — e poi il titolo
 del documento, centrato in maiuscoletto spaziato.
@@ -167,11 +202,9 @@ maiuscolo per farlo sembrare piu importante.
 
 Tre livelli, un trattamento ciascuno, senza eccezioni:
 
-1. **Sezione** — maiuscoletto spaziato con un filetto sotto **lungo quanto la
-   parola**, non quanto il foglio: da parte a parte tagliava la pagina in fasce
-   e faceva pesare ogni titolo come una divisione. Vale per tutte: Anamnesi,
-   Esame obiettivo, Esami strumentali, Esami ematochimici, Inquadramento
-   clinico, Conclusioni.
+1. **Sezione** — maiuscoletto spaziato su una **fascia grigio chiaro** da
+   margine a margine. Vale per tutte: Anamnesi, Esame obiettivo, Esami
+   strumentali, Esami ematochimici, Inquadramento clinico, Conclusioni.
 2. **Modulo dentro una sezione** — grassetto piccolo sottolineato
    (Elettrocardiogramma, TC coronarica, Fibrillazione atriale).
 3. **Colonna dentro una griglia** — etichetta grigia piccola in maiuscolo
@@ -188,11 +221,13 @@ in più rispetto ai 15 di prima sono tolleranza: fra l'area non stampabile
 della macchina e il trascinamento del foglio, una stampa leggermente fuori
 centro con margini stretti mangia del testo; con 18 mangia solo bianco.
 
-**Nel referto non ci sono fondini: solo tipografia e filetti.** È la scelta che
-regge la stampa laser in bianco e nero, che è come il referto viene usato: un
-retino al 4-5% di nero a seconda della macchina sparisce o si sporca, un
-filetto stampa identico ovunque. È anche il modo in cui sono fatte le
-intestazioni nei referti ospedalieri.
+**L'unico fondino è la fascia dei titoli di sezione**, grigio 235 su 255 (circa
+l'8% di nero); il resto del referto è tipografia e filetti. Per qualche giorno
+i titoli sono stati solo un filetto sotto la parola, perché un retino chiaro
+stampato in bianco e nero può sparire o sporcarsi a seconda della macchina. Il
+cardiologo, guardando i referti stampati, ha preferito la fascia e l'ha voluta
+anche sulle sezioni di prosa, che prima avevano un titolo diverso da quelle di
+dati.
 
 Nell'anagrafica il **nome prende due colonne solo se in una non ci sta**: si
 misura con il carattere con cui verra' scritto e si allarga soltanto quando
@@ -216,6 +251,11 @@ refertabile. Ogni figura è numerata (*Fig. 1*) per poterla citare nel testo, e
 viene ricampionata a 200 dpi sulla dimensione stampata: prima entrava nel PDF
 alla risoluzione della fotocamera, e quattro foto facevano un referto da
 megabyte che poi doveva viaggiare per posta.
+
+Il riquadro del **BMI** porta accanto l'altezza da cui è calcolato — «BMI 27,4
+· h 175 cm». L'altezza sta nella scheda del paziente e non si ripete a ogni
+visita: dopo la prima volta spariva dalla vista, e il BMI sembrava uscire dal
+nulla. Se manca, al posto del riquadro c'è il campo per inserirla.
 
 Peso e BMI stanno **solo** fra le variabili cliniche. Comparivano anche nel
 blocco d'intestazione, venti millimetri più sopra: sono variabili della
@@ -331,7 +371,7 @@ referto. L'interpretazione resta del medico.
 | LDL | Friedewald (tot − HDL − TG/5) | non calcolato con TG ≥ 400 mg/dL |
 | Colesterolo non-HDL | totale − HDL | — |
 | eGFR + stadio KDIGO | CKD-EPI 2021 senza coefficiente etnico | richiede età e sesso; nel referto esce il solo eGFR |
-| HOMA-IR | (glicemia × insulinemia) / 405 | solo su prelievo a digiuno; sei fasce di lettura, da «ottimale» a «marcatamente elevato» |
+| HOMA-IR | (glicemia × insulinemia) / 405 | solo su prelievo a digiuno; nel referto esce il numero, le sei fasce di lettura restano nella maschera |
 | QTc | Bazett (QT / √RR) | segnalato come inaffidabile fuori da 50-100 bpm |
 | Fascia calcium score | fasce Agatston 0 / 1-99 / 100-399 / ≥ 400 | descrittiva, non diagnostica |
 | SCORE2 | modello ESC 2021 per regione di rischio | **non attivo**, vedi sotto |
@@ -349,8 +389,11 @@ cosa vuol dire 4B, e tre righe che glielo spiegano tolgono valore al colpo
 d occhio. La lettura del quadro la scrive lui nella sintesi del modulo, dove puo
 dire dove sono le alterazioni invece di elencarle a segmenti.
 
-Data, struttura, metodica e segmenti SCCT restano compilabili — servono per gli
-studi — ma di norma si lasciano vuoti e allora non compaiono.
+I tre valori stanno su una riga sola. Data, struttura, metodica, componenti
+della placca, stenosi massima, segmenti SCCT e FFR-TC restano compilabili nella
+maschera — servono per gli studi — ma **nel referto non entrano nemmeno quando
+sono compilati**. Prima comparivano se c'erano, e un modulo compilato per intero
+stampava nove righe al posto di tre numeri.
 
 ### La classe di rischio nel referto
 
@@ -489,11 +532,11 @@ visita.
   cognome come *Michał* diventa `Micha?`, e `β-bloccante` diventa
   `?-bloccante`. Si risolve incorporando un font Unicode
   (`addFileToVFS` + `addFont`); serve decidere **quale**, perché i caratteri di
-  sistema Windows non sono ridistribuibili. Su questa macchina c'è Noto Sans
-  (licenza SIL OFL, ridistribuibile) ma non un Noto Serif, e il referto usa due
-  voci — grazie per la prosa, bastoni per i dati. Da subsettare con `pyftsubset`
-  prima di incorporarlo: il TTF intero pesa 415 KB per stile e finirebbe dentro
-  ogni referto.
+  sistema Windows non sono ridistribuibili. Da quando il referto è tutto in
+  bastoni ne basta **uno solo**, in tondo e neretto: su questa macchina c'è Noto
+  Sans, licenza SIL OFL, ridistribuibile. Da subsettare con `pyftsubset` prima
+  di incorporarlo: il TTF intero pesa 415 KB per stile e finirebbe dentro ogni
+  referto.
 - **Layout del referto:** in attesa dei referti reali del cardiologo per
   allineare tipografia e occupazione della pagina.
 

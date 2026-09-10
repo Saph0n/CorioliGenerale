@@ -22,6 +22,7 @@ import {
   type Criterio,
   type StatoCriterio,
 } from "../../utils/terapieCardio";
+import { CAD_RADS_PASSI } from "../../utils/tcCoronarica";
 
 /**
  * Prontuario di consultazione: quattro pilastri dello scompenso, icosapent
@@ -78,6 +79,9 @@ export function ProntuarioModal({
             </Tab>
             <Tab key="rischio" title="Classi di rischio">
               <ClassiRischio />
+            </Tab>
+            <Tab key="cadrads" title="CAD-RADS">
+              <CadRads />
             </Tab>
           </Tabs>
         </ModalBody>
@@ -283,6 +287,47 @@ function Confronto() {
                 </td>
                 <td className="py-2 pr-3 text-xs text-default-700">{r.icosapent}</td>
                 <td className="py-2 text-xs text-default-700">{r.colchicina}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── CAD-RADS: passo successivo ─────────────────────────────────────────────
+
+function CadRads() {
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-default-500">
+        Solo a titolo informativo: il passo tipico per categoria, non una
+        proposta per il paziente in visita.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-left">
+          <thead>
+            <tr className="border-b border-default-200">
+              <th className="py-1.5 pr-3 text-xs font-semibold text-default-500">
+                Categoria
+              </th>
+              <th className="py-1.5 pr-3 text-xs font-semibold text-gray-800">
+                Significato clinico orientativo
+              </th>
+              <th className="py-1.5 text-xs font-semibold text-gray-800">
+                Passo successivo tipico
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {CAD_RADS_PASSI.map((r) => (
+              <tr key={r.categoria} className="border-b border-default-100 align-top">
+                <td className="whitespace-nowrap py-2 pr-3 text-xs font-semibold text-default-500">
+                  {r.categoria}
+                </td>
+                <td className="py-2 pr-3 text-xs text-default-700">{r.significato}</td>
+                <td className="py-2 text-xs text-default-700">{r.passo}</td>
               </tr>
             ))}
           </tbody>

@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef } from "react";
 
 const REFERTO_TEXTAREA_CLASSES = {
   base: "!h-auto",
-  input: "!text-base !leading-relaxed font-normal !overflow-hidden resize-none min-h-0",
+  input:
+    "!text-base !leading-relaxed font-normal font-referto !overflow-hidden resize-none min-h-0",
   inputWrapper:
     "!h-auto min-h-0 items-start group-data-[focus=true]:border-primary transition-colors bg-white",
   mainWrapper: "h-auto",

@@ -70,7 +70,6 @@ export type ChiaveMisura =
   | "eco.aortaAscendente"
   | "eco.tapse"
   | "eco.paps"
-  | "eco.rapportoEe"
   | "lab.ldl"
   | "lab.ctHdl"
   | "lab.tgHdl"
@@ -208,10 +207,6 @@ export function valutaMisura(
     case "eco.paps":
       if (n > 50) return alterato("> 50 mmHg: PAPs elevata");
       if (n > 35) return attenzione("> 35 mmHg: PAPs ai limiti superiori");
-      return norma;
-
-    case "eco.rapportoEe":
-      if (n > 14) return attenzione("E/e' > 14: pressioni di riempimento elevate");
       return norma;
 
     // ── Laboratorio ─────────────────────────────────────────────────────────

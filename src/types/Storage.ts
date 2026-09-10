@@ -183,7 +183,13 @@ export interface EcocardiogrammaData {
   siv?: number;
   /** Spessore della parete posteriore (mm). */
   pp?: number;
-  /** Frazione di eiezione (%). */
+  /**
+   * Frazione di eiezione (%).
+   *
+   * Numero secco anche quando il referto dell'esame la da' come stima ("FE
+   * >55%"): il campo serve a vedere il dato grezzo a colpo d'occhio, la
+   * qualifica va nel referto testuale. Scelta del referente clinico.
+   */
   fe?: number;
   /** Diametro dell'atrio sinistro (mm). */
   atrioSinistro?: number;
@@ -196,17 +202,46 @@ export interface EcocardiogrammaData {
   gradienteAorticoMedio?: number;
   /** Gradiente transvalvolare aortico massimo, di picco (mmHg). */
   gradienteAorticoMassimo?: number;
+  /**
+   * Area valvolare aortica, AVA (cm²).
+   *
+   * Con una portata ridotta i gradienti sottostimano la stenosi: e' l'area a
+   * dire che e' severa quando il medio resta basso.
+   */
+  areaValvolareAortica?: number;
+  /**
+   * Gradiente transvalvolare mitralico medio (mmHg).
+   *
+   * Nella stenosi mitralica, e dopo una riparazione o una protesi mitralica, e'
+   * il medio a contare: il massimo dipende troppo dalla compliance atriale.
+   */
+  gradienteMitralicoMedio?: number;
+  /** Gradiente transvalvolare mitralico massimo, di picco (mmHg). */
+  gradienteMitralicoMassimo?: number;
   /** Radice aortica (mm). */
   radiceAortica?: number;
   /** Aorta ascendente (mm). */
   aortaAscendente?: number;
   /** TAPSE (mm). */
   tapse?: number;
-  /** Pressione arteriosa polmonare sistolica stimata (mmHg). */
+  /**
+   * Pressione arteriosa polmonare sistolica stimata (mmHg).
+   *
+   * Il valore gia' sommato: gradiente VD-AD piu' pressione atriale destra
+   * stimata. Il "27+5" che si trova in certi referti qui diventa 32, e la
+   * scomposizione, se serve, va nel referto testuale.
+   */
   paps?: number;
   /** Rapporto E/A. */
   rapportoEA?: number;
-  /** Rapporto E/e'. */
+  /**
+   * @deprecated Non più chiesto in maschera e non più stampato.
+   *
+   * Rapporto E/e'. Tolto su richiesta del cardiologo: fra le misure restano le
+   * sedici da leggere a colpo d'occhio, e la funzione diastolica viene meglio
+   * descritta nel referto testuale. Il campo resta per non perdere il dato
+   * delle visite già in archivio.
+   */
   rapportoEe?: number;
   /** Refertazione testuale. */
   referto?: string;
@@ -340,6 +375,40 @@ export interface HolterPressorioData {
   caloNotturnoPct?: number;
   /** Percentuale di misurazioni oltre la soglia. */
   caricoPressorioPct?: number;
+  /** Refertazione testuale. */
+  referto?: string;
+}
+
+/**
+ * EcoColorDoppler dei tronchi sovraaortici.
+ *
+ * Non e' un esame del cardiologo — lo refertano il chirurgo vascolare o il
+ * radiologo — ma il cardiologo lo legge e lo usa: la placca carotidea e'
+ * aterosclerosi documentata, e sposta il paziente di classe di rischio senza
+ * bisogno di nessun punteggio. Per questo la stenosi massima compare anche
+ * fra le variabili cliniche, sotto il burden aterogeno, accanto ai lipidi.
+ */
+export interface DopplerTsaData {
+  /** Data dell'esame (ISO). */
+  dataEsame?: string;
+  /** Struttura in cui e' stato eseguito. */
+  struttura?: string;
+  /** Spessore medio-intimale massimo (mm). */
+  imtMax?: number;
+  /**
+   * Stenosi carotidea massima (%).
+   *
+   * E' la voce "ATS carotidea" delle variabili cliniche: stesso campo, mostrato
+   * in due punti della maschera perche' serve in due ragionamenti diversi —
+   * nel referto dell'esame e nel bilancio del rischio.
+   */
+  stenosiCarotidea?: number;
+  /** Sede della stenosi massima (es. "bulbo carotideo destro"). */
+  sedeStenosi?: string;
+  /** Placche: sede ed ecostruttura, come le descrive il referto. */
+  placche?: string;
+  /** Assi vertebrali: pervieta' e direzione del flusso. */
+  vertebrali?: string;
   /** Refertazione testuale. */
   referto?: string;
 }
@@ -513,6 +582,8 @@ export interface LaboratorioData {
   tsh?: number;
   /** Proteina C reattiva ad alta sensibilità (mg/L). */
   hsPcr?: number;
+  /** Fibrinogeno (mg/dL): parte del profilo infiammatorio con hs-PCR e LDL ossidate. */
+  fibrinogeno?: number;
   /**
    * LDL ossidate (U/L).
    *
@@ -592,6 +663,8 @@ export interface Visit {
     holterEcg?: HolterEcgData;
     /** Monitoraggio pressorio delle 24 ore. */
     holterPressorio?: HolterPressorioData;
+    /** EcoColorDoppler dei tronchi sovraaortici. */
+    dopplerTsa?: DopplerTsaData;
     /** Scompenso cardiaco: classe NYHA e NT-proBNP. */
     scompenso?: ScompensoData;
     /** Fibrillazione atriale: fattori di CHA₂DS₂-VASc e HAS-BLED. */
@@ -675,6 +748,7 @@ export interface MedicalTemplate {
     | 'testErgometrico'
     | 'holterEcg'
     | 'holterPressorio'
+    | 'dopplerTsa'
     // Sotto-sezioni dell'anamnesi strutturata
     | 'anamnesiFamiliare'
     | 'anamnesiFisiologica'

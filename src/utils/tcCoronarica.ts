@@ -163,6 +163,51 @@ export const CAD_RADS_CATEGORIE: { key: string; label: string }[] = [
   { key: "N", label: "CAD-RADS N — non diagnostica" },
 ];
 
+/**
+ * Significato clinico orientativo e passo successivo tipico per categoria
+ * CAD-RADS, dalla tabella del cardiologo referente (mail del 10 settembre
+ * 2026).
+ *
+ * Solo a titolo informativo: la legge il prontuario, non la maschera ne' il
+ * referto, e non dice niente del paziente in visita.
+ */
+export const CAD_RADS_PASSI: {
+  categoria: string;
+  significato: string;
+  passo: string;
+}[] = [
+  {
+    categoria: "CAD-RADS 0",
+    significato: "CAD esclusa alla TC",
+    passo:
+      "Considerare cause non coronariche dei sintomi; prevenzione in base al rischio globale.",
+  },
+  {
+    categoria: "CAD-RADS 1–2",
+    significato: "Placca presente, ma non ostruttiva",
+    passo:
+      "Prevenzione cardiovascolare strutturata e controllo dei fattori di rischio; in genere non serve studio ischemico solo per il grado di stenosi.",
+  },
+  {
+    categoria: "CAD-RADS 3",
+    significato: "Possibile ischemia inducibile, dipendente da sede e contesto",
+    passo:
+      "Considerare CT-FFR, CTP da stress o altro test funzionale; terapia anti-ischemica se sintomatica e prevenzione intensiva.",
+  },
+  {
+    categoria: "CAD-RADS 4A",
+    significato: "Alta probabilità di lesione emodinamicamente rilevante",
+    passo:
+      "CT-FFR/test funzionale o coronarografia, secondo quadro clinico e anatomia.",
+  },
+  {
+    categoria: "CAD-RADS 4B–5",
+    significato: "Anatomia ad alto rischio o occlusione",
+    passo:
+      "Valutazione cardiologica urgente/prioritaria; coronarografia spesso appropriata, con decisione rivascolarizzativa guidata da clinica, ischemia e anatomia.",
+  },
+];
+
 /** Modificatori CAD-RADS: si applicano in aggiunta alla categoria, anche piu' di uno. */
 export type ModificatoreCadRads = "N" | "HRP" | "S" | "G" | "E";
 

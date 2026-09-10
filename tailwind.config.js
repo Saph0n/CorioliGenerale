@@ -59,6 +59,25 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        /**
+         * Un carattere solo, in tutta l'applicazione e in tutto il referto.
+         *
+         * Nel PDF il testo e' in Helvetica, che e' uno dei caratteri standard
+         * del formato e quindi non viene incorporato nel file: a disegnarla e'
+         * il lettore, e su Windows la sostituisce con Arial. Per far vedere a
+         * schermo quello che esce dalla stampante l'ordine e' quello, Arial
+         * prima: su Mac si ferma su Helvetica in tutti e due i posti.
+         *
+         * `sans` e' la famiglia predefinita di Tailwind, quindi sostituirla qui
+         * cambia il carattere di ogni schermata; `referto` resta separata anche
+         * se oggi contiene la stessa cosa, perche' i campi in cui si scrive il
+         * referto devono seguire la stampa comunque, anche se un domani
+         * l'interfaccia tornasse al carattere di sistema.
+         */
+        sans: ["Arial", "Helvetica", "sans-serif"],
+        referto: ["Arial", "Helvetica", "sans-serif"],
+      },
       colors: {
         brand,
         surface: {

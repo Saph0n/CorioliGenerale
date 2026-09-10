@@ -188,6 +188,45 @@ describe("referto di visita: fibrillazione atriale", () => {
   });
 });
 
+describe("referto di visita: Doppler TSA", () => {
+  it("sta fra gli esami strumentali", async () => {
+    // Lo referta il chirurgo vascolare, ma il cardiologo lo legge e lo usa:
+    // la placca carotidea e' aterosclerosi documentata.
+    const testo = await testoDelPdf(
+      visita({
+        dopplerTsa: {
+          imtMax: 1.1,
+          stenosiCarotidea: 45,
+          sedeStenosi: "bulbo carotideo destro",
+          referto: "Placca fibrocalcifica al bulbo destro.",
+        },
+      }),
+    );
+    expect(testo).toContain("ESAMI STRUMENTALI");
+    expect(testo).toContain("EcoColorDoppler dei tronchi sovraaortici");
+    expect(testo).toContain("1.1 mm");
+    // La stenosi porta con se' la sede: un 45% senza vaso non e' refertabile.
+    // Le parentesi tonde nel flusso del PDF sono protette da una barra
+    // rovesciata, quindi si cercano i due pezzi.
+    expect(testo).toContain("45%");
+    expect(testo).toContain("bulbo carotideo destro");
+  });
+
+  it("resta fuori dal referto se il modulo non e' compilato", async () => {
+    const testo = await testoDelPdf(visita({ ecg: { pr: 160 } }));
+    expect(testo).not.toContain("sovraaortici");
+  });
+
+  it("esce anche con la sola ATS carotidea delle variabili cliniche", async () => {
+    // Nella maschera la stenosi si scrive anche dalla colonna del burden
+    // aterogeno, dove si chiama "ATS carotidea": e' lo stesso campo, e da solo
+    // basta a far comparire il modulo.
+    const testo = await testoDelPdf(visita({ dopplerTsa: { stenosiCarotidea: 60 } }));
+    expect(testo).toContain("sovraaortici");
+    expect(testo).toContain("60%");
+  });
+});
+
 describe("referto di visita: misure nuove e tolte", () => {
   it("non stampa piu' la riga del ritmo ECG", async () => {
     const testo = await testoDelPdf(
@@ -196,6 +235,16 @@ describe("referto di visita: misure nuove e tolte", () => {
     expect(testo).toContain("Elettrocardiogramma");
     expect(testo).toContain("180 ms");
     expect(testo).not.toContain("RITMO");
+  });
+
+  it("non stampa piu' l'E/e'", async () => {
+    // Il cardiologo lo vuole descritto nel referto testuale: fra le misure
+    // restano le sedici da leggere a colpo d'occhio.
+    const testo = await testoDelPdf(
+      visita({ ecocardiogramma: { rapportoEA: 0.8, rapportoEe: 15 } }),
+    );
+    expect(testo).toContain("E/A");
+    expect(testo).not.toContain("E/e'");
   });
 
   it("stampa i gradienti transvalvolari aortici", async () => {
@@ -210,6 +259,48 @@ describe("referto di visita: misure nuove e tolte", () => {
     );
     expect(testo).toContain("42 mmHg");
     expect(testo).toContain("68 mmHg");
+    // Senza valori mitralici le due celle non occupano posto.
+    expect(testo).not.toContain("Grad. Mitr.");
+  });
+
+  it("stampa l'area valvolare aortica", async () => {
+    const testo = await testoDelPdf(
+      visita({ ecocardiogramma: { areaValvolareAortica: 0.9 } }),
+    );
+    expect(testo).toContain("AVA");
+    // Il "²" nel flusso del PDF e' un byte WinAnsi, non UTF-8: letto come
+    // testo non si riconosce, e il controllo si ferma prima.
+    expect(testo).toContain("0.9 cm");
+  });
+
+  it("stampa i gradienti transvalvolari mitralici", async () => {
+    const testo = await testoDelPdf(
+      visita({
+        ecocardiogramma: {
+          gradienteMitralicoMedio: 7,
+          gradienteMitralicoMassimo: 15,
+        },
+      }),
+    );
+    expect(testo).toContain("Grad. Mitr. medio");
+    expect(testo).toContain("7 mmHg");
+    expect(testo).toContain("15 mmHg");
+  });
+
+  it("stampa fibrinogeno e HOMA-IR", async () => {
+    // Il profilo infiammatorio si e' allargato al fibrinogeno, e l'HOMA era
+    // calcolato nella maschera ma non usciva nel referto.
+    const testo = await testoDelPdf(
+      visita({ laboratorio: { fibrinogeno: 380, glicemia: 102, insulina: 12 } }),
+    );
+    expect(testo).toContain("Fibrinogeno");
+    expect(testo).toContain("380 mg/dL");
+    expect(testo).toContain("HOMA-IR");
+    // 102 x 12 / 405 = 3,02: il numero e basta, la fascia la legge il medico.
+    // Con la virgola, come lo formatta `cardioCalcs`: cercando "3.02" il test
+    // passava per caso, trovandolo dentro una coordinata del flusso del PDF.
+    expect(testo).toContain("3,02");
+    expect(testo).not.toContain("insulino-resistenza");
   });
 
   it("stampa hs-PCR e LDL ossidate", async () => {
@@ -220,14 +311,40 @@ describe("referto di visita: misure nuove e tolte", () => {
     expect(testo).toContain("78 U/L");
   });
 
-  it("chiama fibrolipidica la componente non calcifica", async () => {
+  it("della TC stampa solo calcium score, CAD-RADS e burden", async () => {
+    // Tre numeri e nient'altro: il resto del modulo serve agli studi e resta
+    // nella maschera anche quando e' compilato.
     const testo = await testoDelPdf(
       visita({
-        tcCoronarica: { componenteCalcifica: 70, componenteNonCalcifica: 30 },
+        tcCoronarica: {
+          dataEsame: "2026-05-04",
+          struttura: "Radiodiagnostica",
+          metodica: "TC 128 strati",
+          cacScore: 460,
+          cadRads: "3",
+          cadRadsModificatori: ["HRP"],
+          burdenPlacca: "P3",
+          componenteCalcifica: 70,
+          componenteNonCalcifica: 30,
+          stenosiMassima: 55,
+          stenosiMassimaSegmento: 7,
+          segmenti: [1, 2, 7],
+          ffrCt: 0.78,
+        },
       }),
     );
-    expect(testo).toContain("fibrolipidica 30%");
-    expect(testo).not.toContain("non calcifica o mista");
+    // Fra parentesi, cioe' come stringa di testo del PDF: un "460" nudo si
+    // trova anche fra le coordinate del flusso.
+    expect(testo).toContain("Calcium score");
+    expect(testo).toContain("(460)");
+    expect(testo).toContain("(CAD-RADS 3 / HRP)");
+    expect(testo).toContain("(P3)");
+    for (const assente of [
+      "Data esame", "Struttura", "Metodica", "Radiodiagnostica",
+      "fibrolipidica", "Stenosi massima", "Segmenti con placca", "FFR-TC",
+    ]) {
+      expect(testo).not.toContain(assente);
+    }
   });
 });
 

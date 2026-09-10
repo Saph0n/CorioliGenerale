@@ -23,6 +23,7 @@ import {
   calcolaCaloNotturno,
   calcolaClearanceCockcroftGault,
   calcolaEgfrCkdEpi,
+  calcolaHomaIr,
   calcolaPercentualeFcMax,
   calcolaLdlFriedewald,
   calcolaQtcBazett,
@@ -56,7 +57,6 @@ import {
 import {
   SOGLIA_CAC_PREDEFINITA,
   categoriaCac,
-  segmentoScct,
   type SogliaCacSevera,
 } from "../utils/tcCoronarica";
 
@@ -80,6 +80,7 @@ const K30: [number, number, number] = [30, 30, 30];
 const K80: [number, number, number] = [80, 80, 80];
 const K140: [number, number, number] = [140, 140, 140];
 const K200: [number, number, number] = [200, 200, 200];
+const K235: [number, number, number] = [235, 235, 235];
 
 
 /**
@@ -250,7 +251,7 @@ export class PdfService {
     y: number,
     maxW: number,
     lh = LH,
-    textStyle?: { font?: "helvetica" | "times"; style?: "normal" | "bold" | "italic"; fontSize?: number; color?: readonly number[] },
+    textStyle?: { font?: "helvetica"; style?: "normal" | "bold" | "italic"; fontSize?: number; color?: readonly number[] },
   ): number {
     if (!text?.trim()) return y;
 
@@ -398,7 +399,7 @@ export class PdfService {
       // documento e diceva la stessa cosa — "Specialista in Cardiologia" sopra
       // "VISITA CARDIOLOGICA". Resta nel blocco firma di ricette e
       // certificati, dove non ha un titolo che la ripete.
-      doc.setFont("times", "bold"); doc.setFontSize(15); this.tc(doc, K0);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(15); this.tc(doc, K0);
       doc.text(san(nome), ML, y);
 
       const recapiti: string[] = [];
@@ -518,7 +519,7 @@ export class PdfService {
     // orfano e proseguire su quella dopo.
     y = this.sezione(doc, y, title, 16 + LH + 1.3);
     y = this.block(doc, content, ML, y, PW, LH + 1.3, {
-      font: "times", style: "normal", fontSize: 10.5, color: K0,
+      font: "helvetica", style: "normal", fontSize: 10.5, color: K0,
     });
     if (note) {
       y += 1.5;
@@ -1022,23 +1023,21 @@ export class PdfService {
   // millimetro, e ci finiva da sola.
   private static sezione(doc: jsPDF, y: number, titolo: string, need = 16): number {
     y = this.pb(doc, y, need);
-    y += 2;
-    const SPAZIATURA = 0.35;
+    y += 3.5;
+    // Fascia grigio chiaro da margine a margine, uguale per tutte le sezioni:
+    // prosa e dati pesano lo stesso. L'ha scelta il cardiologo sui referti
+    // stampati (mail del 9 settembre 2026) al posto del filetto sotto la
+    // parola, e la voleva estesa da ECG, ecocardiogramma ed ematochimici ad
+    // anamnesi, esame obiettivo e conclusioni.
+    doc.setFillColor(...K235);
+    doc.rect(ML, y - 3.9, PW, 5.8, "F");
+
     doc.setFont("helvetica", "bold"); doc.setFontSize(8.6); this.tc(doc, K0);
     // La spaziatura fra le lettere fa leggere il maiuscoletto come
     // un'intestazione e non come una parola urlata.
-    const t = san(titolo).toUpperCase();
-    doc.text(t, ML, y, { charSpace: SPAZIATURA });
+    doc.text(san(titolo).toUpperCase(), ML + 2, y, { charSpace: 0.35 });
 
-    // Il filetto e' lungo quanto la parola che sottolinea, non quanto il
-    // foglio: da parte a parte tagliava la pagina in fasce e faceva pesare
-    // ogni titolo come una divisione. `getTextWidth` non conosce la
-    // spaziatura fra le lettere, che va aggiunta a mano.
-    const larghezza = doc.getTextWidth(t) + SPAZIATURA * Math.max(t.length - 1, 0);
-    this.dc(doc, K30); doc.setLineWidth(0.45);
-    doc.line(ML, y + 1.9, ML + larghezza, y + 1.9);
-
-    return y + 8.6;
+    return y + 7.6;
   }
 
   /**
@@ -1126,7 +1125,7 @@ export class PdfService {
     // modulo non deve lasciare un rigo solo sotto la sua tabella.
     y = this.pb(doc, y, 4.5 + 2 * (LH + 1.3));
     return this.block(doc, testo, ML, y + 4.5, PW, LH + 1.3, {
-      font: "times", style: "normal", fontSize: 10.5, color: K0,
+      font: "helvetica", style: "normal", fontSize: 10.5, color: K0,
     });
   }
 
@@ -1179,6 +1178,9 @@ export class PdfService {
   ): number {
     if (!eco) return y;
     const mm = (n: number | undefined) => (n != null ? `${n} mm` : "");
+    // Sedici misure, quattro righe da quattro: e' il tetto del cardiologo, che
+    // vuole la tabella da leggere a colpo d'occhio. Il resto, E/e' compreso,
+    // lo descrive nel referto testuale: una misura nuova ne sostituisce una.
     const misure = [
       { label: "DTD VS", value: mm(eco.ddvs) },
       { label: "DTS VS", value: mm(eco.dsvs) },
@@ -1206,6 +1208,24 @@ export class PdfService {
           ? `${eco.gradienteAorticoMassimo} mmHg`
           : "",
       },
+      {
+        label: "AVA",
+        value: eco.areaValvolareAortica != null
+          ? `${eco.areaValvolareAortica} cm²`
+          : "",
+      },
+      {
+        label: "Grad. Mitr. medio",
+        value: eco.gradienteMitralicoMedio != null
+          ? `${eco.gradienteMitralicoMedio} mmHg`
+          : "",
+      },
+      {
+        label: "Grad. Mitr. max",
+        value: eco.gradienteMitralicoMassimo != null
+          ? `${eco.gradienteMitralicoMassimo} mmHg`
+          : "",
+      },
       { label: "Radice ao.", value: mm(eco.radiceAortica) },
       {
         label: "Ao. asc.",
@@ -1223,7 +1243,6 @@ export class PdfService {
         forte: this.fuoriNorma("eco.paps", eco.paps),
       },
       { label: "E/A", value: eco.rapportoEA != null ? String(eco.rapportoEA) : "" },
-      { label: "E/e'", value: eco.rapportoEe != null ? String(eco.rapportoEe) : "" },
     ];
     if (!misure.some((m) => m.value) && !eco.referto?.trim()) return y;
 
@@ -1250,41 +1269,12 @@ export class PdfService {
     // "CAD-RADS 3 / HRP, S".
     const modificatori = (tc.cadRadsModificatori ?? []).join(", ");
 
-    const segmenti = (tc.segmenti ?? [])
-      .map((n) => {
-        const sg = segmentoScct(n);
-        return sg ? `${sg.numero}. ${sg.nome}` : String(n);
-      })
-      .join("; ");
-
-    const stenosi = (() => {
-      if (tc.stenosiMassima == null) return "";
-      const sg = tc.stenosiMassimaSegmento != null
-        ? segmentoScct(tc.stenosiMassimaSegmento)
-        : null;
-      return `${tc.stenosiMassima}%${sg ? ` (segmento ${sg.numero}, ${sg.nome})` : ""}`;
-    })();
-
-    // Le due componenti restano distinte anche in stampa: aggregarle qui
-    // vanificherebbe la ragione per cui sono due campi.
-    const componenti = [
-      tc.componenteCalcifica != null ? `calcifica ${tc.componenteCalcifica}%` : "",
-      tc.componenteNonCalcifica != null
-        ? `fibrolipidica ${tc.componenteNonCalcifica}%`
-        : "",
-    ].filter(Boolean).join(", ");
-
-    const ffr = (() => {
-      if (tc.ffrCt == null && !tc.ffrCtEsito) return "";
-      const valore = tc.ffrCt != null ? String(tc.ffrCt) : "";
-      const esito = tc.ffrCtEsito ?? "";
-      return [valore, esito].filter(Boolean).join(" ");
-    })();
-
+    // Tre valori e nessun commento, su una riga sola (mail del cardiologo del
+    // 10 settembre 2026). Data, struttura, metodica, componenti, stenosi,
+    // segmenti e FFR-TC restano compilabili nella maschera per gli studi, ma
+    // nel referto non entrano nemmeno quando ci sono: la lettura del quadro la
+    // scrive lui nel testo del modulo.
     const misure = [
-      { label: "Data esame", value: tc.dataEsame ? fd(tc.dataEsame) : "" },
-      { label: "Struttura", value: v(tc.struttura, "") },
-      { label: "Metodica", value: v(tc.metodica, "") },
       {
         label: "Calcium score",
         // Il solo punteggio Agatston. La fascia resta nella maschera, dove
@@ -1297,16 +1287,12 @@ export class PdfService {
         value: cadRads ? `${cadRads}${modificatori ? ` / ${modificatori}` : ""}` : "",
       },
       { label: "Burden di placca", value: v(tc.burdenPlacca, "") },
-      { label: "Componente placca", value: componenti },
-      { label: "Stenosi massima", value: stenosi },
-      { label: "Segmenti con placca", value: segmenti },
-      { label: "FFR-TC", value: ffr },
     ];
     if (!misure.some((m) => m.value) && !tc.referto?.trim()) return y;
 
     y = apriGruppo(y);
     y = this.sottosezione(doc, y, "TC coronarica");
-    y = this.drawDettagliTable(doc, y, misure, "TC coronarica");
+    y = this.drawMisureTable(doc, y, misure, 3, "TC coronarica");
     // L'avvertenza sul CAC resta nella maschera e non entra nel referto: "il
     // punteggio CAC non equivale a stenosi ostruttiva" e' una cosa che il
     // cardiologo sa, e nel referto occupa due righe per non dire niente. Il
@@ -1747,6 +1733,48 @@ export class PdfService {
     return y + 4;
   }
 
+  /**
+   * EcoColorDoppler dei tronchi sovraaortici.
+   *
+   * Sta fra gli esami strumentali anche se a refertarlo e' il chirurgo
+   * vascolare: il cardiologo lo legge per la stessa ragione per cui legge la TC
+   * coronarica, cioe' perche' la placca vista con gli ultrasuoni e'
+   * aterosclerosi documentata e sposta la classe di rischio.
+   */
+  private static drawDopplerTsa(
+    doc: jsPDF, y: number,
+    tsa: NonNullable<Visit["visita"]>["dopplerTsa"],
+    apriGruppo: ApriGruppo,
+  ): number {
+    if (!tsa) return y;
+
+    const misure = [
+      { label: "Data esame", value: tsa.dataEsame ? fd(tsa.dataEsame) : "" },
+      { label: "Struttura", value: v(tsa.struttura, "") },
+      { label: "IMT massimo", value: tsa.imtMax != null ? `${tsa.imtMax} mm` : "" },
+      {
+        // "ATS carotidea" nelle variabili cliniche, "stenosi massima" qui: e'
+        // lo stesso campo, e nel referto dell'esame porta il nome con cui
+        // l'esame la referta.
+        label: "Stenosi massima",
+        value: tsa.stenosiCarotidea != null
+          ? `${tsa.stenosiCarotidea}%${
+              tsa.sedeStenosi?.trim() ? ` (${san(tsa.sedeStenosi.trim())})` : ""
+            }`
+          : "",
+      },
+      { label: "Placche", value: v(tsa.placche, "") },
+      { label: "Assi vertebrali", value: v(tsa.vertebrali, "") },
+    ];
+    if (!misure.some((m) => m.value) && !tsa.referto?.trim()) return y;
+
+    y = apriGruppo(y);
+    y = this.sottosezione(doc, y, "EcoColorDoppler dei tronchi sovraaortici");
+    y = this.drawDettagliTable(doc, y, misure, "Doppler TSA");
+    y = this.drawRefertoModulo(doc, y, tsa.referto);
+    return y + 4;
+  }
+
   private static drawLaboratorio(
     doc: jsPDF, y: number,
     lab: NonNullable<Visit["visita"]>["laboratorio"],
@@ -1760,6 +1788,7 @@ export class PdfService {
       : null;
     const ctHdl = calcolaRapportoCtHdl(lab.colesteroloTotale, lab.hdl);
     const tgHdl = calcolaRapportoTgHdl(lab.trigliceridi, lab.hdl);
+    const homa = calcolaHomaIr(lab.glicemia, lab.insulina);
     const eta = Number(calcAge(patient.dataNascita));
     const sesso = patient.sesso === "M" || patient.sesso === "F"
       ? patient.sesso
@@ -1800,12 +1829,32 @@ export class PdfService {
         value: tgHdl.ok ? tgHdl.result.display : "",
         forte: tgHdl.ok && this.fuoriNorma("lab.tgHdl", tgHdl.result.value),
       },
+      // Profilo infiammatorio / redox: e' la parte della placca che i lipidi
+      // non misurano, e nel referto sta subito sotto il burden aterogeno come
+      // nella maschera.
+      {
+        label: "hs-PCR",
+        value: lab.hsPcr != null ? `${lab.hsPcr} mg/L` : "",
+        forte: this.fuoriNorma("lab.hsPcr", lab.hsPcr),
+      },
+      {
+        label: "Fibrinogeno",
+        value: lab.fibrinogeno != null ? `${lab.fibrinogeno} mg/dL` : "",
+      },
+      { label: "LDL ossidate", value: lab.oxLdl != null ? `${lab.oxLdl} U/L` : "" },
       {
         label: "Glicemia",
         value: mg(lab.glicemia),
         forte: this.fuoriNorma("lab.glicemia", lab.glicemia),
       },
       { label: "Insulinemia", value: lab.insulina != null ? `${lab.insulina} uU/mL` : "" },
+      {
+        // Il numero e basta: la fascia di lettura resta nella maschera, e nel
+        // referto la categoria la dichiara il cardiologo nelle conclusioni.
+        label: "HOMA-IR (calc.)",
+        value: homa.ok ? homa.result.display : "",
+        forte: homa.ok && this.fuoriNorma("lab.homa", homa.result.value),
+      },
       {
         label: "HbA1c",
         value: lab.hba1c != null ? `${lab.hba1c}%` : "",
@@ -1847,12 +1896,6 @@ export class PdfService {
         value: lab.tsh != null ? `${lab.tsh} mU/L` : "",
         forte: this.fuoriNorma("lab.tsh", lab.tsh),
       },
-      {
-        label: "hs-PCR",
-        value: lab.hsPcr != null ? `${lab.hsPcr} mg/L` : "",
-        forte: this.fuoriNorma("lab.hsPcr", lab.hsPcr),
-      },
-      { label: "LDL ossidate", value: lab.oxLdl != null ? `${lab.oxLdl} U/L` : "" },
     ];
     if (!misure.some((m) => m.value)) return y;
 
@@ -2022,6 +2065,7 @@ export class PdfService {
     y = this.drawTestErgometrico(doc, y, vis.testErgometrico, patient, strumentali);
     y = this.drawHolterEcg(doc, y, vis.holterEcg, strumentali);
     y = this.drawHolterPressorio(doc, y, vis.holterPressorio, strumentali);
+    y = this.drawDopplerTsa(doc, y, vis.dopplerTsa, strumentali);
     y = this.drawLaboratorio(doc, y, vis.laboratorio, patient);
 
     // Scompenso, fibrillazione atriale e rischio cardiovascolare aprivano tre

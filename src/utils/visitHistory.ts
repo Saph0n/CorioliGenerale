@@ -53,6 +53,7 @@ const VISITA_LABELS: Record<string, string> = {
   testErgometrico: "Test ergometrico",
   holterEcg: "Holter ECG",
   holterPressorio: "Holter pressorio",
+  dopplerTsa: "Doppler TSA",
 };
 
 const ECG_LABELS: Record<string, string> = {
@@ -71,6 +72,11 @@ const ECO_LABELS: Record<string, string> = {
   pp: "Parete posteriore (mm)",
   fe: "Frazione di eiezione (%)",
   atrioSinistro: "Atrio sinistro (mm)",
+  gradienteAorticoMedio: "Gradiente aortico medio (mmHg)",
+  gradienteAorticoMassimo: "Gradiente aortico massimo (mmHg)",
+  areaValvolareAortica: "Area valvolare aortica (cm²)",
+  gradienteMitralicoMedio: "Gradiente mitralico medio (mmHg)",
+  gradienteMitralicoMassimo: "Gradiente mitralico massimo (mmHg)",
   radiceAortica: "Radice aortica (mm)",
   aortaAscendente: "Aorta ascendente (mm)",
   tapse: "TAPSE (mm)",
@@ -115,6 +121,17 @@ const HOLTER_ECG_LABELS: Record<string, string> = {
   referto: "Referto",
 };
 
+const DOPPLER_TSA_LABELS: Record<string, string> = {
+  dataEsame: "Data esame",
+  struttura: "Struttura",
+  imtMax: "IMT massimo (mm)",
+  stenosiCarotidea: "ATS carotidea (%)",
+  sedeStenosi: "Sede della stenosi",
+  placche: "Placche",
+  vertebrali: "Assi vertebrali",
+  referto: "Referto",
+};
+
 const HOLTER_PA_LABELS: Record<string, string> = {
   dataEsame: "Data inizio",
   media24Sist: "Media 24h sistolica",
@@ -146,6 +163,9 @@ const LAB_LABELS: Record<string, string> = {
   alt: "ALT",
   uricemia: "Uricemia",
   tsh: "TSH",
+  hsPcr: "hs-PCR",
+  oxLdl: "LDL ossidate",
+  fibrinogeno: "Fibrinogeno",
 };
 
 /** Converte una chiave camelCase in un'etichetta leggibile (fallback). */
@@ -274,6 +294,7 @@ export function computeVisitChanges(
       testErgometrico,
       holterEcg,
       holterPressorio,
+      dopplerTsa,
       ...resto
     } = v.visita;
     void ecg;
@@ -283,6 +304,7 @@ export function computeVisitChanges(
     void testErgometrico;
     void holterEcg;
     void holterPressorio;
+    void dopplerTsa;
     return resto as Record<string, unknown>;
   };
 
@@ -356,6 +378,15 @@ export function computeVisitChanges(
     oldVisit.visita?.holterPressorio as Record<string, unknown> | undefined,
     newVisit.visita?.holterPressorio as Record<string, unknown> | undefined,
     HOLTER_PA_LABELS,
+  );
+
+  diffNested(
+    changes,
+    "visita.dopplerTsa",
+    "Doppler TSA",
+    oldVisit.visita?.dopplerTsa as Record<string, unknown> | undefined,
+    newVisit.visita?.dopplerTsa as Record<string, unknown> | undefined,
+    DOPPLER_TSA_LABELS,
   );
 
   return changes;

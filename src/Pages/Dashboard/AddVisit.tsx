@@ -298,6 +298,7 @@ const createDefaultVisitaData = () => ({
   holterPressorio: {} as NonNullable<
     NonNullable<Visit["visita"]>["holterPressorio"]
   >,
+  dopplerTsa: {} as NonNullable<NonNullable<Visit["visita"]>["dopplerTsa"]>,
   scompenso: {} as NonNullable<NonNullable<Visit["visita"]>["scompenso"]>,
   fibrillazioneAtriale: {} as NonNullable<
     NonNullable<Visit["visita"]>["fibrillazioneAtriale"]
@@ -316,6 +317,7 @@ type BloccoVisita =
   | "testErgometrico"
   | "holterEcg"
   | "holterPressorio"
+  | "dopplerTsa"
   | "scompenso"
   | "fibrillazioneAtriale"
   | "fattoriRischio";
@@ -471,6 +473,7 @@ function visitaPerSalvataggio(
     ...(vuoto(v.holterPressorio)
       ? {}
       : { holterPressorio: v.holterPressorio }),
+    ...(vuoto(v.dopplerTsa) ? {} : { dopplerTsa: v.dopplerTsa }),
   };
 }
 
@@ -506,6 +509,7 @@ const MISURE: Record<string, { path: string; range?: ChiaveMisura }> = {
   "lab.uric": { path: "laboratorio.uricemia", range: "lab.uricemia" },
   "lab.tsh": { path: "laboratorio.tsh", range: "lab.tsh" },
   "lab.hspcr": { path: "laboratorio.hsPcr", range: "lab.hsPcr" },
+  "lab.fibr": { path: "laboratorio.fibrinogeno" },
   // Nessuna soglia: il dosaggio delle LDL ossidate non e' standardizzato e i
   // valori di riferimento cambiano da un laboratorio all'altro.
   "lab.oxldl": { path: "laboratorio.oxLdl" },
@@ -521,8 +525,13 @@ const MISURE: Record<string, { path: string; range?: ChiaveMisura }> = {
   "eco.pp": { path: "ecocardiogramma.pp", range: "eco.pp" },
   "eco.fe": { path: "ecocardiogramma.fe", range: "eco.fe" },
   "eco.as": { path: "ecocardiogramma.atrioSinistro", range: "eco.atrioSinistro" },
+  // Valvole senza soglia, gradienti e AVA: le fasce di gravita' delle
+  // valvulopatie le deve dare il referente clinico.
   "eco.gradmed": { path: "ecocardiogramma.gradienteAorticoMedio" },
   "eco.gradmax": { path: "ecocardiogramma.gradienteAorticoMassimo" },
+  "eco.ava": { path: "ecocardiogramma.areaValvolareAortica" },
+  "eco.mitmed": { path: "ecocardiogramma.gradienteMitralicoMedio" },
+  "eco.mitmax": { path: "ecocardiogramma.gradienteMitralicoMassimo" },
   "eco.rad": { path: "ecocardiogramma.radiceAortica" },
   "eco.aoasc": {
     path: "ecocardiogramma.aortaAscendente",
@@ -531,7 +540,6 @@ const MISURE: Record<string, { path: string; range?: ChiaveMisura }> = {
   "eco.tapse": { path: "ecocardiogramma.tapse", range: "eco.tapse" },
   "eco.paps": { path: "ecocardiogramma.paps", range: "eco.paps" },
   "eco.ea": { path: "ecocardiogramma.rapportoEA" },
-  "eco.ee": { path: "ecocardiogramma.rapportoEe", range: "eco.rapportoEe" },
   // TC coronarica
   "tc.cac": { path: "tcCoronarica.cacScore" },
   // Scompenso
@@ -559,6 +567,9 @@ const MISURE: Record<string, { path: string; range?: ChiaveMisura }> = {
   "hp.mnd": { path: "holterPressorio.mediaNotturnaDiast" },
   "hp.calo": { path: "holterPressorio.caloNotturnoPct" },
   "hp.carico": { path: "holterPressorio.caricoPressorioPct" },
+  // Doppler TSA
+  "tsa.imt": { path: "dopplerTsa.imtMax" },
+  "tsa.stenosi": { path: "dopplerTsa.stenosiCarotidea" },
 };
 
 /**
@@ -570,12 +581,17 @@ const MISURE: Record<string, { path: string; range?: ChiaveMisura }> = {
  * percorsi.
  */
 const GRUPPI_LABORATORIO = {
-  lipidico: [
-    "lab.tot", "lab.hdl", "lab.tg", "lab.ldl", "lab.apob", "lab.lpa", "lab.oxldl",
+  // "Burden aterogeno" e non piu' "assetto lipidico": nel pannello ci sta anche
+  // l'aterosclerosi vista all'ecografo, che di lipidico non ha niente ed e' il
+  // dato che pesa di piu' sulla classe di rischio.
+  burden: [
+    "lab.tot", "lab.hdl", "lab.tg", "lab.ldl", "lab.apob", "lab.lpa",
+    "tsa.stenosi",
   ],
+  infiammatorio: ["lab.hspcr", "lab.oxldl", "lab.fibr"],
   glucidico: ["lab.gli", "lab.ins", "lab.hba1c"],
   renale: ["lab.crea", "lab.alb"],
-  altri: ["lab.hspcr", "lab.ast", "lab.alt", "lab.uric", "lab.tsh", "lab.hb"],
+  altri: ["lab.ast", "lab.alt", "lab.uric", "lab.tsh", "lab.hb"],
 } as const;
 
 /**
@@ -2255,6 +2271,15 @@ export default function AddVisit() {
                       >
                         <div className="flex items-center gap-1 text-xs font-semibold">
                           <span>BMI {bmi.toFixed(1).replace(".", ",")}</span>
+                          {/* L'altezza da cui esce il numero. Sta nella scheda
+                              del paziente e non si ripete a ogni visita, quindi
+                              dopo la prima volta spariva dalla vista: qui si
+                              vede sempre da cosa e' stato calcolato il BMI. */}
+                          {altezzaCm != null && (
+                            <span className="font-normal opacity-70">
+                              · h {altezzaCm} cm
+                            </span>
+                          )}
                         </div>
                         {bmiSegnale.etichetta && (
                           <span className="text-[10px] font-medium leading-tight">
@@ -2308,9 +2333,9 @@ export default function AddVisit() {
                   }
                 />
                 <GruppoCampi
-                  titolo="Assetto lipidico"
-                  compilati={compilatiTra(GRUPPI_LABORATORIO.lipidico)}
-                  totale={GRUPPI_LABORATORIO.lipidico.length}
+                  titolo="Burden aterogeno"
+                  compilati={compilatiTra(GRUPPI_LABORATORIO.burden)}
+                  totale={GRUPPI_LABORATORIO.burden.length}
                 >
                   <div className="grid grid-cols-2 gap-3">
                     <MisuraInput
@@ -2383,28 +2408,24 @@ export default function AddVisit() {
                       onDraftChange={(d) => setDraft("lab.lpa", d)}
                       {...misura("lab.lpa")}
                     />
-                    {/* Nessun semaforo: il dosaggio delle LDL ossidate non e'
-                        standardizzato, i valori di riferimento cambiano da un
-                        laboratorio all'altro e confrontare due referti di
-                        centri diversi non vuol dire niente. Si registra il
-                        numero e lo legge il medico sul referto che ha in mano. */}
+                    {/* L'aterosclerosi vista all'ecografo sta accanto ai
+                        lipidi e non fra gli esami strumentali: e' il marker che
+                        sposta la classe di rischio, ed e' qui che il medico la
+                        guarda mentre decide. E' lo stesso campo della stenosi
+                        massima del modulo Doppler TSA, non una copia. */}
                     <MisuraInput
-                      label="LDL ossidate"
-                      unit="U/L"
+                      label="ATS carotidea"
+                      unit="%"
                       decimals={false}
-                      value={visitaData.laboratorio.oxLdl}
+                      value={visitaData.dopplerTsa.stenosiCarotidea}
                       onValueChange={(v) =>
-                        handleBloccoChange("laboratorio", "oxLdl", v)
+                        handleBloccoChange("dopplerTsa", "stenosiCarotidea", v)
                       }
-                      draft={draftOf("lab.oxldl")}
-                      onDraftChange={(d) => setDraft("lab.oxldl", d)}
-                      {...misura("lab.oxldl")}
+                      draft={draftOf("tsa.stenosi")}
+                      onDraftChange={(d) => setDraft("tsa.stenosi", d)}
+                      {...misura("tsa.stenosi")}
                     />
                   </div>
-                  <p className="text-xs text-default-500">
-                    LDL ossidate: valori di riferimento del laboratorio che ha
-                    eseguito il dosaggio, non confrontabili fra centri diversi.
-                  </p>
                   {(ldlCalc.ok ||
                     nonHdlCalc.ok ||
                     ctHdlCalc.ok ||
@@ -2428,6 +2449,63 @@ export default function AddVisit() {
                       />
                     </StrisciaCalcolati>
                   )}
+                </GruppoCampi>
+
+                {/* Infiammazione e stress ossidativo sotto il burden
+                    aterogeno: sono la parte della placca che i lipidi non
+                    misurano, e stavano sparsi fra il pannello lipidico
+                    (LDL ossidate) e "Altri esami" (hs-PCR). */}
+                <GruppoCampi
+                  titolo="Profilo infiammatorio / redox"
+                  compilati={compilatiTra(GRUPPI_LABORATORIO.infiammatorio)}
+                  totale={GRUPPI_LABORATORIO.infiammatorio.length}
+                >
+                  <div className="grid grid-cols-2 gap-3">
+                    <MisuraInput
+                      label="hs-PCR"
+                      unit="mg/L"
+                      value={visitaData.laboratorio.hsPcr}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "hsPcr", v)
+                      }
+                      draft={draftOf("lab.hspcr")}
+                      onDraftChange={(d) => setDraft("lab.hspcr", d)}
+                      {...misura("lab.hspcr")}
+                    />
+                    {/* Nessun semaforo: il dosaggio delle LDL ossidate non e'
+                        standardizzato, i valori di riferimento cambiano da un
+                        laboratorio all'altro e confrontare due referti di
+                        centri diversi non vuol dire niente. Si registra il
+                        numero e lo legge il medico sul referto che ha in mano. */}
+                    <MisuraInput
+                      label="LDL ossidate"
+                      unit="U/L"
+                      decimals={false}
+                      value={visitaData.laboratorio.oxLdl}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "oxLdl", v)
+                      }
+                      draft={draftOf("lab.oxldl")}
+                      onDraftChange={(d) => setDraft("lab.oxldl", d)}
+                      {...misura("lab.oxldl")}
+                    />
+                    <MisuraInput
+                      label="Fibrinogeno"
+                      unit="mg/dL"
+                      decimals={false}
+                      value={visitaData.laboratorio.fibrinogeno}
+                      onValueChange={(v) =>
+                        handleBloccoChange("laboratorio", "fibrinogeno", v)
+                      }
+                      draft={draftOf("lab.fibr")}
+                      onDraftChange={(d) => setDraft("lab.fibr", d)}
+                      {...misura("lab.fibr")}
+                    />
+                  </div>
+                  <p className="text-xs text-default-500">
+                    LDL ossidate: valori di riferimento del laboratorio che ha
+                    eseguito il dosaggio, non confrontabili fra centri diversi.
+                  </p>
                 </GruppoCampi>
 
                 <GruppoCampi
@@ -2532,17 +2610,6 @@ export default function AddVisit() {
                   totale={GRUPPI_LABORATORIO.altri.length}
                 >
                   <div className="grid grid-cols-2 gap-3">
-                    <MisuraInput
-                      label="hs-PCR"
-                      unit="mg/L"
-                      value={visitaData.laboratorio.hsPcr}
-                      onValueChange={(v) =>
-                        handleBloccoChange("laboratorio", "hsPcr", v)
-                      }
-                      draft={draftOf("lab.hspcr")}
-                      onDraftChange={(d) => setDraft("lab.hspcr", d)}
-                      {...misura("lab.hspcr")}
-                    />
                     <MisuraInput
                       label="AST"
                       unit="U/L"
@@ -3149,6 +3216,53 @@ export default function AddVisit() {
                       {...misura("eco.gradmax")}
                     />
                     <MisuraInput
+                      label="AVA"
+                      unit="cm²"
+                      value={visitaData.ecocardiogramma.areaValvolareAortica}
+                      onValueChange={(v) =>
+                        handleBloccoChange(
+                          "ecocardiogramma",
+                          "areaValvolareAortica",
+                          v,
+                        )
+                      }
+                      draft={draftOf("eco.ava")}
+                      onDraftChange={(d) => setDraft("eco.ava", d)}
+                      {...misura("eco.ava")}
+                    />
+                    <MisuraInput
+                      label="Grad. Mitr. medio"
+                      unit="mmHg"
+                      decimals={false}
+                      value={visitaData.ecocardiogramma.gradienteMitralicoMedio}
+                      onValueChange={(v) =>
+                        handleBloccoChange(
+                          "ecocardiogramma",
+                          "gradienteMitralicoMedio",
+                          v,
+                        )
+                      }
+                      draft={draftOf("eco.mitmed")}
+                      onDraftChange={(d) => setDraft("eco.mitmed", d)}
+                      {...misura("eco.mitmed")}
+                    />
+                    <MisuraInput
+                      label="Grad. Mitr. massimo"
+                      unit="mmHg"
+                      decimals={false}
+                      value={visitaData.ecocardiogramma.gradienteMitralicoMassimo}
+                      onValueChange={(v) =>
+                        handleBloccoChange(
+                          "ecocardiogramma",
+                          "gradienteMitralicoMassimo",
+                          v,
+                        )
+                      }
+                      draft={draftOf("eco.mitmax")}
+                      onDraftChange={(d) => setDraft("eco.mitmax", d)}
+                      {...misura("eco.mitmax")}
+                    />
+                    <MisuraInput
                       label="Radice aortica"
                       unit="mm"
                       decimals={false}
@@ -3205,16 +3319,6 @@ export default function AddVisit() {
                       draft={draftOf("eco.ea")}
                       onDraftChange={(d) => setDraft("eco.ea", d)}
                       {...misura("eco.ea")}
-                    />
-                    <MisuraInput
-                      label="E/e'"
-                      value={visitaData.ecocardiogramma.rapportoEe}
-                      onValueChange={(v) =>
-                        handleBloccoChange("ecocardiogramma", "rapportoEe", v)
-                      }
-                      draft={draftOf("eco.ee")}
-                      onDraftChange={(d) => setDraft("eco.ee", d)}
-                      {...misura("eco.ee")}
                     />
                   </div>
                   <RefertoTextarea
@@ -4162,9 +4266,124 @@ export default function AddVisit() {
                   />
                 </ModuloCollassabile>
 
-                {/* Sezione 10: Scompenso cardiaco */}
+                {/* Sezione 10: Doppler TSA.
+                    Non e' un esame del cardiologo — lo refertano il chirurgo
+                    vascolare o il radiologo — ma il cardiologo lo legge e lo
+                    usa: la placca carotidea e' aterosclerosi documentata, e
+                    sposta la classe di rischio senza bisogno di punteggi. */}
                 <ModuloCollassabile
                   numero="10"
+                  titolo="EcoColorDoppler dei tronchi sovraaortici"
+                  sottotitolo="non eseguito"
+                  compilato={bloccoCompilato("dopplerTsa")}
+                  azione={
+                    <TemplateSelector
+                      templates={allTemplates.filter(
+                        (t) =>
+                          t.category === "visita" && t.section === "dopplerTsa",
+                      )}
+                      onSelect={(t) => applyBloccoTemplate("dopplerTsa", t)}
+                    />
+                  }
+                >
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <Input
+                      type="date"
+                      label="Data esame"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      value={visitaData.dopplerTsa.dataEsame ?? ""}
+                      onValueChange={(v) =>
+                        handleBloccoChange("dopplerTsa", "dataEsame", v)
+                      }
+                    />
+                    <Input
+                      label="Struttura"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="Dove è stato eseguito"
+                      value={visitaData.dopplerTsa.struttura ?? ""}
+                      onValueChange={(v) =>
+                        handleBloccoChange("dopplerTsa", "struttura", v)
+                      }
+                    />
+                    <MisuraInput
+                      label="IMT massimo"
+                      unit="mm"
+                      value={visitaData.dopplerTsa.imtMax}
+                      onValueChange={(v) =>
+                        handleBloccoChange("dopplerTsa", "imtMax", v)
+                      }
+                      draft={draftOf("tsa.imt")}
+                      onDraftChange={(d) => setDraft("tsa.imt", d)}
+                      {...misura("tsa.imt")}
+                    />
+                    {/* Lo stesso campo che nelle variabili cliniche si chiama
+                        "ATS carotidea": si compila da tutte e due le parti e il
+                        valore e' uno solo. */}
+                    <MisuraInput
+                      label="Stenosi massima"
+                      unit="%"
+                      decimals={false}
+                      value={visitaData.dopplerTsa.stenosiCarotidea}
+                      onValueChange={(v) =>
+                        handleBloccoChange("dopplerTsa", "stenosiCarotidea", v)
+                      }
+                      draft={draftOf("tsa.stenosi")}
+                      onDraftChange={(d) => setDraft("tsa.stenosi", d)}
+                      {...misura("tsa.stenosi")}
+                    />
+                    <Input
+                      label="Sede della stenosi"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="Es. bulbo carotideo destro"
+                      value={visitaData.dopplerTsa.sedeStenosi ?? ""}
+                      onValueChange={(v) =>
+                        handleBloccoChange("dopplerTsa", "sedeStenosi", v)
+                      }
+                    />
+                    <Input
+                      label="Placche"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="Sede ed ecostruttura"
+                      className="md:col-span-2"
+                      value={visitaData.dopplerTsa.placche ?? ""}
+                      onValueChange={(v) =>
+                        handleBloccoChange("dopplerTsa", "placche", v)
+                      }
+                    />
+                    <Input
+                      label="Assi vertebrali"
+                      size="sm"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="Pervietà e direzione del flusso"
+                      value={visitaData.dopplerTsa.vertebrali ?? ""}
+                      onValueChange={(v) =>
+                        handleBloccoChange("dopplerTsa", "vertebrali", v)
+                      }
+                    />
+                  </div>
+                  <RefertoTextarea
+                    value={visitaData.dopplerTsa.referto ?? ""}
+                    onValueChange={(value) =>
+                      handleBloccoChange("dopplerTsa", "referto", value)
+                    }
+                    variant="bordered"
+                    minRows={4}
+                    placeholder="Spessore medio-intimale, placche e loro ecostruttura, grado di stenosi, assi vertebrali, conclusioni del referto letto..."
+                  />
+                </ModuloCollassabile>
+
+                {/* Sezione 11: Scompenso cardiaco */}
+                <ModuloCollassabile
+                  numero="11"
                   titolo="Scompenso cardiaco"
                   sottotitolo="non valutato"
                   compilato={bloccoCompilato("scompenso")}
@@ -4347,9 +4566,9 @@ export default function AddVisit() {
                   />
                 </ModuloCollassabile>
 
-                {/* Sezione 11: Fibrillazione atriale */}
+                {/* Sezione 12: Fibrillazione atriale */}
                 <ModuloCollassabile
-                  numero="11"
+                  numero="12"
                   titolo="Fibrillazione atriale"
                   sottotitolo="non valutata"
                   compilato={bloccoCompilato("fibrillazioneAtriale")}
@@ -4580,7 +4799,7 @@ export default function AddVisit() {
                   )}
                 </ModuloCollassabile>
 
-                {/* Sezione 12: Accertamenti */}
+                {/* Sezione 13: Accertamenti */}
                 <div className="space-y-2 relative group">
                   <label className="text-sm font-bold text-gray-700 block mb-1">
                     12. Accertamenti
@@ -4596,7 +4815,7 @@ export default function AddVisit() {
                   />
                 </div>
 
-                {/* Sezione 13: Conclusioni e terapia */}
+                {/* Sezione 14: Conclusioni e terapia */}
                 <div className="space-y-2 relative group">
                   <div className="flex justify-between items-end mb-1">
                     <label className="text-sm font-bold text-gray-700">

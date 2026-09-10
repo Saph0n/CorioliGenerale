@@ -132,6 +132,20 @@ export const MedicalTemplates = {
         text: "Monitoraggio pressorio delle 24 ore, ___ misurazioni valide.\nMedia delle 24 ore ___/___ mmHg, media diurna ___/___ mmHg, media notturna ___/___ mmHg.\nCalo pressorio notturno pari al ___%: profilo ___ (non-dipper / riverso).\nCarico pressorio sistolico ___%, diastolico ___%.\nValori medi superiori alle soglie di riferimento per il monitoraggio ambulatoriale: controllo pressorio non adeguato con la terapia in atto.\nSi modifica la terapia come da prescrizione; si programma nuovo controllo dopo ___."
       }
     ],
+    dopplerTsa: [
+      {
+        label: "TSA nella norma",
+        text: "EcoColorDoppler dei tronchi sovraaortici eseguito presso ___ in data ___.\nAssi carotidei pervi, a decorso regolare, con pareti di spessore ed ecostruttura conservati.\nSpessore medio-intimale massimo ___ mm.\nNon placche ateromasiche. Flussimetria nei limiti su tutti gli assi esplorati.\nArterie vertebrali pervie, con flusso anterogrado bilateralmente.\nConclusioni: quadro ecocolorDoppler dei vasi epiaortici nei limiti di norma."
+      },
+      {
+        label: "Ispessimento e placche non stenosanti",
+        text: "EcoColorDoppler dei tronchi sovraaortici eseguito presso ___ in data ___.\nSpessore medio-intimale aumentato, massimo ___ mm.\nPlacca ___ (fibrocalcifica / ipoecogena / disomogenea) a carico di ___, con stenosi stimata del ___%, emodinamicamente non significativa.\nNon accelerazioni di flusso significative sugli assi esplorati.\nArterie vertebrali pervie, con flusso anterogrado bilateralmente.\nConclusioni: aterosclerosi carotidea non stenosante. Il reperto documenta malattia aterosclerotica ed entra nella definizione della classe di rischio."
+      },
+      {
+        label: "Stenosi carotidea significativa",
+        text: "EcoColorDoppler dei tronchi sovraaortici eseguito presso ___ in data ___.\nPlacca ___ (fibrocalcifica / ipoecogena / con superficie irregolare) a carico di ___, con stenosi stimata del ___% secondo i criteri velocimetrici (PSV ___ cm/s, EDV ___ cm/s, rapporto carotideo ___).\nAsse controlaterale: ___.\nArterie vertebrali ___.\nConclusioni: stenosi carotidea ___ (moderata / severa). Si propone ___ (valutazione chirurgico-vascolare / controllo a ___ mesi) e ottimizzazione della terapia antiaggregante e ipolipemizzante."
+      }
+    ],
     conclusioni: [
       {
         label: "Quadro nella norma — controllo periodico",

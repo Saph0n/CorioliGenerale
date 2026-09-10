@@ -27,6 +27,7 @@ export const BLOCCHI_CONFRONTABILI = [
   "holterEcg",
   "holterPressorio",
   "testErgometrico",
+  "dopplerTsa",
 ] as const;
 
 export type BloccoConfrontabile = (typeof BLOCCHI_CONFRONTABILI)[number];
@@ -54,6 +55,7 @@ const CAMPO_DATA_ESAME: Partial<Record<BloccoConfrontabile, string>> = {
   holterEcg: "dataEsame",
   holterPressorio: "dataEsame",
   testErgometrico: "dataEsame",
+  dopplerTsa: "dataEsame",
 };
 
 /** Misure che stanno direttamente su `visita`, fuori dai blocchi. */
