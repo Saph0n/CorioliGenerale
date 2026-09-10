@@ -2310,7 +2310,7 @@ export default function AddVisit() {
                   startContent={<BookOpen size={15} />}
                   onPress={() => setIsProntuarioOpen(true)}
                 >
-                  Prontuario — pilastri, icosapent, colchicina
+                  Prontuario — pilastri, farmaci, CAD-RADS
                 </Button>
               </CardBody>
             </Card>
