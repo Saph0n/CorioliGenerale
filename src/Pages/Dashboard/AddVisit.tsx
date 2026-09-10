@@ -94,6 +94,7 @@ import {
 } from "../../utils/doctorProfile";
 import { AppModal } from "../../components/AppModal";
 import { ProntuarioModal } from "../../components/cardio/ProntuarioModal";
+import { applicaBozze } from "../../utils/bozzeMisure";
 import {
   CalcSuggestion,
   GruppoCampi,
@@ -573,6 +574,23 @@ const MISURE: Record<string, { path: string; range?: ChiaveMisura }> = {
 };
 
 /**
+ * Campi di misura con una bozza ma senza confronto con la visita precedente, e
+ * quindi fuori da `MISURE`: al salvataggio la loro bozza va riportata nella
+ * visita come quella di tutti gli altri.
+ */
+const PERCORSI_SOLO_BOZZA: Record<string, string> = {
+  "tc.calc": "tcCoronarica.componenteCalcifica",
+  "tc.noncalc": "tcCoronarica.componenteNonCalcifica",
+  "tc.stenosi": "tcCoronarica.stenosiMassima",
+  "tc.ffr": "tcCoronarica.ffrCt",
+};
+
+/** Campo della visita in cui finisce la bozza di una misura. */
+function percorsoBozza(chiave: string): string | undefined {
+  return MISURE[chiave]?.path ?? PERCORSI_SOLO_BOZZA[chiave];
+}
+
+/**
  * Composizione dei pannelli di laboratorio, nell'ordine in cui li stampa un
  * referto: prima l'assetto lipidico, poi il glucidico, poi la funzione renale.
  *
@@ -906,6 +924,28 @@ export default function AddVisit() {
     if (initialLoadDone.current) setHasUnsavedChanges(true);
   };
 
+  /**
+   * La visita come va salvata e stampata: i dati della maschera piu' le bozze
+   * non ancora confermate.
+   *
+   * I campi di misura e il peso passano nella visita quando perdono il focus,
+   * e chi preme "Salva Visita" o "Stampa" subito dopo aver digitato l'ultimo
+   * valore non esce mai dal campo: salvataggio e stampa partivano dai dati di
+   * prima, e quel numero spariva senza avviso. Leggono entrambi da qui, cosi'
+   * il foglio porta esattamente quello che e' stato salvato.
+   */
+  const visitaCompleta = () => ({
+    ...applicaBozze(visitaData, numDrafts, percorsoBozza),
+    ...(pesoCorporeoDraft !== null
+      ? { pesoCorporeo: parseWeightFieldBlur(pesoCorporeoDraft) }
+      : {}),
+    // "120 80" e "120-80" si salvano come "120/80": il separatore che si
+    // digita non deve decidere se la visita si salva.
+    pressioneArteriosa: normalizzaPressioneArteriosa(
+      visitaData.pressioneArteriosa,
+    ),
+  });
+
   const handleSubmit = async (
     e?: React.FormEvent | { preventDefault: () => void },
     options?: { skipRedirect?: boolean },
@@ -933,17 +973,7 @@ export default function AddVisit() {
         return false;
       }
 
-      const visitaForSave = {
-        ...visitaData,
-        ...(pesoCorporeoDraft !== null
-          ? { pesoCorporeo: parseWeightFieldBlur(pesoCorporeoDraft) }
-          : {}),
-        // "120 80" e "120-80" si salvano come "120/80": il separatore che si
-        // digita non deve decidere se la visita si salva.
-        pressioneArteriosa: normalizzaPressioneArteriosa(
-          visitaData.pressioneArteriosa,
-        ),
-      };
+      const visitaForSave = visitaCompleta();
 
       const paramErr =
         validateBodyWeight(visitaForSave.pesoCorporeo) ??
@@ -1252,7 +1282,7 @@ export default function AddVisit() {
             pickCampiAttivi(anamnesiStrutturata, anamnesiConfig, "generale"),
           )
         : undefined,
-      visita: visitaPerSalvataggio(visitaData),
+      visita: visitaPerSalvataggio(visitaCompleta()),
       createdAt: existingVisit?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

@@ -20,6 +20,7 @@ import {
   type ValorePrecedente,
 } from "../../utils/confrontoMisure";
 import { PannelloAndamento, Sparkline } from "./GraficoAndamento";
+import { numeroDaBozza } from "../../utils/bozzeMisure";
 
 /** Data di oggi in `aaaa-mm-gg`, ripiego quando la visita non passa la sua. */
 function oggiIso(): string {
@@ -214,15 +215,7 @@ export function MisuraInput({
   const shown = draft ?? (value == null ? "" : String(value).replace(".", ","));
   const livello = segnale?.livello ?? "nella-norma";
 
-  const commit = (raw: string) => {
-    const t = raw.trim().replace(",", ".");
-    if (t === "" || t === ".") {
-      onValueChange(undefined);
-      return;
-    }
-    const n = Number(t);
-    onValueChange(Number.isFinite(n) ? n : undefined);
-  };
+  const commit = (raw: string) => onValueChange(numeroDaBozza(raw));
 
   const storico = serie ?? [];
   const mostraAndamento =
